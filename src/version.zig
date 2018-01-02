@@ -76,28 +76,13 @@ pub const Version = enum {
             Game.init("IPG", Version.SoulSilver),
         };
 
-        const game = loop: for (games) |game| {
+        for (games) |game| {
             if (mem.startsWith(u8, header.gamecode, game.first)) {
-                break :loop game.second;
+                return game.second;
             }
-        } else {
+            }
+        
             return error.UnknownVersion;
-        };
-
-        // TODO: This is kinda ugly. Rewrite
-        const lang = switch (game.gen()) {
-            4 => lang_blk: {
-                const langs = "EFDSIJK";
-                break :lang_blk mem.indexOfScalar(u8, langs, header.gamecode[3]) ?? return error.UnknownVersion;
-            },
-            5 => lang_blk: {
-                const langs = "OFDSIJK";
-                break :lang_blk mem.indexOfScalar(u8, langs, header.gamecode[3]) ?? return error.UnknownVersion;
-            },
-            else => unreachable
-        };
-
-        return game;
     }
 
     pub fn gen(self: Version) -> u8 {
