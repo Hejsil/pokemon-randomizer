@@ -1,0 +1,1 @@
+[BW2 File System](https://projectpokemon.org/docs/gen-5/b2w2-file-system-r8/)
