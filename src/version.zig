@@ -52,8 +52,10 @@ pub const Version = enum {
 
         nds_block: {
             var header : NdsHeader = undefined;
-            _ = %return rom.read(utils.asBytes(NdsHeader, &header));
+            const read = %return rom.read(utils.asBytes(NdsHeader, &header));
 
+            if (read != @sizeOf(NdsHeader)) break :nds_block;
+            header.validate() %% break :nds_block;
             return Version.fromNdsHeader(&header) %% break :nds_block;
         }
 
