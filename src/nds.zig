@@ -1,9 +1,28 @@
-const Little = @import("little.zig").Little;
 const std = @import("std");
+const builtin = @import("builtin");
+const utils = @import("utils.zig");
+const ascii = @import("ascii.zig");
 const debug = std.debug;
+const mem = std.mem;
 const assert = debug.assert;
-const utils = @import("../utils.zig");
-const ascii = @import("../ascii.zig");
+
+/// A data structure representing an Little Endian Integer
+pub fn Little(comptime Int: type) -> type {
+    comptime debug.assert(@typeId(Int) == builtin.TypeId.Int);
+
+    return packed struct {
+        const Self = this;
+        bytes: [@sizeOf(Int)]u8,
+
+        pub fn set(self: &const Self, v: Int) {
+            mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
+        }
+
+        pub fn get(self: &const Self) -> Int {
+            return mem.readIntLE(Int, self.bytes);
+        }
+    };
+}
 
 fn isUpperAscii(char: u8) -> bool {
     return isUpperAsciiOrZero(char) and char != 0x00;
@@ -271,7 +290,7 @@ pub const Header = packed struct {
     }
 };
 
-test "header.Header" {
+test "nds.Header: Offsets" {
     const header : Header = undefined;
     const base = @ptrToInt(&header);
 
@@ -389,6 +408,6 @@ test "header.Header" {
     assert(@ptrToInt(&header.reserved17                     ) - base == 0x3B4);
     assert(@ptrToInt(&header.reserved18                     ) - base == 0xE00);
     assert(@ptrToInt(&header.signature_across_header_entries) - base == 0xF80);
-
+    
     assert(@sizeOf(Header) == 0x1000);
 }

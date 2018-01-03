@@ -1,12 +1,10 @@
 const std = @import("std");
 const utils = @import("utils.zig");
-const nds = @import("nds/index.zig");
+const nds = @import("nds.zig");
 const mem = std.mem;
 const debug = std.debug;
 const File = std.io.File;
 const Pair = utils.Pair;
-
-const NdsHeader = nds.header.Header;
 
 error UnknownVersion;
 
@@ -51,10 +49,10 @@ pub const Version = enum {
         defer _ = rom.seekTo(prev);
 
         nds_block: {
-            var header : NdsHeader = undefined;
-            const read = %return rom.read(utils.asBytes(NdsHeader, &header));
+            var header : nds.Header = undefined;
+            const read = %return rom.read(utils.asBytes(nds.Header, &header));
 
-            if (read != @sizeOf(NdsHeader)) break :nds_block;
+            if (read != @sizeOf(nds.Header)) break :nds_block;
             header.validate() %% break :nds_block;
             return Version.fromNdsHeader(&header) %% break :nds_block;
         }
@@ -64,7 +62,7 @@ pub const Version = enum {
         return error.UnknownVersion;
     }
 
-    pub fn fromNdsHeader(header: &const NdsHeader) -> %Version {
+    pub fn fromNdsHeader(header: &const nds.Header) -> %Version {
         const nintendo_makercode = "01";
         const Game = Pair([]const u8, Version);
         const games = []Game {
