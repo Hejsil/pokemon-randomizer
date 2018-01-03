@@ -66,7 +66,6 @@ pub const Version = enum {
 
     pub fn fromNdsHeader(header: &const NdsHeader) -> %Version {
         const nintendo_makercode = "01";
-
         const Game = Pair([]const u8, Version);
         const games = []Game {
             Game.init("IRB", Version.Black),
@@ -79,7 +78,6 @@ pub const Version = enum {
         };
 
         if (!mem.eql(u8, header.makercode, nintendo_makercode)) return error.UnknownVersion;
-        if (!mem.eql(u8, header.reserved1, []u8{ 0 } ** 7))     return error.UnknownVersion;
 
         for (games) |game| {
             if (mem.startsWith(u8, header.gamecode, game.first)) {
@@ -104,8 +102,7 @@ pub const Version = enum {
             V.X, V.Y, V.OmegaRuby, 
             V.AlphaSapphire,               => u8(6),
             V.Sun, V.Moon, V.UltraSun,
-            V.UltraMoon,                   => u8(7),
-            else                           => unreachable
+            V.UltraMoon,                   => u8(7)
         };
     }
 
