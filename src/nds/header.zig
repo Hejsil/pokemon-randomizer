@@ -1,5 +1,9 @@
 const Little = @import("little.zig").Little;
 const assert = @import("std").debug.assert;
+const utils = @import("../utils.zig");
+const ascii = @import("../ascii.zig");
+
+
 
 // http://problemkaputt.de/gbatek.htm#dscartridgeheader
 pub const Header = packed struct {
