@@ -76,8 +76,8 @@ pub const Header = packed struct {
     arm7_overlay_size:   Little(u32),
 
     // TODO: Rename when I know exactly what his means.
-    port_40001A4h_setting_for_normal_commands: Little(u32),
-    port_40001A4h_setting_for_key1_commands:   Little(u32),
+    port_40001A4h_setting_for_normal_commands: [4]u8,
+    port_40001A4h_setting_for_key1_commands:   [4]u8,
 
     icon_title_offset: Little(u32),
     
@@ -103,7 +103,117 @@ pub const Header = packed struct {
     debug_ram_address: Little(u32),
 
     reserved4: [4]u8,
-    reserved5: [0x90]u8,
+    reserved5: [0x10]u8,
+
+    // New DSi Header Entries
+    wram_slots:      [20]u8,
+    arm9_wram_areas: [12]u8,
+    arm7_wram_areas: [12]u8,
+    wram_slot_master: [3]u8,
+
+    // 1AFh 1    ... whatever, rather not 4000247h WRAMCNT ?
+    //                (above byte is usually 03h)
+    //                (but, it's FCh in System Menu?)
+    //                (but, it's 00h in System Settings?)
+    unknown: u8,
+
+    region_flags:   [4]u8,
+    access_control: [4]u8,
+
+    arm7_scfg_ext_setting: [4]u8,
+    
+    reserved6: [3]u8,
+
+    // 1BFh 1    Flags? (usually 01h) (DSiware Browser: 0Bh)
+    //         bit2: Custom Icon  (0=No/Normal, 1=Use banner.sav)
+    unknown_flags: u8,
+
+    arm9i_rom_offset: Little(u32),
+    
+    reserved7: [4]u8,
+
+    arm9i_ram_load_address: Little(u32),
+    arm9i_size:             Little(u32),
+    arm7i_rom_offset:       Little(u32),
+
+    device_list_arm7_ram_addr: Little(u32),
+
+    arm7i_ram_load_address: Little(u32),
+    arm7i_size:             Little(u32),
+
+    digest_ntr_region_offset:       Little(u32),
+    digest_ntr_region_length:       Little(u32),
+    digest_twl_region_offset:       Little(u32),
+    digest_twl_region_length:       Little(u32),
+    digest_sector_hashtable_offset: Little(u32),
+    digest_sector_hashtable_length: Little(u32),
+    digest_block_hashtable_offset:  Little(u32),
+    digest_block_hashtable_length:  Little(u32),
+    digest_sector_size:             Little(u32),
+    digest_block_sectorcount:       Little(u32),
+
+    icon_title_size: Little(u32),
+
+    reserved8: [4]u8,
+
+    total_used_rom_size_including_dsi_area: Little(u32),
+
+    reserved9:  [4]u8,
+    reserved10: [4]u8,
+    reserved11: [4]u8,
+
+    modcrypt_area_1_offset: Little(u32),
+    modcrypt_area_1_size:   Little(u32),
+    modcrypt_area_2_offset: Little(u32),
+    modcrypt_area_2_size:   Little(u32),
+
+    title_id_emagcode: [4]u8,
+    title_id_filetype: u8,
+
+    // 235h 1    Title ID, Zero     (00h=Normal)
+    // 236h 1    Title ID, Three    (03h=Normal, why?)
+    // 237h 1    Title ID, Zero     (00h=Normal)
+    title_id_rest: [3]u8,
+
+    public_sav_filesize:  Little(u32),
+    private_sav_filesize: Little(u32),
+
+    reserved12: [176]u8,
+
+    // Parental Control Age Ratings
+    cero_japan: u8,
+    esrb_us_canada: u8,
+
+    reserved13: u8,
+
+    usk_germany: u8,
+    pegi_pan_europe: u8,
+
+    resereved14: u8,
+
+    pegi_portugal: u8,
+    pegi_and_bbfc_uk: u8,
+    agcb_australia: u8,
+    grb_south_korea: u8,
+
+    reserved15: [6]u8,
+
+    // SHA1-HMACS and RSA-SHA1
+    arm9_hash_with_secure_area: [20]u8,
+    arm7_hash:                  [20]u8,
+    digest_master_hash:         [20]u8,
+    icon_title_hash:            [20]u8,
+    arm9i_hash:                 [20]u8,
+    arm7i_hash:                 [20]u8,
+
+    reserved16: [40]u8,
+
+    arm9_hash_without_secure_area: [20]u8,
+
+    reserved17: [2636]u8,
+    reserved18: [0x180]u8,
+
+    signature_across_header_entries: [0x80]u8,
 
     pub fn validate(self: &const Header) -> %void {
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero)) 
@@ -156,10 +266,8 @@ pub const Header = packed struct {
 
         if (!utils.all(u8, self.reserved4, isZero))
             return error.InvalidReserved4;
-        // TODO: Pokemon Platinum did not uphold this? Since reserved5 is not
-        // stored in ram on the ds, then this might not matter then.
-        // if (!utils.all(u8, self.reserved5, isZero))
-        //     return error.InvalidReserved5;
+            
+        
     }
 };
 
@@ -211,5 +319,76 @@ test "header.Header" {
     assert(@ptrToInt(&header.debug_ram_address              ) - base == 0x168);
     assert(@ptrToInt(&header.reserved4                      ) - base == 0x16C);
     assert(@ptrToInt(&header.reserved5                      ) - base == 0x170);
-    assert(@sizeOf(Header) == 0x170 + 0x90);
+    assert(@ptrToInt(&header.wram_slots                     ) - base == 0x180);
+    assert(@ptrToInt(&header.arm9_wram_areas                ) - base == 0x194);
+    assert(@ptrToInt(&header.arm7_wram_areas                ) - base == 0x1A0);
+    assert(@ptrToInt(&header.wram_slot_master               ) - base == 0x1AC);
+    assert(@ptrToInt(&header.unknown                        ) - base == 0x1AF);
+    assert(@ptrToInt(&header.region_flags                   ) - base == 0x1B0);
+    assert(@ptrToInt(&header.access_control                 ) - base == 0x1B4);
+    assert(@ptrToInt(&header.arm7_scfg_ext_setting          ) - base == 0x1B8);
+    assert(@ptrToInt(&header.reserved6                      ) - base == 0x1BC);
+    assert(@ptrToInt(&header.unknown_flags                  ) - base == 0x1BF);
+    assert(@ptrToInt(&header.arm9i_rom_offset               ) - base == 0x1C0);
+    assert(@ptrToInt(&header.reserved7                      ) - base == 0x1C4);
+    assert(@ptrToInt(&header.arm9i_ram_load_address         ) - base == 0x1C8);
+    assert(@ptrToInt(&header.arm9i_size                     ) - base == 0x1CC);
+    assert(@ptrToInt(&header.arm7i_rom_offset               ) - base == 0x1D0);
+    assert(@ptrToInt(&header.device_list_arm7_ram_addr      ) - base == 0x1D4);
+    assert(@ptrToInt(&header.arm7i_ram_load_address         ) - base == 0x1D8);
+    assert(@ptrToInt(&header.arm7i_size                     ) - base == 0x1DC);
+    assert(@ptrToInt(&header.digest_ntr_region_offset       ) - base == 0x1E0);
+    assert(@ptrToInt(&header.digest_ntr_region_length       ) - base == 0x1E4);
+    assert(@ptrToInt(&header.digest_twl_region_offset       ) - base == 0x1E8);
+    assert(@ptrToInt(&header.digest_twl_region_length       ) - base == 0x1EC);
+    assert(@ptrToInt(&header.digest_sector_hashtable_offset ) - base == 0x1F0);
+    assert(@ptrToInt(&header.digest_sector_hashtable_length ) - base == 0x1F4);
+    assert(@ptrToInt(&header.digest_block_hashtable_offset  ) - base == 0x1F8);
+    assert(@ptrToInt(&header.digest_block_hashtable_length  ) - base == 0x1FC);
+    assert(@ptrToInt(&header.digest_sector_size             ) - base == 0x200);
+    assert(@ptrToInt(&header.digest_block_sectorcount       ) - base == 0x204);    
+    assert(@ptrToInt(&header.icon_title_size                ) - base == 0x208);    
+    assert(@ptrToInt(&header.reserved8                      ) - base == 0x20C);   
+
+    assert(@ptrToInt(&header.total_used_rom_size_including_dsi_area) - base == 0x210); 
+
+    assert(@ptrToInt(&header.reserved9                      ) - base == 0x214); 
+    assert(@ptrToInt(&header.reserved10                     ) - base == 0x218); 
+    assert(@ptrToInt(&header.reserved11                     ) - base == 0x21C);     
+    assert(@ptrToInt(&header.modcrypt_area_1_offset         ) - base == 0x220);
+    assert(@ptrToInt(&header.modcrypt_area_1_size           ) - base == 0x224);
+    assert(@ptrToInt(&header.modcrypt_area_2_offset         ) - base == 0x228);
+    assert(@ptrToInt(&header.modcrypt_area_2_size           ) - base == 0x22C);
+    assert(@ptrToInt(&header.title_id_emagcode              ) - base == 0x230);
+    assert(@ptrToInt(&header.title_id_filetype              ) - base == 0x234);
+    assert(@ptrToInt(&header.title_id_rest                  ) - base == 0x235);
+    assert(@ptrToInt(&header.public_sav_filesize            ) - base == 0x238);
+    assert(@ptrToInt(&header.private_sav_filesize           ) - base == 0x23C);
+    assert(@ptrToInt(&header.reserved12                     ) - base == 0x240);
+
+    assert(@ptrToInt(&header.cero_japan                     ) - base == 0x2F0);
+    assert(@ptrToInt(&header.esrb_us_canada                 ) - base == 0x2F1);
+    assert(@ptrToInt(&header.reserved13                     ) - base == 0x2F2);
+    assert(@ptrToInt(&header.usk_germany                    ) - base == 0x2F3);
+    assert(@ptrToInt(&header.pegi_pan_europe                ) - base == 0x2F4);
+    assert(@ptrToInt(&header.resereved14                    ) - base == 0x2F5);
+    assert(@ptrToInt(&header.pegi_portugal                  ) - base == 0x2F6);
+    assert(@ptrToInt(&header.pegi_and_bbfc_uk               ) - base == 0x2F7);
+    assert(@ptrToInt(&header.agcb_australia                 ) - base == 0x2F8);
+    assert(@ptrToInt(&header.grb_south_korea                ) - base == 0x2F9);
+    assert(@ptrToInt(&header.reserved15                     ) - base == 0x2FA);
+
+    assert(@ptrToInt(&header.arm9_hash_with_secure_area     ) - base == 0x300);
+    assert(@ptrToInt(&header.arm7_hash                      ) - base == 0x314);
+    assert(@ptrToInt(&header.digest_master_hash             ) - base == 0x328);
+    assert(@ptrToInt(&header.icon_title_hash                ) - base == 0x33C);
+    assert(@ptrToInt(&header.arm9i_hash                     ) - base == 0x350);
+    assert(@ptrToInt(&header.arm7i_hash                     ) - base == 0x364);
+    assert(@ptrToInt(&header.reserved16                     ) - base == 0x378);
+    assert(@ptrToInt(&header.arm9_hash_without_secure_area  ) - base == 0x3A0);
+    assert(@ptrToInt(&header.reserved17                     ) - base == 0x3B4);
+    assert(@ptrToInt(&header.reserved18                     ) - base == 0xE00);
+    assert(@ptrToInt(&header.signature_across_header_entries) - base == 0xF80);
+
+    assert(@sizeOf(Header) == 0x1000);
 }
