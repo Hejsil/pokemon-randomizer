@@ -3,7 +3,7 @@ const os = std.os;
 const path = os.path;
 const debug = std.debug;
 
-const Version = @import("version.zig").Version;
+const Version = @import("pokemon/version.zig").Version;
 const ChildProcess = os.ChildProcess;
 const File = std.io.File;
 
@@ -65,10 +65,7 @@ pub fn main() -> %void {
     rom.close();
 
     switch (version.gen()) {
-        4 => {
-            
-        },
-        5 => {
+        4, 5 => {
             
         },
         else => {
