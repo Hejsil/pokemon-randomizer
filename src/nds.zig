@@ -44,6 +44,18 @@ error InvalidRomHeaderSize;
 error InvalidReserved3;
 error InvalidReserved4;
 error InvalidReserved5;
+error InvalidReserved6;
+error InvalidReserved7;
+error InvalidReserved8;
+error InvalidReserved9;
+error InvalidReserved10;
+error InvalidReserved11;
+error InvalidReserved12;
+error InvalidReserved16;
+error InvalidReserved17;
+error InvalidReserved18;
+error InvalidDigestNtrRegionOffset;
+error InvalidTitleIdRest;
 
 // http://problemkaputt.de/gbatek.htm#dscartridgeheader
 pub const Header = packed struct {
@@ -224,6 +236,10 @@ pub const Header = packed struct {
 
     signature_across_header_entries: [0x80]u8,
 
+    pub fn isDsi(self: &const Header) -> bool {
+        return (self.unitcode & 0x02) != 0;
+    }
+
     pub fn validate(self: &const Header) -> %void {
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero)) 
             return error.InvalidGameTitle;
@@ -268,14 +284,58 @@ pub const Header = packed struct {
 
         if (self.rom_header_size.get() != 0x4000)
             return error.InvalidRomHeaderSize;
-            
-        // 088h 38h Reserved (zero filled) (except, [88h..93h] used on DSi)
-        if (!utils.all(u8, self.reserved3[12..], isZero))
-            return error.InvalidReserved3;
+        
+        if (self.isDsi()) {
+            const dsi_reserved = []u8 {
+                0xB8, 0xD0, 0x04, 0x00,
+                0x44, 0x05, 0x00, 0x00,
+                0x16, 0x00, 0x16, 0x00
+            };
+
+            if (!mem.eql(u8, self.reserved3[0..12], dsi_reserved))
+                return error.InvalidReserved3;
+            if (!utils.all(u8, self.reserved3[12..], isZero))
+                return error.InvalidReserved3;
+        } else {
+            if (!utils.all(u8, self.reserved3, isZero))
+                return error.InvalidReserved3;
+        }
 
         if (!utils.all(u8, self.reserved4, isZero))
             return error.InvalidReserved4;
-            
+        if (!utils.all(u8, self.reserved5, isZero))
+            return error.InvalidReserved5;
+
+        if (self.isDsi()) {
+            if (!utils.all(u8, self.reserved6, isZero))
+                return error.InvalidReserved6;
+            if (!utils.all(u8, self.reserved7, isZero))
+                return error.InvalidReserved7;
+
+            // TODO: (usually same as ARM9 rom offs, 0004000h)
+            //       Does that mean that it also is never less that 0x4000?
+            if (self.digest_ntr_region_offset.get() < 0x4000) 
+                return error.InvalidDigestNtrRegionOffset;
+            if (!mem.eql(u8, self.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
+                return error.InvalidReserved8;
+            if (!utils.all(u8, self.reserved9, isZero))
+                return error.InvalidReserved9;
+            if (!mem.eql(u8, self.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
+                return error.InvalidReserved10;
+            if (!mem.eql(u8, self.reserved11, []u8 { 0x2C, 0x05, 0x00, 0x00 }))
+                return error.InvalidReserved11;
+            if (!mem.eql(u8, self.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
+                return error.InvalidTitleIdRest;
+            if (!utils.all(u8, self.reserved12, isZero))
+                return error.InvalidReserved12;
+            if (!utils.all(u8, self.reserved16, isZero))
+                return error.InvalidReserved16;
+            if (!utils.all(u8, self.reserved17, isZero))
+                return error.InvalidReserved17;
+            if (!utils.all(u8, self.reserved18, isZero))
+                return error.InvalidReserved18;
+        }
+
         
     }
 
@@ -289,6 +349,14 @@ pub const Header = packed struct {
 
     fn isZero(char: u8) -> bool { return char == 0x00; }
 };
+
+test "nds.Header.validate" {
+    const header : Header = undefined;
+
+    // TODO: We should probably test this function properly, but for now,
+    //       this will ensure that the function is compiled when testing.
+    header.validate() %% {};
+}
 
 test "nds.Header: Offsets" {
     const header : Header = undefined;
