@@ -24,16 +24,6 @@ pub fn Little(comptime Int: type) -> type {
     };
 }
 
-fn isUpperAscii(char: u8) -> bool {
-    return isUpperAsciiOrZero(char) and char != 0x00;
-}
-
-fn isUpperAsciiOrZero(char: u8) -> bool {
-    return !ascii.isLower(char);
-}
-
-fn isZero(char: u8) -> bool { return char == 0x00; }
-
 error InvalidGameTitle;
 error InvalidGamecode;
 error InvalidMakercode;
@@ -288,6 +278,16 @@ pub const Header = packed struct {
             
         
     }
+
+    fn isUpperAscii(char: u8) -> bool {
+        return isUpperAsciiOrZero(char) and char != 0x00;
+    }
+
+    fn isUpperAsciiOrZero(char: u8) -> bool {
+        return !ascii.isLower(char);
+    }
+
+    fn isZero(char: u8) -> bool { return char == 0x00; }
 };
 
 test "nds.Header: Offsets" {
