@@ -1,9 +1,40 @@
 const Little = @import("little.zig").Little;
-const assert = @import("std").debug.assert;
+const std = @import("std");
+const debug = std.debug;
+const assert = debug.assert;
 const utils = @import("../utils.zig");
 const ascii = @import("../ascii.zig");
 
+fn isUpperAscii(char: u8) -> bool {
+    return isUpperAsciiOrZero(char) and char != 0x00;
+}
 
+fn isUpperAsciiOrZero(char: u8) -> bool {
+    return !ascii.isLower(char);
+}
+
+fn isZero(char: u8) -> bool { return char == 0x00; }
+
+error InvalidGameTitle;
+error InvalidGamecode;
+error InvalidMakercode;
+error InvalidUnitcode;
+error InvalidEncryptionSeedSelect;
+error InvalidReserved1;
+error InvalidArm9RomOffset;
+error InvalidArm9EntryAddress;
+error InvalidArm9RamAddress;
+error InvalidArm9Size;
+error InvalidArm7RomOffset;
+error InvalidArm7EntryAddress;
+error InvalidArm7RamAddress;
+error InvalidArm7Size;
+error InvalidIconTitleOffset;
+error InvalidSecureAreaDelay;
+error InvalidRomHeaderSize;
+error InvalidReserved3;
+error InvalidReserved4;
+error InvalidReserved5;
 
 // http://problemkaputt.de/gbatek.htm#dscartridgeheader
 pub const Header = packed struct {
@@ -72,7 +103,64 @@ pub const Header = packed struct {
     debug_ram_address: Little(u32),
 
     reserved4: [4]u8,
-    reserved5: [0x90]u8
+    reserved5: [0x90]u8,
+
+    pub fn validate(self: &const Header) -> %void {
+        if (!utils.all(u8, self.game_title, isUpperAsciiOrZero)) 
+            return error.InvalidGameTitle;
+        if (!utils.all(u8, self.gamecode, isUpperAscii))
+            return error.InvalidGamecode;
+        if (!utils.all(u8, self.makercode, isUpperAscii))
+            return error.InvalidMakercode;
+        if (self.unitcode > 0x03)
+            return error.InvalidUnitcode;
+        if (self.encryption_seed_select > 0x07)
+            return error.InvalidEncryptionSeedSelect;
+            
+        if (!utils.all(u8, self.reserved1, isZero))
+            return error.InvalidReserved1;
+
+        // (4000h and up, align 1000h) align 1000h, means we won't have 0x1111 or something?
+        if (self.arm9_rom_offset.get() < 0x4000) 
+            return error.InvalidArm9RomOffset;
+        if (!utils.between(u32, self.arm9_entry_address.get(), 0x2000000, 0x23BFE00)) 
+            return error.InvalidArm9EntryAddress;
+        if (!utils.between(u32, self.arm9_ram_address.get(), 0x2000000, 0x23BFE00)) 
+            return error.InvalidArm9RamAddress;
+        if (self.arm9_size.get() > 0x3BFE00) 
+            return error.InvalidArm9Size;
+
+        if (self.arm7_rom_offset.get() < 0x8000) 
+            return error.InvalidArm7RomOffset;
+        if (!utils.between(u32, self.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
+            !utils.between(u32, self.arm7_entry_address.get(), 0x37F8000, 0x3807E00)) 
+            return error.InvalidArm7EntryAddress;
+        if (!utils.between(u32, self.arm7_ram_address.get(), 0x2000000, 0x23BFE00) and
+            !utils.between(u32, self.arm7_ram_address.get(), 0x37F8000, 0x3807E00))
+            return error.InvalidArm7RamAddress;
+        if (self.arm9_size.get() > 0x3BFE00) 
+            return error.InvalidArm9Size;
+
+        if (utils.between(u32, self.icon_title_offset.get(), 0x1, 0x7FFF))
+            return error.InvalidIconTitleOffset;
+
+        if (self.secure_area_delay.get() != 0x051E and self.secure_area_delay.get() != 0x0D7E)
+            return error.InvalidSecureAreaDelay;
+
+        if (self.rom_header_size.get() != 0x4000)
+            return error.InvalidRomHeaderSize;
+            
+        // 088h 38h Reserved (zero filled) (except, [88h..93h] used on DSi)
+        if (!utils.all(u8, self.reserved3[12..], isZero))
+            return error.InvalidReserved3;
+
+        if (!utils.all(u8, self.reserved4, isZero))
+            return error.InvalidReserved4;
+        // TODO: Pokemon Platinum did not uphold this? Since reserved5 is not
+        // stored in ram on the ds, then this might not matter then.
+        // if (!utils.all(u8, self.reserved5, isZero))
+        //     return error.InvalidReserved5;
+    }
 };
 
 test "header.Header" {
