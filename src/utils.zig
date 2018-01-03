@@ -25,3 +25,7 @@ pub fn all(comptime T: type, slice: []const T, predicate: fn(T) -> bool) -> bool
 
     return true;
 }
+
+pub fn between(comptime T: type, v: T, min: T, max: T) -> bool {
+    return min <= v and v <= max;
+}
