@@ -4,7 +4,12 @@ const utils = @import("utils.zig");
 const ascii = @import("ascii.zig");
 const debug = std.debug;
 const mem = std.mem;
+const io = std.io;
 const assert = debug.assert;
+const sort = std.sort;
+
+const InStream = io.InStream;
+const Allocator = mem.Allocator;
 
 /// A data structure representing an Little Endian Integer
 pub fn Little(comptime Int: type) -> type {
@@ -255,8 +260,9 @@ pub const Header = packed struct {
         if (!utils.all(u8, self.reserved1, isZero))
             return error.InvalidReserved1;
 
-        // (4000h and up, align 1000h) align 1000h, means we won't have 0x1111 or something?
-        if (self.arm9_rom_offset.get() < 0x4000) 
+        // It seems that arm9 (secure area) is always at 0x4000
+        // http://problemkaputt.de/gbatek.htm#dscartridgesecurearea
+        if (self.arm9_rom_offset.get() != 0x4000) 
             return error.InvalidArm9RomOffset;
         if (!utils.between(u32, self.arm9_entry_address.get(), 0x2000000, 0x23BFE00)) 
             return error.InvalidArm9EntryAddress;
@@ -265,7 +271,7 @@ pub const Header = packed struct {
         if (self.arm9_size.get() > 0x3BFE00) 
             return error.InvalidArm9Size;
 
-        if (self.arm7_rom_offset.get() < 0x8000) 
+        if (self.arm7_rom_offset.get() != 0x8000) 
             return error.InvalidArm7RomOffset;
         if (!utils.between(u32, self.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
             !utils.between(u32, self.arm7_entry_address.get(), 0x37F8000, 0x3807E00)) 
@@ -479,3 +485,107 @@ test "nds.Header: Offsets" {
     
     assert(@sizeOf(Header) == 0x1000);
 }
+
+error CouldNotReadEntierHeader;
+error AddressesOverlap;
+
+pub const Rom = struct {
+    header: Header,
+    arm9: []u8,
+    arm7: []u8,
+    fnt: []u8,
+    fat: []u8,
+    arm9_overlay: []u8,
+    arm7_overlay: []u8,
+
+    pub fn fromStream(stream: &InStream, allocator: &Allocator) -> %Rom {
+        var header: Header = undefined;
+        var address: usize = 0;
+
+        %return stream.readNoEof(utils.asBytes(header));
+        %return header.validate();
+        address += read;
+
+        const BlockType = enum {
+            Arm9,
+            Arm7,
+            Fnt,
+            Fat,
+            Arm9Overlay,
+            Arm7Overlay,
+        };
+
+        const Block = struct {
+            block_type: BlockType,
+            offset: u32,
+            size: u32,
+            loaded_bytes: ?[]u8,
+
+            fn init(block_type: BlockType, offset: u32, size: u32) -> Block {
+                return Block {
+                    .block_type = block_type,
+                    .offset = offset,
+                    .size = size,
+                    .loaded_bytes = null
+                };
+            }
+
+            fn offsetLessThan(rhs: &const Block, lhs: &const Block) -> bool {
+                return rhs.offset < lhs.offset;
+            }
+
+            fn findByType(blocks: []const Block, block_type: BlockType) -> Block {
+                for (blocks) |block| {
+                    if (block.block_type == block_type)
+                        return block;
+                }
+
+                unreachable;
+            }
+        };
+
+        var blocks = []Block {
+            Block.init(BlockType.Arm9, header.arm9_rom_offset.get(), header.arm9_size.get()),
+            Block.init(BlockType.Arm7, header.arm7_rom_offset.get(), header.arm7_size.get()),
+            Block.init(BlockType.Fnt, header.fnt_offset.get(), header.fnt_size.get()),
+            Block.init(BlockType.Fat, header.fat_offset.get(), header.fat_size.get()),
+            Block.init(BlockType.Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
+            Block.init(BlockType.Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
+        };
+
+        // Because we take an InStream, we can's seek to an address,
+        // so we have too access our blocks from lowest offset to
+        // hights. Idk if there is some expected order of these blocks.
+        sort.sort(Block, blocks[0..], Block.offsetLessThan);
+        %defer {
+            for (blocks) |*block| {
+                if (block.loaded_bytes) |bytes|
+                    allocator.free(bytes);
+            }
+        };
+
+        for (blocks) |*block| {
+            if (address > block.offset) 
+                return error.AddressesOverlap;
+
+            while (address < block.offset) : (i += 1) {
+                _ = %return stream.readByte();
+            }
+
+            var bytes = %return allocator.alloc(u8, block.size);
+            %defer allocator.free(bytes);
+            %return stream.readNoEof(bytes);
+            address += block.size;
+            block.loaded_bytes = bytes;
+        }
+
+        const arm9 = Block.findByType(blocks, BlockType.Arm9).loaded_bytes ?? unreachable;
+        const arm7 = Block.findByType(blocks, BlockType.Arm7).loaded_bytes ?? unreachable;
+        const fnt  = Block.findByType(blocks, BlockType.Fnt).loaded_bytes  ?? unreachable;
+        const fat  = Block.findByType(blocks, BlockType.Fat).loaded_bytes  ?? unreachable;
+        const arm9_overlay = Block.findByType(blocks, BlockType.Arm9Overlay).loaded_bytes ?? unreachable;
+        const arm7_overlay = Block.findByType(blocks, BlockType.Arm7Overlay).loaded_bytes ?? unreachable;
+
+        
+    }
+};
