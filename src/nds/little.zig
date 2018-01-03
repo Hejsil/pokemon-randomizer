@@ -15,7 +15,7 @@ pub fn Little(comptime Int: type) -> type {
             mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
         }
 
-        pub fn get() -> Int {
+        pub fn get(self: &const Self) -> Int {
             return mem.readIntLE(Int, self.bytes);
         }
     };
