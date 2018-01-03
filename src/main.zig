@@ -58,9 +58,11 @@ pub fn main() -> %void {
     };
 
     const version = Version.fromFile(&rom) %% |err| {
+        rom.close();
         debug.warn("Unable to determin the pokémon version of {}.\n", inFile);
         return err;
     };
+    rom.close();
 
     switch (version.gen()) {
         4 => {
