@@ -231,9 +231,9 @@ pub const Header = packed struct {
     pub fn validate(self: &const Header) -> %void {
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero)) 
             return error.InvalidGameTitle;
-        if (!utils.all(u8, self.gamecode, isUpperAscii))
+        if (!utils.all(u8, self.gamecode, ascii.isUpperOrSpace))
             return error.InvalidGamecode;
-        if (!utils.all(u8, self.makercode, isUpperAscii))
+        if (!utils.all(u8, self.makercode, ascii.isUpperOrSpace))
             return error.InvalidMakercode;
         if (self.unitcode > 0x03)
             return error.InvalidUnitcode;
@@ -328,15 +328,11 @@ pub const Header = packed struct {
         
     }
 
-    fn isUpperAscii(char: u8) -> bool {
-        return isUpperAsciiOrZero(char) and char != 0x00;
-    }
-
     fn isUpperAsciiOrZero(char: u8) -> bool {
-        return !ascii.isLower(char);
+        return ascii.isUpperOrSpace(char) or char == 0;
     }
 
-    fn isZero(char: u8) -> bool { return char == 0x00; }
+    fn isZero(char: u8) -> bool { return char == 0; }
 };
 
 test "nds.Header.validate" {
