@@ -1,33 +1,16 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const utils = @import("utils.zig");
 const ascii = @import("ascii.zig");
+const little = @import("little.zig");
 const debug = std.debug;
 const mem = std.mem;
 const io = std.io;
 const assert = debug.assert;
 const sort = std.sort;
 
+const Little = little.Little;
 const InStream = io.InStream;
 const Allocator = mem.Allocator;
-
-/// A data structure representing an Little Endian Integer
-pub fn Little(comptime Int: type) -> type {
-    comptime debug.assert(@typeId(Int) == builtin.TypeId.Int);
-
-    return packed struct {
-        const Self = this;
-        bytes: [@sizeOf(Int)]u8,
-
-        pub fn set(self: &const Self, v: Int) {
-            mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
-        }
-
-        pub fn get(self: &const Self) -> Int {
-            return mem.readIntLE(Int, self.bytes);
-        }
-    };
-}
 
 error InvalidGameTitle;
 error InvalidGamecode;
