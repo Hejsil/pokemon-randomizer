@@ -1,13 +1,13 @@
 const std = @import("std");
 const gba = @import("../gba.zig");
 const little = @import("../little.zig");
+const utils = @import("../utils.zig");
+const mem = std.mem;
 const debug = std.debug;
 
 const assert = debug.assert;
 
 const Little = little.Little;
-
-const egg_cycle_steps = 256;
 
 pub const Type = enum(u8) {
     Normal   = 00,
@@ -178,7 +178,7 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@sizeOf(BasePokemon) == 28);
 }
 
-pub const bulbasaur = BasePokemon {
+const bulbasaur = BasePokemon {
     .hp         = 45,
     .attack     = 49,
     .defense    = 49,
@@ -205,7 +205,6 @@ pub const bulbasaur = BasePokemon {
     .item1 = Little(u16).init(0),
     .item2 = Little(u16).init(0),
 
-    // Bulbasaur gender ration is 1/7
     .gender          = 31,
     .egg_cycles      = 20,
     .base_friendship = 70,
@@ -223,9 +222,21 @@ pub const bulbasaur = BasePokemon {
     .color_and_flip = ColorAndFlip.Green,
 
     .padding = []u8 { 0, 0 },
-
 };
 
-pub const Game = struct {
+error CouldntFindPokemonOffset;
 
+pub const Game = struct {
+    rom: &gba.Rom,
+    pokemon_offset: usize,
+
+    pub fn fromRom(rom: &gba.Rom) -> %Game {
+        const bulbasaur_bytes = utils.asConstBytes(BasePokemon, &bulbasaur);
+        const pokemon_offset = mem.indexOf(u8, rom.data, bulbasaur_bytes) ?? return error.CouldntFindPokemonOffset;
+
+        return Game {
+            .rom = rom,
+            .pokemon_offset = pokemon_offset,
+        };
+    }
 };

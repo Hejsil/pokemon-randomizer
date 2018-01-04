@@ -59,5 +59,8 @@ pub fn main() -> %void {
         return err;
     };
 
-    const pokemon_basestats_offset = mem.indexOf(u8, rom.data, utils.asConstBytes(gen3.BasePokemon, &gen3.bulbasaur)) ?? unreachable;
+    var gen3_game = gen3.Game.fromRom(&rom) %% |err| {
+        debug.warn("Invalide generation 3 pokemon game.\n");
+        return err;
+    };
 }
