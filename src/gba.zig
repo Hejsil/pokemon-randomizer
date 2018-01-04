@@ -91,6 +91,8 @@ test "gba.Header: Offsets" {
     assert(@sizeOf(Header) == 192);
 }
 
+error InvalidRomSize;
+
 pub const Rom = struct {
     header: &Header,
     data: []u8,
@@ -107,6 +109,9 @@ pub const Rom = struct {
             return err;
         };
         %defer allocator.free(data);
+
+        if ((data.len + @sizeOf(Header)) % 0x1000000 != 0)
+            return error.InvalidRomSize;
 
         return Rom {
             .header = header,
