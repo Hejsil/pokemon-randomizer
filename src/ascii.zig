@@ -7,5 +7,5 @@ pub fn isLower(char: u8) -> bool {
 }
 
 pub fn isSpace(char: u8) -> bool {
-    return ' ' <= char or ('\t' <= char and char <= '\r');
+    return ' ' == char or ('\t' <= char and char <= '\r');
 }
