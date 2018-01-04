@@ -69,14 +69,6 @@ pub const Header = packed struct {
     }
 };
 
-test "gba.Header.validate" {
-    const header : Header = undefined;
-
-    // TODO: We should probably test this function properly, but for now,
-    //       this will ensure that the function is compiled when testing.
-    header.validate() %% {};
-}
-
 test "gba.Header: Offsets" {
     const header : Header = undefined;
     const base = @ptrToInt(&header);
