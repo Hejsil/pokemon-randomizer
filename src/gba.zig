@@ -3,6 +3,7 @@ const utils = @import("utils.zig");
 const ascii = @import("ascii.zig");
 const debug = std.debug;
 const mem = std.mem;
+const io = std.io;
 const assert = debug.assert;
 
 pub const nintendo_logo = []u8 {
@@ -89,3 +90,34 @@ test "gba.Header: Offsets" {
     
     assert(@sizeOf(Header) == 192);
 }
+
+pub const Rom = struct {
+    header: &Header,
+    data: []u8,
+
+    pub fn fromStream(stream: &io.InStream, allocator: &mem.Allocator) -> %Rom {
+        var header = %return allocator.create(Header);
+        %defer allocator.destroy(header);
+
+        %return stream.readNoEof(utils.asBytes(Header, header));
+        %return header.validate();
+
+        var data = stream.readAllAlloc(allocator, @maxValue(usize)) %% |err| {
+            debug.warn("{}\n", @errorName(err));
+            return err;
+        };
+        %defer allocator.free(data);
+
+        return Rom {
+            .header = header,
+            .data = data
+        };
+    }
+
+    pub fn destroy(self: &Rom, allocator: &mem.Allocator) {
+        allocator.destroy(self.header);
+        allocator.free(self.data);
+        self.header = undefined;
+        self.data = undefined;
+    }
+};
