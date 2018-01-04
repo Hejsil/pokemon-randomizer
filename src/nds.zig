@@ -319,8 +319,8 @@ pub const Header = packed struct {
                 return error.InvalidReserved7;
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
-            //       Does that mean that it also is never less that 0x4000?
-            if (self.digest_ntr_region_offset.get() < 0x4000) 
+            //       Does that mean that it also always 0x4000?
+            if (self.digest_ntr_region_offset.get() != 0x4000) 
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, self.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
@@ -341,8 +341,6 @@ pub const Header = packed struct {
             if (!utils.all(u8, self.reserved18, isZero))
                 return error.InvalidReserved18;
         }
-
-        
     }
 
     fn isUpperAscii(char: u8) -> bool {
@@ -486,7 +484,6 @@ test "nds.Header: Offsets" {
     assert(@sizeOf(Header) == 0x1000);
 }
 
-error CouldNotReadEntierHeader;
 error AddressesOverlap;
 
 pub const Rom = struct {
@@ -564,7 +561,7 @@ pub const Rom = struct {
                 if (address > block.offset) 
                     return error.AddressesOverlap;
 
-                while (address < block.offset) : (i += 1) {
+                while (address < block.offset) : (address += 1) {
                     _ = %return stream.readByte();
                 }
 
