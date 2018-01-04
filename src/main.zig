@@ -1,8 +1,10 @@
 const std = @import("std");
 const gba = @import("gba.zig");
 const utils = @import("utils.zig");
+const gen3 = @import("pokemon/gen3.zig");
 const os = std.os;
 const debug = std.debug;
+const mem = std.mem;
 const io = std.io;
 const path = os.path;
 
@@ -56,4 +58,6 @@ pub fn main() -> %void {
         debug.warn("Unable to load gba rom.\n");
         return err;
     };
+
+    const pokemon_basestats_offset = mem.indexOf(u8, rom.data, utils.asConstBytes(gen3.BasePokemon, &gen3.bulbasaur)) ?? unreachable;
 }
