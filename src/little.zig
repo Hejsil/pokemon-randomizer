@@ -11,6 +11,13 @@ pub fn Little(comptime Int: type) -> type {
         const Self = this;
         bytes: [@sizeOf(Int)]u8,
 
+        pub fn init(v: Int) -> Self {
+            var res : Self = undefined;
+            res.set(v);
+
+            return res;
+        }
+
         pub fn set(self: &const Self, v: Int) {
             mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
         }
