@@ -1,5 +1,6 @@
 const std = @import("std");
-const nds = @import("nds.zig");
+const gba = @import("gba.zig");
+const utils = @import("utils.zig");
 const os = std.os;
 const debug = std.debug;
 const io = std.io;
@@ -50,9 +51,9 @@ pub fn main() -> %void {
     };
     defer rom_file.close();
 
-    var file_stream = FileInStream.init(&File);
-    var rom = nds.Rom.fromStream(file_stream.stream, allocator) %% |err| {
-        debug.warn("Unable to load nds rom.\n");
+    var file_stream = FileInStream.init(&rom_file);
+    var rom = gba.Rom.fromStream(&file_stream.stream, allocator) %% |err| {
+        debug.warn("Unable to load gba rom.\n");
         return err;
     };
 }
