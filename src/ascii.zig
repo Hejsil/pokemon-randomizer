@@ -13,3 +13,5 @@ pub fn isSpace(char: u8) -> bool {
 pub fn isUpperOrSpace(char: u8) -> bool {
     return isUpper(char) or isSpace(char);
 }
+
+pub fn isZero(char: u8) -> bool { return char == 0; }

@@ -240,7 +240,7 @@ pub const Header = packed struct {
         if (self.encryption_seed_select > 0x07)
             return error.InvalidEncryptionSeedSelect;
             
-        if (!utils.all(u8, self.reserved1, isZero))
+        if (!utils.all(u8, self.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
         // It seems that arm9 (secure area) is always at 0x4000
@@ -283,22 +283,22 @@ pub const Header = packed struct {
 
             if (!mem.eql(u8, self.reserved3[0..12], dsi_reserved))
                 return error.InvalidReserved3;
-            if (!utils.all(u8, self.reserved3[12..], isZero))
+            if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         } else {
-            if (!utils.all(u8, self.reserved3, isZero))
+            if (!utils.all(u8, self.reserved3, ascii.isZero))
                 return error.InvalidReserved3;
         }
 
-        if (!utils.all(u8, self.reserved4, isZero))
+        if (!utils.all(u8, self.reserved4, ascii.isZero))
             return error.InvalidReserved4;
-        if (!utils.all(u8, self.reserved5, isZero))
+        if (!utils.all(u8, self.reserved5, ascii.isZero))
             return error.InvalidReserved5;
 
         if (self.isDsi()) {
-            if (!utils.all(u8, self.reserved6, isZero))
+            if (!utils.all(u8, self.reserved6, ascii.isZero))
                 return error.InvalidReserved6;
-            if (!utils.all(u8, self.reserved7, isZero))
+            if (!utils.all(u8, self.reserved7, ascii.isZero))
                 return error.InvalidReserved7;
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
@@ -307,7 +307,7 @@ pub const Header = packed struct {
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, self.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
-            if (!utils.all(u8, self.reserved9, isZero))
+            if (!utils.all(u8, self.reserved9, ascii.isZero))
                 return error.InvalidReserved9;
             if (!mem.eql(u8, self.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
                 return error.InvalidReserved10;
@@ -315,13 +315,13 @@ pub const Header = packed struct {
                 return error.InvalidReserved11;
             if (!mem.eql(u8, self.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
                 return error.InvalidTitleIdRest;
-            if (!utils.all(u8, self.reserved12, isZero))
+            if (!utils.all(u8, self.reserved12, ascii.isZero))
                 return error.InvalidReserved12;
-            if (!utils.all(u8, self.reserved16, isZero))
+            if (!utils.all(u8, self.reserved16, ascii.isZero))
                 return error.InvalidReserved16;
-            if (!utils.all(u8, self.reserved17, isZero))
+            if (!utils.all(u8, self.reserved17, ascii.isZero))
                 return error.InvalidReserved17;
-            if (!utils.all(u8, self.reserved18, isZero))
+            if (!utils.all(u8, self.reserved18, ascii.isZero))
                 return error.InvalidReserved18;
         }
 
@@ -331,8 +331,6 @@ pub const Header = packed struct {
     fn isUpperAsciiOrZero(char: u8) -> bool {
         return ascii.isUpperOrSpace(char) or char == 0;
     }
-
-    fn isZero(char: u8) -> bool { return char == 0; }
 };
 
 test "nds.Header.validate" {
