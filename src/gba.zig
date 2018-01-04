@@ -53,11 +53,12 @@ pub const Header = packed struct {
     pub fn validate(self: &const Header) -> %void {
         if (!mem.eql(u8, self.nintendo_logo, nintendo_logo))
             return error.InvalidNintentoLogo;
-        if (!utils.all(u8, self.game_title, ascii.isUpperOrSpace)) 
+        if (!utils.all(u8, self.game_title, ascii.isUpperAscii)) 
             return error.InvalidGameTitle;
-        if (!utils.all(u8, self.gamecode, ascii.isUpperOrSpace))
+        if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
             return error.InvalidGamecode;
-        if (!utils.all(u8, self.makercode, ascii.isUpperOrSpace))
+
+        if (!utils.all(u8, self.makercode, ascii.isUpperAscii))
             return error.InvalidMakercode;
         if (self.fixed_value != 0x96)
             return error.InvalidFixedValue;

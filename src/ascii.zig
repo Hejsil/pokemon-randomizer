@@ -10,8 +10,8 @@ pub fn isSpace(char: u8) -> bool {
     return ' ' == char or ('\t' <= char and char <= '\r');
 }
 
-pub fn isUpperOrSpace(char: u8) -> bool {
-    return isUpper(char) or isSpace(char);
+pub fn isUpperAscii(char: u8) -> bool {
+    return !isLower(char) and !isZero(char);
 }
 
 pub fn isZero(char: u8) -> bool { return char == 0; }
