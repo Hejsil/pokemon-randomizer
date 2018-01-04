@@ -18,7 +18,7 @@ pub fn Little(comptime Int: type) -> type {
             return res;
         }
 
-        pub fn set(self: &const Self, v: Int) {
+        pub fn set(self: &Self, v: Int) {
             mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
         }
 
