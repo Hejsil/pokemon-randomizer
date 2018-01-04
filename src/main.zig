@@ -1,11 +1,15 @@
 const std = @import("std");
+const nds = @import("nds.zig");
 const os = std.os;
 const debug = std.debug;
+const io = std.io;
 const path = os.path;
 
 const Version = @import("version.zig").Version;
 const ChildProcess = os.ChildProcess;
-const File = std.io.File;
+const File = io.File;
+const FileInStream = io.FileInStream;
+
 
 error NoFirst;
 
@@ -52,25 +56,15 @@ pub fn main() -> %void {
     const outFile = %return first(argsWithExe[2..]);
     const args = argsWithExe[3..];
 
-    var rom = File.openRead(inFile, null) %% |err| {
+    var rom_file = File.openRead(inFile, null) %% |err| {
         debug.warn("Could not open file.\n");
         return err;
     };
+    defer rom_file.close();
 
-    const version = Version.fromFile(&rom) %% |err| {
-        rom.close();
-        debug.warn("Unable to determin the pokémon version of {}.\n", inFile);
+    var file_stream = FileInStream.init(&File);
+    var rom = nds.Rom.fromStream(file_stream.stream, allocator) %% |err| {
+        debug.warn("Unable to load nds rom.\n");
         return err;
     };
-    rom.close();
-
-    switch (version.gen()) {
-        4, 5 => {
-            
-        },
-        else => {
-            debug.warn("Randomizing Pokémon {} is not supported yet.", readableVersion(version));
-            return error.UnsupportedGame;
-        }
-    }
 }

@@ -506,86 +506,84 @@ pub const Rom = struct {
         %return header.validate();
         address += read;
 
-        const BlockType = enum {
-            Arm9,
-            Arm7,
-            Fnt,
-            Fat,
-            Arm9Overlay,
-            Arm7Overlay,
+        // TODO: Comptime assert that BlockKind max value < @memberCount(BlockKind)
+        const BlockKind = enum(u8) {
+            Arm9        = 0,
+            Arm7        = 1,
+            Fnt         = 2,
+            Fat         = 3,
+            Arm9Overlay = 4,
+            Arm7Overlay = 5,
         };
 
         const Block = struct {
-            block_type: BlockType,
+            kind: BlockKind,
             offset: u32,
             size: u32,
-            loaded_bytes: ?[]u8,
 
-            fn init(block_type: BlockType, offset: u32, size: u32) -> Block {
+            fn init(kind: BlockKind, offset: u32, size: u32) -> Block {
                 return Block {
-                    .block_type = block_type,
+                    .kind = kind,
                     .offset = offset,
-                    .size = size,
-                    .loaded_bytes = null
+                    .size = size
                 };
             }
 
             fn offsetLessThan(rhs: &const Block, lhs: &const Block) -> bool {
                 return rhs.offset < lhs.offset;
             }
-
-            fn findByType(blocks: []const Block, block_type: BlockType) -> Block {
-                for (blocks) |block| {
-                    if (block.block_type == block_type)
-                        return block;
-                }
-
-                unreachable;
-            }
         };
 
-        var blocks = []Block {
-            Block.init(BlockType.Arm9, header.arm9_rom_offset.get(), header.arm9_size.get()),
-            Block.init(BlockType.Arm7, header.arm7_rom_offset.get(), header.arm7_size.get()),
-            Block.init(BlockType.Fnt, header.fnt_offset.get(), header.fnt_size.get()),
-            Block.init(BlockType.Fat, header.fat_offset.get(), header.fat_size.get()),
-            Block.init(BlockType.Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
-            Block.init(BlockType.Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
+        const blocks = [@memberCount(BlockKind)]Block {
+            Block.init(BlockKind.Arm9,        header.arm9_rom_offset.get(),     header.arm9_size.get()),
+            Block.init(BlockKind.Arm7,        header.arm7_rom_offset.get(),     header.arm7_size.get()),
+            Block.init(BlockKind.Fnt,         header.fnt_offset.get(),          header.fnt_size.get()),
+            Block.init(BlockKind.Fat,         header.fat_offset.get(),          header.fat_size.get()),
+            Block.init(BlockKind.Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
+            Block.init(BlockKind.Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
         };
 
         // Because we take an InStream, we can's seek to an address,
         // so we have too access our blocks from lowest offset to
-        // hights. Idk if there is some expected order of these blocks.
+        // highest. Idk if there is some expected order of these blocks.
         sort.sort(Block, blocks[0..], Block.offsetLessThan);
-        %defer {
-            for (blocks) |*block| {
-                if (block.loaded_bytes) |bytes|
-                    allocator.free(bytes);
+
+        const loaded_blocks = blk: {
+            var res = [][]u8 { []u8{} } ** @memberCount(BlockKind);
+            %defer {
+                for (res) |bytes| {
+                    // TODO: Is the assumetion that if .len of a slice is == 0,
+                    //       then we don't have to free always true for any allocator?
+                    // HACK: Actually, this is probably a hack, and we should look
+                    //       into refactoring this code.
+                    if (bytes.len > 0) allocator.free(bytes);
+                }
             }
+
+            for (blocks) |block| {
+                if (address > block.offset) 
+                    return error.AddressesOverlap;
+
+                while (address < block.offset) : (i += 1) {
+                    _ = %return stream.readByte();
+                }
+
+                res[u8(block.kind)] = %return allocator.alloc(u8, block.size);
+                %return stream.readNoEof(res[u8(block.kind)]);
+                address += block.size;
+            }
+
+            break :blk res;
+        };        
+
+        return Rom {
+            .header = header,
+            .arm9 = loaded_blocks[BlockKind.Arm9],
+            .arm7 = loaded_blocks[BlockKind.Arm7],
+            .fnt  = loaded_blocks[BlockKind.Fnt],
+            .fat  = loaded_blocks[BlockKind.Fat],
+            .arm9_overlay = loaded_blocks[BlockKind.Arm9Overlay],
+            .arm7_overlay = loaded_blocks[BlockKind.Arm7Overlay],
         };
-
-        for (blocks) |*block| {
-            if (address > block.offset) 
-                return error.AddressesOverlap;
-
-            while (address < block.offset) : (i += 1) {
-                _ = %return stream.readByte();
-            }
-
-            var bytes = %return allocator.alloc(u8, block.size);
-            %defer allocator.free(bytes);
-            %return stream.readNoEof(bytes);
-            address += block.size;
-            block.loaded_bytes = bytes;
-        }
-
-        const arm9 = Block.findByType(blocks, BlockType.Arm9).loaded_bytes ?? unreachable;
-        const arm7 = Block.findByType(blocks, BlockType.Arm7).loaded_bytes ?? unreachable;
-        const fnt  = Block.findByType(blocks, BlockType.Fnt).loaded_bytes  ?? unreachable;
-        const fat  = Block.findByType(blocks, BlockType.Fat).loaded_bytes  ?? unreachable;
-        const arm9_overlay = Block.findByType(blocks, BlockType.Arm9Overlay).loaded_bytes ?? unreachable;
-        const arm7_overlay = Block.findByType(blocks, BlockType.Arm7Overlay).loaded_bytes ?? unreachable;
-
-        
     }
 };
