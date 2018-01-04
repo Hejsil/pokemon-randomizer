@@ -6,20 +6,8 @@ const io = std.io;
 const path = os.path;
 
 const Version = @import("version.zig").Version;
-const ChildProcess = os.ChildProcess;
 const File = io.File;
 const FileInStream = io.FileInStream;
-
-
-error NoFirst;
-
-fn first(args: []const []const u8) -> %[]const u8 {
-    if (args.len > 0) {
-        return args[0];
-    } else {
-        return error.NoFirst;
-    }
-}
 
 pub fn readableVersion(version: Version) -> []const u8 {
     const V = Version;
@@ -51,9 +39,9 @@ pub fn main() -> %void {
     const argsWithExe = %return os.argsAlloc(allocator);
     defer os.argsFree(allocator, argsWithExe);
 
-    const exeFile = %return first(argsWithExe);
-    const inFile  = %return first(argsWithExe[1..]);
-    const outFile = %return first(argsWithExe[2..]);
+    const exeFile = %return utils.first([]const u8, argsWithExe);
+    const inFile  = %return utils.first([]const u8, argsWithExe[1..]);
+    const outFile = %return utils.first([]const u8, argsWithExe[2..]);
     const args = argsWithExe[3..];
 
     var rom_file = File.openRead(inFile, null) %% |err| {
