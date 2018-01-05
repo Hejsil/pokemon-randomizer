@@ -12,6 +12,13 @@ const path = os.path;
 const Rom = union(enum) {
     Gba: gba.Rom,
     Nds: nds.Rom,
+
+    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
+        switch (*self) {
+            Rom.Gba => |gba_rom| gba_rom.destroy(allocator),
+            Rom.Nds => |nds_rom| nds_rom.destroy(allocator),
+        }
+    }
 };
 
 error NotARom;
@@ -66,6 +73,7 @@ pub fn main() -> %void {
 
         return err;
     };
+    defer rom.destroy(allocator);
 
     switch (rom) {
         Rom.Gba => |*gba_rom| {

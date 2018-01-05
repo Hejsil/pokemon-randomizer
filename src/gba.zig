@@ -119,10 +119,8 @@ pub const Rom = struct {
         };
     }
 
-    pub fn destroy(self: &Rom, allocator: &mem.Allocator) {
+    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
         allocator.destroy(self.header);
         allocator.free(self.data);
-        self.header = undefined;
-        self.data = undefined;
     }
 };

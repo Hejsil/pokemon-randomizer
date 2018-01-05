@@ -582,6 +582,15 @@ pub const Rom = struct {
         };
     }
 
+    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
+        allocator.destroy(self.header);
+        allocator.free(self.arm9);
+        allocator.free(self.arm7);
+        allocator.free(self.arm9_overlay);
+        allocator.free(self.arm7_overlay);
+        self.root.destroy(allocator);
+    }
+
     fn seekToAllocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]T {
         %return file.seekTo(offset);
 
