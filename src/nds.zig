@@ -652,7 +652,7 @@ pub const Rom = struct {
                 if (utils.between(u8, type_length, 0x01, 0x7F))
                     break :blk Pair.init(FileKind.File, type_length);
                 if (utils.between(u8, type_length, 0x81, 0xFF))
-                    break :blk Pair.init(FileKind.Folder, type_length - 0x81);
+                    break :blk Pair.init(FileKind.Folder, type_length - 0x80);
 
                 unreachable;
             };
