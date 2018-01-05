@@ -1,33 +1,16 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const utils = @import("utils.zig");
 const ascii = @import("ascii.zig");
+const little = @import("little.zig");
 const debug = std.debug;
 const mem = std.mem;
 const io = std.io;
 const assert = debug.assert;
 const sort = std.sort;
 
+const Little = little.Little;
 const InStream = io.InStream;
 const Allocator = mem.Allocator;
-
-/// A data structure representing an Little Endian Integer
-pub fn Little(comptime Int: type) -> type {
-    comptime debug.assert(@typeId(Int) == builtin.TypeId.Int);
-
-    return packed struct {
-        const Self = this;
-        bytes: [@sizeOf(Int)]u8,
-
-        pub fn set(self: &const Self, v: Int) {
-            mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
-        }
-
-        pub fn get(self: &const Self) -> Int {
-            return mem.readIntLE(Int, self.bytes);
-        }
-    };
-}
 
 error InvalidGameTitle;
 error InvalidGamecode;
@@ -248,16 +231,16 @@ pub const Header = packed struct {
     pub fn validate(self: &const Header) -> %void {
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero)) 
             return error.InvalidGameTitle;
-        if (!utils.all(u8, self.gamecode, isUpperAscii))
+        if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
             return error.InvalidGamecode;
-        if (!utils.all(u8, self.makercode, isUpperAscii))
+        if (!utils.all(u8, self.makercode, ascii.isUpperAscii))
             return error.InvalidMakercode;
         if (self.unitcode > 0x03)
             return error.InvalidUnitcode;
         if (self.encryption_seed_select > 0x07)
             return error.InvalidEncryptionSeedSelect;
             
-        if (!utils.all(u8, self.reserved1, isZero))
+        if (!utils.all(u8, self.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
         // It seems that arm9 (secure area) is always at 0x4000
@@ -300,22 +283,22 @@ pub const Header = packed struct {
 
             if (!mem.eql(u8, self.reserved3[0..12], dsi_reserved))
                 return error.InvalidReserved3;
-            if (!utils.all(u8, self.reserved3[12..], isZero))
+            if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         } else {
-            if (!utils.all(u8, self.reserved3, isZero))
+            if (!utils.all(u8, self.reserved3, ascii.isZero))
                 return error.InvalidReserved3;
         }
 
-        if (!utils.all(u8, self.reserved4, isZero))
+        if (!utils.all(u8, self.reserved4, ascii.isZero))
             return error.InvalidReserved4;
-        if (!utils.all(u8, self.reserved5, isZero))
+        if (!utils.all(u8, self.reserved5, ascii.isZero))
             return error.InvalidReserved5;
 
         if (self.isDsi()) {
-            if (!utils.all(u8, self.reserved6, isZero))
+            if (!utils.all(u8, self.reserved6, ascii.isZero))
                 return error.InvalidReserved6;
-            if (!utils.all(u8, self.reserved7, isZero))
+            if (!utils.all(u8, self.reserved7, ascii.isZero))
                 return error.InvalidReserved7;
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
@@ -324,7 +307,7 @@ pub const Header = packed struct {
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, self.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
-            if (!utils.all(u8, self.reserved9, isZero))
+            if (!utils.all(u8, self.reserved9, ascii.isZero))
                 return error.InvalidReserved9;
             if (!mem.eql(u8, self.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
                 return error.InvalidReserved10;
@@ -332,35 +315,21 @@ pub const Header = packed struct {
                 return error.InvalidReserved11;
             if (!mem.eql(u8, self.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
                 return error.InvalidTitleIdRest;
-            if (!utils.all(u8, self.reserved12, isZero))
+            if (!utils.all(u8, self.reserved12, ascii.isZero))
                 return error.InvalidReserved12;
-            if (!utils.all(u8, self.reserved16, isZero))
+            if (!utils.all(u8, self.reserved16, ascii.isZero))
                 return error.InvalidReserved16;
-            if (!utils.all(u8, self.reserved17, isZero))
+            if (!utils.all(u8, self.reserved17, ascii.isZero))
                 return error.InvalidReserved17;
-            if (!utils.all(u8, self.reserved18, isZero))
+            if (!utils.all(u8, self.reserved18, ascii.isZero))
                 return error.InvalidReserved18;
         }
     }
 
-    fn isUpperAscii(char: u8) -> bool {
-        return isUpperAsciiOrZero(char) and char != 0x00;
-    }
-
     fn isUpperAsciiOrZero(char: u8) -> bool {
-        return !ascii.isLower(char);
+        return ascii.isUpperAscii(char) or char == 0;
     }
-
-    fn isZero(char: u8) -> bool { return char == 0x00; }
 };
-
-test "nds.Header.validate" {
-    const header : Header = undefined;
-
-    // TODO: We should probably test this function properly, but for now,
-    //       this will ensure that the function is compiled when testing.
-    header.validate() %% {};
-}
 
 test "nds.Header: Offsets" {
     const header : Header = undefined;
@@ -499,45 +468,46 @@ pub const Rom = struct {
         var header: Header = undefined;
         var address: usize = 0;
 
-        %return stream.readNoEof(utils.asBytes(header));
+        %return stream.readNoEof(utils.asBytes(Header, &header));
         %return header.validate();
-        address += read;
+        address += @sizeOf(Header);
 
-        // TODO: Comptime assert that BlockKind max value < @memberCount(BlockKind)
-        const BlockKind = enum(u8) {
-            Arm9        = 0,
-            Arm7        = 1,
-            Fnt         = 2,
-            Fat         = 3,
-            Arm9Overlay = 4,
-            Arm7Overlay = 5,
-        };
+        // TODO: Follow this issue, and refactor when it is solved:
+        //       https://github.com/zig-lang/zig/issues/672
+        const Arm9        : u8 = 0;
+        const Arm7        : u8 = 1;
+        const Fnt         : u8 = 2;
+        const Fat         : u8 = 3;
+        const Arm9Overlay : u8 = 4;
+        const Arm7Overlay : u8 = 5;
 
         const Block = struct {
-            kind: BlockKind,
+            const Self = this;
+
+            kind: u8,
             offset: u32,
             size: u32,
 
-            fn init(kind: BlockKind, offset: u32, size: u32) -> Block {
-                return Block {
+            fn init(kind: u8, offset: u32, size: u32) -> Self {
+                return Self {
                     .kind = kind,
                     .offset = offset,
                     .size = size
                 };
             }
 
-            fn offsetLessThan(rhs: &const Block, lhs: &const Block) -> bool {
+            fn offsetLessThan(rhs: &const Self, lhs: &const Self) -> bool {
                 return rhs.offset < lhs.offset;
             }
         };
 
-        const blocks = [@memberCount(BlockKind)]Block {
-            Block.init(BlockKind.Arm9,        header.arm9_rom_offset.get(),     header.arm9_size.get()),
-            Block.init(BlockKind.Arm7,        header.arm7_rom_offset.get(),     header.arm7_size.get()),
-            Block.init(BlockKind.Fnt,         header.fnt_offset.get(),          header.fnt_size.get()),
-            Block.init(BlockKind.Fat,         header.fat_offset.get(),          header.fat_size.get()),
-            Block.init(BlockKind.Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
-            Block.init(BlockKind.Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
+        var blocks = [6]Block {
+            Block.init(Arm9,        header.arm9_rom_offset.get(),     header.arm9_size.get()),
+            Block.init(Arm7,        header.arm7_rom_offset.get(),     header.arm7_size.get()),
+            Block.init(Fnt,         header.fnt_offset.get(),          header.fnt_size.get()),
+            Block.init(Fat,         header.fat_offset.get(),          header.fat_size.get()),
+            Block.init(Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
+            Block.init(Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
         };
 
         // Because we take an InStream, we can's seek to an address,
@@ -546,7 +516,7 @@ pub const Rom = struct {
         sort.sort(Block, blocks[0..], Block.offsetLessThan);
 
         const loaded_blocks = blk: {
-            var res = [][]u8 { []u8{} } ** @memberCount(BlockKind);
+            var res = [][]u8 { []u8{} } ** 6;
             %defer {
                 for (res) |bytes| {
                     // TODO: Is the assumetion that if .len of a slice is == 0,
@@ -575,12 +545,12 @@ pub const Rom = struct {
 
         return Rom {
             .header = header,
-            .arm9 = loaded_blocks[BlockKind.Arm9],
-            .arm7 = loaded_blocks[BlockKind.Arm7],
-            .fnt  = loaded_blocks[BlockKind.Fnt],
-            .fat  = loaded_blocks[BlockKind.Fat],
-            .arm9_overlay = loaded_blocks[BlockKind.Arm9Overlay],
-            .arm7_overlay = loaded_blocks[BlockKind.Arm7Overlay],
+            .arm9 = loaded_blocks[Arm9],
+            .arm7 = loaded_blocks[Arm7],
+            .fnt  = loaded_blocks[Fnt],
+            .fat  = loaded_blocks[Fat],
+            .arm9_overlay = loaded_blocks[Arm9Overlay],
+            .arm7_overlay = loaded_blocks[Arm7Overlay],
         };
     }
 };

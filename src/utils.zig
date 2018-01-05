@@ -29,3 +29,13 @@ pub fn all(comptime T: type, slice: []const T, predicate: fn(T) -> bool) -> bool
 pub fn between(comptime T: type, v: T, min: T, max: T) -> bool {
     return min <= v and v <= max;
 }
+
+error EmptySlice;
+
+pub fn first(comptime T: type, args: []const T) -> %T {
+    if (args.len > 0) {
+        return args[0];
+    } else {
+        return error.EmptySlice;
+    }
+}
