@@ -30,6 +30,7 @@ error InvalidIconTitleOffset;
 error InvalidSecureAreaDelay;
 error InvalidRomHeaderSize;
 error InvalidReserved3;
+error InvalidReserved3Dsi;
 error InvalidReserved4;
 error InvalidReserved5;
 error InvalidReserved6;
@@ -254,7 +255,7 @@ pub const Header = packed struct {
         if (self.arm9_size.get() > 0x3BFE00) 
             return error.InvalidArm9Size;
 
-        if (self.arm7_rom_offset.get() != 0x8000) 
+        if (self.arm7_rom_offset.get() < 0x8000) 
             return error.InvalidArm7RomOffset;
         if (!utils.between(u32, self.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
             !utils.between(u32, self.arm7_entry_address.get(), 0x37F8000, 0x3807E00)) 
@@ -286,7 +287,7 @@ pub const Header = packed struct {
             if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         } else {
-            if (!utils.all(u8, self.reserved3, ascii.isZero))
+            if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         }
 
@@ -516,18 +517,25 @@ pub const Rom = struct {
         sort.sort(Block, blocks[0..], Block.offsetLessThan);
 
         const loaded_blocks = blk: {
-            var res = [][]u8 { []u8{} } ** 6;
+            var res : [6][]u8 = undefined;
+            var allocated : usize = 0;
             %defer {
-                for (res) |bytes| {
-                    // TODO: Is the assumetion that if .len of a slice is == 0,
-                    //       then we don't have to free always true for any allocator?
-                    // HACK: Actually, this is probably a hack, and we should look
-                    //       into refactoring this code.
-                    if (bytes.len > 0) allocator.free(bytes);
+                var i : usize = 0;
+                while (i < allocated) : (i += 1) {
+                    allocator.free(res[blocks[i].kind]);
                 }
             }
 
             for (blocks) |block| {
+                // If size is 0, then the block is probably not used,
+                // so the offset of it doesn't matter (Some roms therefor have it to 0).
+                // We therefor just skip reading from the stream.
+                if (block.size == 0) {
+                    res[block.kind] = %return allocator.alloc(u8, block.size);
+                    allocated += 1;
+                    break;
+                }
+
                 if (address > block.offset) 
                     return error.AddressesOverlap;
 
@@ -535,8 +543,10 @@ pub const Rom = struct {
                     _ = %return stream.readByte();
                 }
 
-                res[u8(block.kind)] = %return allocator.alloc(u8, block.size);
-                %return stream.readNoEof(res[u8(block.kind)]);
+                res[block.kind] = %return allocator.alloc(u8, block.size);
+                allocated += 1;
+
+                %return stream.readNoEof(res[block.kind]);
                 address += block.size;
             }
 

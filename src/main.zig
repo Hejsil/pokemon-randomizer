@@ -28,7 +28,10 @@ fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
     nds_blk: {
         var rom_file = %return io.File.openRead(file_path, null);
         var file_stream = io.FileInStream.init(&rom_file);
-        var rom = nds.Rom.fromStream(&file_stream.stream, allocator) %% break :nds_blk;
+        var rom = nds.Rom.fromStream(&file_stream.stream, allocator) %% |err| {
+            debug.warn("{}\n", @errorName(err));
+            break :nds_blk;
+        };
 
         return Rom { .Nds = rom };
     }
@@ -52,7 +55,7 @@ pub fn main() -> %void {
     var rom = loadRom(inFile, allocator) %% |err| {
         switch (err) {
             error.NotARom => {
-                debug.warn("{} Is not a rom.\n", inFile);
+                debug.warn("{} is not a rom.\n", inFile);
             },
             else => {
                 // TODO: This could also be an allocation error.
