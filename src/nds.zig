@@ -9,8 +9,6 @@ const assert = debug.assert;
 const sort = std.sort;
 
 const Little = little.Little;
-const InStream = io.InStream;
-const Allocator = mem.Allocator;
 
 error InvalidGameTitle;
 error InvalidGamecode;
@@ -456,111 +454,62 @@ test "nds.Header: Offsets" {
 
 error AddressesOverlap;
 
+pub const FntT = struct {
+    main_table: []u8,
+
+    data: []u8,
+
+};
+
 pub const Rom = struct {
-    header: Header,
+    header: &Header,
     arm9: []u8,
     arm7: []u8,
-    fnt: []u8,
-    fat: []u8,
     arm9_overlay: []u8,
     arm7_overlay: []u8,
 
-    pub fn fromStream(stream: &InStream, allocator: &Allocator) -> %Rom {
-        var header: Header = undefined;
-        var address: usize = 0;
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
 
-        %return stream.readNoEof(utils.asBytes(Header, &header));
+        var header = %return allocator.create(Header);
+        %defer allocator.destroy(header);
+
+        %return stream.readNoEof(utils.asBytes(Header, header));
         %return header.validate();
-        address += @sizeOf(Header);
 
-        // TODO: Follow this issue, and refactor when it is solved:
-        //       https://github.com/zig-lang/zig/issues/672
-        const Arm9        : u8 = 0;
-        const Arm7        : u8 = 1;
-        const Fnt         : u8 = 2;
-        const Fat         : u8 = 3;
-        const Arm9Overlay : u8 = 4;
-        const Arm7Overlay : u8 = 5;
+        var arm9 = %return seekToAllocAndReadNoEof(file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        %defer allocator.free(arm9);
 
-        const Block = struct {
-            const Self = this;
+        var arm7 = %return seekToAllocAndReadNoEof(file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        %defer allocator.free(arm7);
 
-            kind: u8,
-            offset: u32,
-            size: u32,
+        var arm9_overlay = %return seekToAllocAndReadNoEof(file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
+        %defer allocator.free(arm9_overlay);
 
-            fn init(kind: u8, offset: u32, size: u32) -> Self {
-                return Self {
-                    .kind = kind,
-                    .offset = offset,
-                    .size = size
-                };
-            }
-
-            fn offsetLessThan(rhs: &const Self, lhs: &const Self) -> bool {
-                return rhs.offset < lhs.offset;
-            }
-        };
-
-        var blocks = [6]Block {
-            Block.init(Arm9,        header.arm9_rom_offset.get(),     header.arm9_size.get()),
-            Block.init(Arm7,        header.arm7_rom_offset.get(),     header.arm7_size.get()),
-            Block.init(Fnt,         header.fnt_offset.get(),          header.fnt_size.get()),
-            Block.init(Fat,         header.fat_offset.get(),          header.fat_size.get()),
-            Block.init(Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
-            Block.init(Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
-        };
-
-        // Because we take an InStream, we can's seek to an address,
-        // so we have too access our blocks from lowest offset to
-        // highest. Idk if there is some expected order of these blocks.
-        sort.sort(Block, blocks[0..], Block.offsetLessThan);
-
-        const loaded_blocks = blk: {
-            var res : [6][]u8 = undefined;
-            var allocated : usize = 0;
-            %defer {
-                var i : usize = 0;
-                while (i < allocated) : (i += 1) {
-                    allocator.free(res[blocks[i].kind]);
-                }
-            }
-
-            for (blocks) |block| {
-                // If size is 0, then the block is probably not used,
-                // so the offset of it doesn't matter (Some roms therefor have it to 0).
-                // We therefor just skip reading from the stream.
-                if (block.size == 0) {
-                    res[block.kind] = %return allocator.alloc(u8, block.size);
-                    allocated += 1;
-                    break;
-                }
-
-                if (address > block.offset) 
-                    return error.AddressesOverlap;
-
-                while (address < block.offset) : (address += 1) {
-                    _ = %return stream.readByte();
-                }
-
-                res[block.kind] = %return allocator.alloc(u8, block.size);
-                allocated += 1;
-
-                %return stream.readNoEof(res[block.kind]);
-                address += block.size;
-            }
-
-            break :blk res;
-        };        
+        var arm7_overlay = %return seekToAllocAndReadNoEof(file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
+        %defer allocator.free(arm7_overlay);
 
         return Rom {
             .header = header,
-            .arm9 = loaded_blocks[Arm9],
-            .arm7 = loaded_blocks[Arm7],
-            .fnt  = loaded_blocks[Fnt],
-            .fat  = loaded_blocks[Fat],
-            .arm9_overlay = loaded_blocks[Arm9Overlay],
-            .arm7_overlay = loaded_blocks[Arm7Overlay],
+            .arm9 = arm9,
+            .arm7 = arm7,
+            .arm9_overlay = arm9_overlay,
+            .arm7_overlay = arm7_overlay,
         };
+    }
+
+    fn seekToAllocAndReadNoEof(file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]u8 {
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
+
+        %return file.seekTo(offset);
+
+        var data = %return allocator.alloc(u8, size);
+        %defer allocator.free(data);
+
+        %return stream.readNoEof(data);
+
+        return data;
     }
 };
