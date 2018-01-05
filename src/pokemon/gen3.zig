@@ -178,6 +178,61 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@sizeOf(BasePokemon) == 28);
 }
 
+fn toLittle(v: u16) -> u16 {
+    return Little(u16).init(v).get();
+}
+
+pub const EvolutionKind = enum(u16) {
+    Unused                 = toLittle(0x00),
+    FriendShip             = toLittle(0x01),
+    FriendShipDuringDay    = toLittle(0x02),
+    FriendShipDuringNight  = toLittle(0x03),
+    LevelUp                = toLittle(0x04),
+    Trade                  = toLittle(0x05),
+    TradeHoldingItem       = toLittle(0x06),
+    UseItem                = toLittle(0x07),
+    AttackGthDefense       = toLittle(0x08),
+    AttackEqlDefense       = toLittle(0x09),
+    AttackLthDefense       = toLittle(0x0A),
+    PersonalityValue1      = toLittle(0x0B),
+    PersonalityValue2      = toLittle(0x0C),
+    LevelUpMaySpawnPokemon = toLittle(0x0D),
+    LevelUpSpawnIfCond     = toLittle(0x0E),
+    Beauty                 = toLittle(0x0F),
+};
+
+pub const Evolution = packed struct {
+    kind: EvolutionKind,
+    param: Little(u16),
+    target: Little(u16),
+    padding: [2]u8,
+};
+
+test "pokemon.gen3.Evolution: Offsets" {
+    const evo : Evolution = undefined;
+    const base = @ptrToInt(&evo);
+
+    assert(@ptrToInt(&evo.kind   ) - base == 0x00);
+    assert(@ptrToInt(&evo.param  ) - base == 0x02);
+    assert(@ptrToInt(&evo.target ) - base == 0x04);
+    assert(@ptrToInt(&evo.padding) - base == 0x06);
+
+    assert(@sizeOf(Evolution) == 0x08);
+}
+
+test "pokemon.gen3.[5]Evolution: Offsets" {
+    const evos : [5]Evolution = undefined;
+    const base = @ptrToInt(&evos);
+
+    assert(@ptrToInt(&evos[0]) - base == 0x00);
+    assert(@ptrToInt(&evos[1]) - base == 0x08);
+    assert(@ptrToInt(&evos[2]) - base == 0x10);
+    assert(@ptrToInt(&evos[3]) - base == 0x18);
+    assert(@ptrToInt(&evos[4]) - base == 0x20);
+
+    assert(@sizeOf([5]Evolution) == 0x08 * 5);
+}
+
 const bulbasaur = BasePokemon {
     .hp         = 45,
     .attack     = 49,
@@ -224,19 +279,44 @@ const bulbasaur = BasePokemon {
     .padding = []u8 { 0, 0 },
 };
 
+const zero_evo = Evolution { 
+    .kind = EvolutionKind.Unused,
+    .param = Little(u16).init(0),
+    .target = Little(u16).init(0),
+    .padding = [2]u8{ 0, 0 }
+};
+const bulbasaur_evos = [5]Evolution {
+    Evolution {
+        .kind = EvolutionKind.LevelUp,
+        .param = Little(u16).init(16),
+        .target = Little(u16).init(2),
+        .padding = [2]u8{ 0, 0 }
+    },
+    zero_evo,
+    zero_evo,
+    zero_evo,
+    zero_evo,
+};
+
 error CouldntFindPokemonOffset;
+error CouldntFindEvolutionOffset;
 
 pub const Game = struct {
     rom: &gba.Rom,
     pokemon_offset: usize,
+    evolution_offset: usize,
 
     pub fn fromRom(rom: &gba.Rom) -> %Game {
-        const bulbasaur_bytes = utils.asConstBytes(BasePokemon, &bulbasaur);
-        const pokemon_offset = mem.indexOf(u8, rom.data, bulbasaur_bytes) ?? return error.CouldntFindPokemonOffset;
+        const bulbasaur_bytes      = utils.asConstBytes(BasePokemon, &bulbasaur);
+        const bulbasaur_evos_bytes = utils.asConstBytes([5]Evolution, &bulbasaur_evos);
+
+        const pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_bytes)      ?? return error.CouldntFindPokemonOffset;
+        const evolution_offset = mem.indexOf(u8, rom.data, bulbasaur_evos_bytes) ?? return error.CouldntFindEvolutionOffset;
 
         return Game {
             .rom = rom,
             .pokemon_offset = pokemon_offset,
+            .evolution_offset = evolution_offset,
         };
     }
 };
