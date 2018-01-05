@@ -471,45 +471,46 @@ pub const Rom = struct {
         var header: Header = undefined;
         var address: usize = 0;
 
-        %return stream.readNoEof(utils.asBytes(header));
+        %return stream.readNoEof(utils.asBytes(Header, &header));
         %return header.validate();
-        address += read;
+        address += @sizeOf(Header);
 
-        // TODO: Comptime assert that BlockKind max value < @memberCount(BlockKind)
-        const BlockKind = enum(u8) {
-            Arm9        = 0,
-            Arm7        = 1,
-            Fnt         = 2,
-            Fat         = 3,
-            Arm9Overlay = 4,
-            Arm7Overlay = 5,
-        };
+        // TODO: Follow this issue, and refactor when it is solved:
+        //       https://github.com/zig-lang/zig/issues/672
+        const Arm9        : u8 = 0;
+        const Arm7        : u8 = 1;
+        const Fnt         : u8 = 2;
+        const Fat         : u8 = 3;
+        const Arm9Overlay : u8 = 4;
+        const Arm7Overlay : u8 = 5;
 
         const Block = struct {
-            kind: BlockKind,
+            const Self = this;
+
+            kind: u8,
             offset: u32,
             size: u32,
 
-            fn init(kind: BlockKind, offset: u32, size: u32) -> Block {
-                return Block {
+            fn init(kind: u8, offset: u32, size: u32) -> Self {
+                return Self {
                     .kind = kind,
                     .offset = offset,
                     .size = size
                 };
             }
 
-            fn offsetLessThan(rhs: &const Block, lhs: &const Block) -> bool {
+            fn offsetLessThan(rhs: &const Self, lhs: &const Self) -> bool {
                 return rhs.offset < lhs.offset;
             }
         };
 
-        const blocks = [@memberCount(BlockKind)]Block {
-            Block.init(BlockKind.Arm9,        header.arm9_rom_offset.get(),     header.arm9_size.get()),
-            Block.init(BlockKind.Arm7,        header.arm7_rom_offset.get(),     header.arm7_size.get()),
-            Block.init(BlockKind.Fnt,         header.fnt_offset.get(),          header.fnt_size.get()),
-            Block.init(BlockKind.Fat,         header.fat_offset.get(),          header.fat_size.get()),
-            Block.init(BlockKind.Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
-            Block.init(BlockKind.Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
+        var blocks = [6]Block {
+            Block.init(Arm9,        header.arm9_rom_offset.get(),     header.arm9_size.get()),
+            Block.init(Arm7,        header.arm7_rom_offset.get(),     header.arm7_size.get()),
+            Block.init(Fnt,         header.fnt_offset.get(),          header.fnt_size.get()),
+            Block.init(Fat,         header.fat_offset.get(),          header.fat_size.get()),
+            Block.init(Arm9Overlay, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get()),
+            Block.init(Arm7Overlay, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get()),
         };
 
         // Because we take an InStream, we can's seek to an address,
@@ -518,7 +519,7 @@ pub const Rom = struct {
         sort.sort(Block, blocks[0..], Block.offsetLessThan);
 
         const loaded_blocks = blk: {
-            var res = [][]u8 { []u8{} } ** @memberCount(BlockKind);
+            var res = [][]u8 { []u8{} } ** 6;
             %defer {
                 for (res) |bytes| {
                     // TODO: Is the assumetion that if .len of a slice is == 0,
@@ -533,7 +534,7 @@ pub const Rom = struct {
                 if (address > block.offset) 
                     return error.AddressesOverlap;
 
-                while (address < block.offset) : (i += 1) {
+                while (address < block.offset) : (address += 1) {
                     _ = %return stream.readByte();
                 }
 
@@ -547,12 +548,12 @@ pub const Rom = struct {
 
         return Rom {
             .header = header,
-            .arm9 = loaded_blocks[BlockKind.Arm9],
-            .arm7 = loaded_blocks[BlockKind.Arm7],
-            .fnt  = loaded_blocks[BlockKind.Fnt],
-            .fat  = loaded_blocks[BlockKind.Fat],
-            .arm9_overlay = loaded_blocks[BlockKind.Arm9Overlay],
-            .arm7_overlay = loaded_blocks[BlockKind.Arm7Overlay],
+            .arm9 = loaded_blocks[Arm9],
+            .arm7 = loaded_blocks[Arm7],
+            .fnt  = loaded_blocks[Fnt],
+            .fat  = loaded_blocks[Fat],
+            .arm9_overlay = loaded_blocks[Arm9Overlay],
+            .arm7_overlay = loaded_blocks[Arm7Overlay],
         };
     }
 };
