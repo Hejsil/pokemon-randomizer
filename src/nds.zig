@@ -454,12 +454,62 @@ test "nds.Header: Offsets" {
 
 error AddressesOverlap;
 
-pub const FntT = struct {
-    main_table: []u8,
-
-    data: []u8,
-
+pub const Narc = struct {
+    pub fn destroy(self: &const Narc, allocator: &mem.Allocator) {
+    }
 };
+
+pub const NitroFileData = union(enum) {
+    Narc: Narc,
+    Other: []u8,
+
+    pub fn destroy(self: &const NitroFileData, allocator: &mem.Allocator) {
+        switch (*self) {
+            NitroFileData.Narc => |narc| narc.destroy(allocator),
+            NitroFileData.Other => |data| allocator.free(data),
+        }
+    }
+};
+
+pub const NitroFolderData = struct {
+    files: []NitroFile,
+
+    pub fn destroy(self: &const NitroFolderData, allocator: &mem.Allocator) {
+        for (self.files) |file| file.destroy(allocator);
+        allocator.free(self.files);
+    }
+};
+
+pub const FileKind = enum {
+    Folder,
+    File,
+};
+
+pub const NitroFile = struct {
+    pub const Data = union(FileKind) {
+        Folder: NitroFolderData,
+        File:   NitroFileData,
+    };
+
+    name: []u8,
+    data: Data,
+
+    pub fn destroy(self: &const NitroFile, allocator: &mem.Allocator) {
+        allocator.free(self.name);
+        switch (self.data) {
+            Data.Folder => |folder| folder.destroy(allocator),
+            Data.File => |file| file.destroy(allocator)
+        }
+    }
+};
+
+error InvalidFatSize;
+error InvalidFntMainTableSize;
+error InvalidFntRootDirectoryId;
+error InvalidFntSubDirectoryId;
+error InvalidSubTableTypeLength;
+error InvalidSubDirectoryId;
+error InvalidFileId;
 
 pub const Rom = struct {
     header: &Header,
@@ -467,6 +517,7 @@ pub const Rom = struct {
     arm7: []u8,
     arm9_overlay: []u8,
     arm7_overlay: []u8,
+    root: NitroFolderData,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
         var file_stream = io.FileInStream.init(file);
@@ -478,17 +529,28 @@ pub const Rom = struct {
         %return stream.readNoEof(utils.asBytes(Header, header));
         %return header.validate();
 
-        var arm9 = %return seekToAllocAndReadNoEof(file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        var arm9 = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
         %defer allocator.free(arm9);
 
-        var arm7 = %return seekToAllocAndReadNoEof(file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        var arm7 = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
         %defer allocator.free(arm7);
 
-        var arm9_overlay = %return seekToAllocAndReadNoEof(file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
+        var arm9_overlay = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
         %defer allocator.free(arm9_overlay);
 
-        var arm7_overlay = %return seekToAllocAndReadNoEof(file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
+        var arm7_overlay = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
         %defer allocator.free(arm7_overlay);
+
+        var root = %return readFileSystem(
+            file, 
+            allocator, 
+            header.fnt_offset.get(),
+            header.fnt_size.get(),
+            header.fat_offset.get(),
+            header.fat_size.get());
+        %defer {
+            root.destroy(allocator);
+        }
 
         return Rom {
             .header = header,
@@ -496,20 +558,169 @@ pub const Rom = struct {
             .arm7 = arm7,
             .arm9_overlay = arm9_overlay,
             .arm7_overlay = arm7_overlay,
+            .root = root,
         };
     }
 
-    fn seekToAllocAndReadNoEof(file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]u8 {
+    fn seekToAllocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]T {
+        %return file.seekTo(offset);
+
+        return allocAndReadNoEof(T, file, allocator, size);
+    }  
+
+    fn allocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, size: usize) -> %[]T {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
-        %return file.seekTo(offset);
-
-        var data = %return allocator.alloc(u8, size);
+        var data = %return allocator.alloc(T, size);
         %defer allocator.free(data);
 
-        %return stream.readNoEof(data);
+        %return stream.readNoEof(([]u8)(data));
 
         return data;
+    }  
+        
+    const FatEntry = packed struct {
+        start: Little(u32),
+        end: Little(u32),
+    };
+    
+    const FntMainEntry = packed struct {
+        offset_to_subtable: Little(u32),
+        first_id_in_subtable: Little(u16),
+
+        // For the first entry in main-table, the parent id is actually,
+        // the total number of directories (See FNT Directory Main-Table): 
+        // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
+        parent_id: Little(u16), 
+    };
+
+    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %NitroFolderData {
+        if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
+        if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
+        
+        %return file.seekTo(fnt_offset + 0x06);
+        var count : Little(u16) = undefined;
+        %return stream.readNoEof(utils.asBytes(Little(u16), &count));
+
+        const fnt_main_table = %return seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
+        defer allocator.free(fnt_main_table);
+        
+        if (4096 < fnt_main_table.len)                             return error.InvalidFntMainTableSize;
+        if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
+
+        const fat = %return seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
+        defer allocator.free(fat);
+
+        return buildFolderFromFntMainEntry(file, allocator, fat, fnt_main_table, fnt_main_table[0], fnt_offset);
+    }
+
+    fn buildFolderFromFntMainEntry(
+        file: &io.File,
+        allocator: &mem.Allocator,
+        fat: []const FatEntry,
+        fnt_main_table: []const FntMainEntry,
+        fnt_entry: &const FntMainEntry,
+        fnt_offset: usize) -> %NitroFolderData {
+
+        %return file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
+
+        var nitro_files = std.ArrayList(NitroFile).init(allocator);
+        %defer {
+            for (nitro_files.toSlice()) |nitro_file| {
+                nitro_file.destroy(allocator);
+            }
+
+            nitro_files.deinit();   
+        }
+
+        // See FNT Sub-Tables:
+        // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
+        var file_id = fnt_entry.first_id_in_subtable.get();
+        while (true) {
+            const type_length = %return stream.readByte();
+
+            if (type_length == 0x80) return error.InvalidSubTableTypeLength;
+            if (type_length == 0x00) break;
+
+            const type_length_pair = blk: {
+                const Pair = utils.Pair(FileKind, u8);
+                if (utils.between(u8, type_length, 0x01, 0x7F))
+                    break :blk Pair.init(FileKind.File, type_length);
+                if (utils.between(u8, type_length, 0x81, 0xFF))
+                    break :blk Pair.init(FileKind.Folder, type_length - 0x81);
+
+                unreachable;
+            };
+
+            const kind = type_length_pair.first;
+            const length = type_length_pair.second;
+            const name = %return allocAndReadNoEof(u8, file, allocator, length);
+            %defer allocator.free(name);
+            
+            switch (kind) {
+                FileKind.File => {
+                    if (fat.len <= file_id) return error.InvalidFileId;
+                    const entry = fat[file_id];
+
+                    // If entries start or end address are 0, then the entry is unused.
+                    // (See File Allocation Table (FAT))
+                    // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
+                    if (entry.start.get() == 0 or entry.end.get() == 0) continue;
+                    const current_pos = %return file.getPos();
+
+                    // TODO: Doc doesn't seem to be sure where entry.end actually is:                 (Start+Len...-1?)
+                    var file_data = %return seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
+                    %defer allocator.free(file_data);
+
+                    %return file.seekTo(current_pos);
+                    %return nitro_files.append(
+                        NitroFile {
+                            .name = name,
+                            .data = NitroFile.Data {
+                                .File = NitroFileData {
+                                    .Other = file_data
+                                } 
+                            }
+                        }
+                    );
+
+                    file_id += 1;
+                },
+                FileKind.Folder => { 
+                    var id : Little(u16) = undefined;
+                    %return stream.readNoEof(utils.asBytes(Little(u16), &id));
+
+                    if (!utils.between(u16, id.get(), 0xF001, 0xFFFF))
+                        return error.InvalidSubDirectoryId;
+                    if (fnt_main_table.len <= id.get() & 0x0FFF)
+                        return error.InvalidSubDirectoryId;
+
+                    %return nitro_files.append(
+                        NitroFile {
+                            .name = name,
+                            .data = NitroFile.Data {
+                                .Folder = %return buildFolderFromFntMainEntry(
+                                    file,
+                                    allocator,
+                                    fat,
+                                    fnt_main_table,
+                                    fnt_main_table[id.get() & 0x0FFF],
+                                    fnt_offset,
+                                )
+                            }
+                        }
+                    );
+                }
+            }
+        }
+
+        return NitroFolderData {
+            .files = nitro_files.toOwnedSlice()
+        };
     }
 };
