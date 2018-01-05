@@ -74,6 +74,14 @@ pub fn main() -> %void {
                 return err;
             };
         },
+        Rom.Nds => |*nds_rom| {
+            var stdout = %return io.getStdOut();
+            var stdout_file_stream = io.FileOutStream.init(&stdout);
+            var stdout_stream = &stdout_file_stream.stream;
+
+            %return nds_rom.root.tree(stdout_stream, 0);
+            debug.warn("Rom type not supported (yet)\n");
+        },
         else => {
             debug.warn("Rom type not supported (yet)\n");
         }

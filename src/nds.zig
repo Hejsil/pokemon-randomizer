@@ -478,6 +478,13 @@ pub const NitroFolderData = struct {
         for (self.files) |file| file.destroy(allocator);
         allocator.free(self.files);
     }
+
+
+    pub fn tree(self: &const NitroFolderData, stream: &io.OutStream, indent: usize) -> %void {
+        for (self.files) |file| {
+            %return file.tree(stream, indent);
+        }
+    }
 };
 
 pub const FileKind = enum {
@@ -499,6 +506,19 @@ pub const NitroFile = struct {
         switch (self.data) {
             Data.Folder => |folder| folder.destroy(allocator),
             Data.File => |file| file.destroy(allocator)
+        }
+    }
+
+    pub fn tree(self: &const NitroFile, stream: &io.OutStream, indent: usize) -> %void {
+        var i : usize = 0;
+        while (i < indent) : (i += 1) {
+            %return stream.write("    ");
+        }
+
+        %return stream.print("{}\n", self.name);
+        switch (self.data) {
+            Data.Folder => |folder| %return folder.tree(stream, indent + 1),
+            Data.File => {}
         }
     }
 };
