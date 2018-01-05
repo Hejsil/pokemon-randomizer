@@ -681,7 +681,7 @@ pub const Rom = struct {
             const length = type_length_pair.second;
             const name = %return allocAndReadNoEof(u8, file, allocator, length);
             %defer allocator.free(name);
-            
+
             switch (kind) {
                 FileKind.File => {
                     if (fat.len <= file_id) return error.InvalidFileId;
@@ -693,10 +693,10 @@ pub const Rom = struct {
                     if (entry.start.get() == 0 or entry.end.get() == 0) continue;
                     const current_pos = %return file.getPos();
 
-                    // TODO: Doc doesn't seem to be sure where entry.end actually is:                 (Start+Len...-1?)
+                    // TODO: Doc doesn't seem to be sure where entry.end actually is:                       (Start+Len...-1?)
                     var file_data = %return seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
                     %defer allocator.free(file_data);
-
+                    
                     %return file.seekTo(current_pos);
                     %return nitro_files.append(
                         NitroFile {
@@ -719,6 +719,7 @@ pub const Rom = struct {
                         return error.InvalidSubDirectoryId;
                     if (fnt_main_table.len <= id.get() & 0x0FFF)
                         return error.InvalidSubDirectoryId;
+                    const current_pos = %return file.getPos();
 
                     %return nitro_files.append(
                         NitroFile {
@@ -735,8 +736,11 @@ pub const Rom = struct {
                             }
                         }
                     );
+
+                    %return file.seekTo(current_pos);
                 }
             }
+
         }
 
         return NitroFolderData {
