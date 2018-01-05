@@ -459,66 +459,79 @@ pub const Narc = struct {
     }
 };
 
-pub const NitroFileData = union(enum) {
-    Narc: Narc,
-    Other: []u8,
+pub const Nitro = struct {
+    pub const File = union(enum) {
+        Narc: Narc,
+        Other: []u8,
 
-    pub fn destroy(self: &const NitroFileData, allocator: &mem.Allocator) {
-        switch (*self) {
-            NitroFileData.Narc => |narc| narc.destroy(allocator),
-            NitroFileData.Other => |data| allocator.free(data),
+        pub fn destroy(self: &const File, allocator: &mem.Allocator) {
+            switch (*self) {
+                File.Narc => |narc| narc.destroy(allocator),
+                File.Other => |data| allocator.free(data),
+            }
         }
-    }
-};
+    };
 
-pub const NitroFolderData = struct {
-    files: []NitroFile,
+    pub const Folder = struct {
+        files: []Nitro,
 
-    pub fn destroy(self: &const NitroFolderData, allocator: &mem.Allocator) {
-        for (self.files) |file| file.destroy(allocator);
-        allocator.free(self.files);
-    }
-
-
-    pub fn tree(self: &const NitroFolderData, stream: &io.OutStream, indent: usize) -> %void {
-        for (self.files) |file| {
-            %return file.tree(stream, indent);
+        pub fn destroy(self: &const Folder, allocator: &mem.Allocator) {
+            for (self.files) |file| file.destroy(allocator);
+            allocator.free(self.files);
         }
-    }
-};
+    };
 
-pub const FileKind = enum {
-    Folder,
-    File,
-};
-
-pub const NitroFile = struct {
-    pub const Data = union(FileKind) {
-        Folder: NitroFolderData,
-        File:   NitroFileData,
+    pub const Kind = enum { Folder, File };
+    pub const Data = union(Kind) { 
+        Folder: Folder, 
+        File: File 
     };
 
     name: []u8,
     data: Data,
 
-    pub fn destroy(self: &const NitroFile, allocator: &mem.Allocator) {
+    pub fn initFile(name: []u8, file: &const File) -> Nitro {
+        return Nitro {
+            .name = name,
+            .data = Data {
+                .File = *file
+            }
+        };
+    }
+
+    pub fn initFolder(name: []u8, folder: &const Folder) -> Nitro {
+        return Nitro {
+            .name = name,
+            .data = Data {
+                .Folder = *folder
+            }
+        };
+    }
+
+    pub fn destroy(self: &const Nitro, allocator: &mem.Allocator) {
         allocator.free(self.name);
         switch (self.data) {
             Data.Folder => |folder| folder.destroy(allocator),
-            Data.File => |file| file.destroy(allocator)
+            Data.File   => |file| file.destroy(allocator)
         }
     }
 
-    pub fn tree(self: &const NitroFile, stream: &io.OutStream, indent: usize) -> %void {
+    pub fn tree(self: &const Nitro, stream: &io.OutStream, indent: usize) -> %void {
         var i : usize = 0;
         while (i < indent) : (i += 1) {
             %return stream.write("    ");
         }
 
-        %return stream.print("{}\n", self.name);
         switch (self.data) {
-            Data.Folder => |folder| %return folder.tree(stream, indent + 1),
-            Data.File => {}
+            Data.Folder => |folder| {
+                %return stream.print("{}/\n", self.name);
+                for (folder.files) |file| {
+                    %return file.tree(stream, indent + 1);
+                }
+            },
+            Data.File => {
+                %return stream.print("{}\n", self.name);
+            }
         }
     }
 };
@@ -537,7 +550,7 @@ pub const Rom = struct {
     arm7: []u8,
     arm9_overlay: []u8,
     arm7_overlay: []u8,
-    root: NitroFolderData,
+    root: Nitro,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
         var file_stream = io.FileInStream.init(file);
@@ -624,7 +637,7 @@ pub const Rom = struct {
         parent_id: Little(u16), 
     };
 
-    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %NitroFolderData {
+    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %Nitro {
         if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
         if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
         var file_stream = io.FileInStream.init(file);
@@ -643,7 +656,18 @@ pub const Rom = struct {
         const fat = %return seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
         defer allocator.free(fat);
 
-        return buildFolderFromFntMainEntry(file, allocator, fat, fnt_main_table, fnt_main_table[0], fnt_offset);
+        const root_name = %return allocator.alloc(u8, 0);
+        %defer allocator.free(root_name);
+
+        return buildFolderFromFntMainEntry(
+            file, 
+            allocator, 
+            fat, 
+            fnt_main_table, 
+            fnt_main_table[0], 
+            fnt_offset, 
+            root_name
+        );
     }
 
     fn buildFolderFromFntMainEntry(
@@ -652,13 +676,14 @@ pub const Rom = struct {
         fat: []const FatEntry,
         fnt_main_table: []const FntMainEntry,
         fnt_entry: &const FntMainEntry,
-        fnt_offset: usize) -> %NitroFolderData {
+        fnt_offset: usize,
+        name: []u8) -> %Nitro {
 
         %return file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
-        var nitro_files = std.ArrayList(NitroFile).init(allocator);
+        var nitro_files = std.ArrayList(Nitro).init(allocator);
         %defer {
             for (nitro_files.toSlice()) |nitro_file| {
                 nitro_file.destroy(allocator);
@@ -677,22 +702,22 @@ pub const Rom = struct {
             if (type_length == 0x00) break;
 
             const type_length_pair = blk: {
-                const Pair = utils.Pair(FileKind, u8);
+                const Pair = utils.Pair(Nitro.Kind, u8);
                 if (utils.between(u8, type_length, 0x01, 0x7F))
-                    break :blk Pair.init(FileKind.File, type_length);
+                    break :blk Pair.init(Nitro.Kind.File, type_length);
                 if (utils.between(u8, type_length, 0x81, 0xFF))
-                    break :blk Pair.init(FileKind.Folder, type_length - 0x80);
+                    break :blk Pair.init(Nitro.Kind.Folder, type_length - 0x80);
 
                 unreachable;
             };
 
             const kind = type_length_pair.first;
             const length = type_length_pair.second;
-            const name = %return allocAndReadNoEof(u8, file, allocator, length);
-            %defer allocator.free(name);
+            const child_name = %return allocAndReadNoEof(u8, file, allocator, length);
+            %defer allocator.free(child_name);
 
             switch (kind) {
-                FileKind.File => {
+                Nitro.Kind.File => {
                     if (fat.len <= file_id) return error.InvalidFileId;
                     const entry = fat[file_id];
 
@@ -708,19 +733,15 @@ pub const Rom = struct {
                     
                     %return file.seekTo(current_pos);
                     %return nitro_files.append(
-                        NitroFile {
-                            .name = name,
-                            .data = NitroFile.Data {
-                                .File = NitroFileData {
-                                    .Other = file_data
-                                } 
-                            }
-                        }
+                        Nitro.initFile(
+                            child_name,
+                            Nitro.File { .Other = file_data }
+                        )
                     );
 
                     file_id += 1;
                 },
-                FileKind.Folder => { 
+                Nitro.Kind.Folder => { 
                     var id : Little(u16) = undefined;
                     %return stream.readNoEof(utils.asBytes(Little(u16), &id));
 
@@ -731,19 +752,15 @@ pub const Rom = struct {
                     const current_pos = %return file.getPos();
 
                     %return nitro_files.append(
-                        NitroFile {
-                            .name = name,
-                            .data = NitroFile.Data {
-                                .Folder = %return buildFolderFromFntMainEntry(
-                                    file,
-                                    allocator,
-                                    fat,
-                                    fnt_main_table,
-                                    fnt_main_table[id.get() & 0x0FFF],
-                                    fnt_offset,
-                                )
-                            }
-                        }
+                        %return buildFolderFromFntMainEntry(
+                            file,
+                            allocator,
+                            fat,
+                            fnt_main_table,
+                            fnt_main_table[id.get() & 0x0FFF],
+                            fnt_offset,
+                            child_name
+                        )
                     );
 
                     %return file.seekTo(current_pos);
@@ -752,8 +769,9 @@ pub const Rom = struct {
 
         }
 
-        return NitroFolderData {
-            .files = nitro_files.toOwnedSlice()
-        };
+        return Nitro.initFolder(
+            name,
+            Nitro.Folder { .files = nitro_files.toOwnedSlice() }
+        );
     }
 };
