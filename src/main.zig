@@ -34,10 +34,7 @@ fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
 
     nds_blk: {
         var rom_file = %return io.File.openRead(file_path, null);
-        var rom = nds.Rom.fromFile(&rom_file, allocator) %% |err| {
-            debug.warn("{}\n", @errorName(err));
-            break :nds_blk;
-        };
+        var rom = nds.Rom.fromFile(&rom_file, allocator) %% break :nds_blk;
 
         return Rom { .Nds = rom };
     }
@@ -48,6 +45,9 @@ fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
 error UnsupportedGame;
 
 pub fn main() -> %void {
+    var stdout = %return io.getStdOut();
+    var stdout_file_stream = io.FileOutStream.init(&stdout);
+    var stdout_stream = &stdout_file_stream.stream;
     const allocator = std.heap.c_allocator;
 
     const argsWithExe = %return os.argsAlloc(allocator);
@@ -61,13 +61,13 @@ pub fn main() -> %void {
     var rom = loadRom(inFile, allocator) %% |err| {
         switch (err) {
             error.NotARom => {
-                debug.warn("{} is not a rom.\n", inFile);
+                %return stdout_stream.print("{} is not a rom.\n", inFile);
             },
             else => {
                 // TODO: This could also be an allocation error.
                 //       Follow issue https://github.com/zig-lang/zig/issues/632
                 //       and refactor when we can check if error is part of an error set.
-                debug.warn("Unable to open {}.\n", inFile);
+                %return stdout_stream.print("Unable to open {}.\n", inFile);
             }
         }
 
@@ -78,20 +78,17 @@ pub fn main() -> %void {
     switch (rom) {
         Rom.Gba => |*gba_rom| {
             var gen3_game = gen3.Game.fromRom(gba_rom) %% |err| {
-                debug.warn("Invalide generation 3 pokemon game.\n");
+                %return stdout_stream.print("Invalide generation 3 pokemon game.\n");
                 return err;
             };
         },
         Rom.Nds => |*nds_rom| {
-            var stdout = %return io.getStdOut();
-            var stdout_file_stream = io.FileOutStream.init(&stdout);
-            var stdout_stream = &stdout_file_stream.stream;
 
             %return nds_rom.root.tree(stdout_stream, 0);
-            debug.warn("Rom type not supported (yet)\n");
+            %return stdout_stream.print("Rom type not supported (yet)\n");
         },
         else => {
-            debug.warn("Rom type not supported (yet)\n");
+            %return stdout_stream.print("Rom type not supported (yet)\n");
         }
     }
 }

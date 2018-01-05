@@ -104,10 +104,7 @@ pub const Rom = struct {
         %return stream.readNoEof(utils.asBytes(Header, header));
         %return header.validate();
 
-        var data = stream.readAllAlloc(allocator, @maxValue(usize)) %% |err| {
-            debug.warn("{}\n", @errorName(err));
-            return err;
-        };
+        var data = %return stream.readAllAlloc(allocator, @maxValue(usize));
         %defer allocator.free(data);
 
         if ((data.len + @sizeOf(Header)) % 0x1000000 != 0)
