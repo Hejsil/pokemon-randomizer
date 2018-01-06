@@ -10,3 +10,4 @@ Useful documentation of the Pokémon data and Rom file structure.
 * [Gameboy Advance / Nintendo DS / DSi - Technical Info](http://problemkaputt.de/gbatek.htm)
 * [Pan Doc (Gb info)](http://gbdev.gg8.se/files/docs/mirrors/pandocs.html)
 * [Bulbapedia on Pokemon Data Structures](https://bulbapedia.bulbagarden.net/wiki/Category:Structures)
+* [Pokemon Game Disassemblies](https://github.com/search?utf8=%E2%9C%93&q=Pokemon+Disassembly&type=)
