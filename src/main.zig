@@ -83,7 +83,6 @@ pub fn main() -> %void {
             };
         },
         Rom.Nds => |*nds_rom| {
-
             %return nds_rom.root.tree(stdout_stream, 0);
             %return stdout_stream.print("Rom type not supported (yet)\n");
         },

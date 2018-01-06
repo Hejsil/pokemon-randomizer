@@ -543,6 +543,8 @@ error InvalidFntSubDirectoryId;
 error InvalidSubTableTypeLength;
 error InvalidSubDirectoryId;
 error InvalidFileId;
+error FailedToWriteNitroToFnt;
+error FailedToWriteNitroToFat;
 
 pub const Rom = struct {
     header: &Header,
@@ -581,9 +583,7 @@ pub const Rom = struct {
             header.fnt_size.get(),
             header.fat_offset.get(),
             header.fat_size.get());
-        %defer {
-            root.destroy(allocator);
-        }
+        %defer root.destroy(allocator);
 
         return Rom {
             .header = header,
@@ -593,6 +593,40 @@ pub const Rom = struct {
             .arm7_overlay = arm7_overlay,
             .root = root,
         };
+    }
+
+    pub fn writeToFile(self: &const Rom, file: &io.File, allocator: &mem.Allocator) -> %void {
+        var header = self.header;
+        header.arm9_rom_offset = 0x4000;
+        header.arm9_size = self.arm9.len;
+
+        header.arm7_rom_offset = header.arm9_rom_offset + header.arm9_size;
+        header.arm7_size = self.arm7.len;
+
+        header.arm9_overlay_offset = header.arm7_rom_offset + header.arm7_size;
+        header.arm9_overlay_size = self.arm9_overlay.len;
+        
+        header.arm7_overlay_offset = header.arm9_overlay_offset + header.arm9_overlay_size;
+        header.arm7_overlay_size = self.arm7_overlay.len;
+
+        const files_and_folders = countFilesAndFolders(self.root);
+        const files = files_and_folders.files;
+        const folders = files_and_folders.folders;
+
+        header.fnt_offset = header.arm7_overlay_offset + header.arm7_overlay_size;
+        header.fnt_size = folders * @sizeOf(FntMainEntry);
+
+        header.fat_offset = header.fnt_offset + header.fnt_size;
+        header.fat_size = files * @sizeOf(FatEntry);
+
+        file.write(utils.toBytes(Header, header));
+        file.write([]u8{ 0 } ** (0x4000 - @sizeOf(Header)));
+        file.write(self.arm9);
+        file.write(self.arm7);
+        file.write(self.arm9_overlay);
+        file.write(self.arm7_overlay);
+
+        // TODO: Write Nitro Filesystem
     }
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
