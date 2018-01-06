@@ -233,50 +233,11 @@ test "pokemon.gen3.[5]Evolution: Offsets" {
     assert(@sizeOf([5]Evolution) == 0x08 * 5);
 }
 
-const bulbasaur = BasePokemon {
-    .hp         = 45,
-    .attack     = 49,
-    .defense    = 49,
-    .speed      = 45,
-    .sp_attack  = 65,
-    .sp_defense = 65,
-
-    .type1 = Type.Grass,
-    .type2 = Type.Poison,
-
-    .catch_rate     = 45,
-    .base_exp_yield = 64,
-
-    .effort_yield = EffortYield {
-        .hp         = 0,
-        .attack     = 0,
-        .defense    = 0,
-        .speed      = 0,
-        .sp_attack  = 1,
-        .sp_defense = 0,
-        .padding    = 0,
-    },
-
-    .item1 = Little(u16).init(0),
-    .item2 = Little(u16).init(0),
-
-    .gender          = 31,
-    .egg_cycles      = 20,
-    .base_friendship = 70,
-
-    .level_up_type = LevelUpType.MediumSlow,
-
-    .egg_group1 = EggGroup.Monster,
-    .egg_group2 = EggGroup.Grass,
-
-    .abillity1 = 65,
-    .abillity2 = 00,
-
-    .safari_zone_rate = 0,
-
-    .color_and_flip = ColorAndFlip.Green,
-
-    .padding = []u8 { 0, 0 },
+// Source: https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_base_stats_data_structure_in_Generation_III#Fingerprint
+const bulbasaur_fingerprint = []u8 { 
+    0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x14, 0x46, 0x03, 
+    0x01, 0x07, 0x41, 0x00, 0x00, 0x03, 0x00, 0x00 
 };
 
 const zero_evo = Evolution { 
@@ -307,10 +268,9 @@ pub const Game = struct {
     evolution_offset: usize,
 
     pub fn fromRom(rom: &gba.Rom) -> %Game {
-        const bulbasaur_bytes      = utils.asConstBytes(BasePokemon, &bulbasaur);
         const bulbasaur_evos_bytes = utils.asConstBytes([5]Evolution, &bulbasaur_evos);
 
-        const pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_bytes)      ?? return error.CouldntFindPokemonOffset;
+        const pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_fingerprint) ?? return error.CouldntFindPokemonOffset;
         const evolution_offset = mem.indexOf(u8, rom.data, bulbasaur_evos_bytes) ?? return error.CouldntFindEvolutionOffset;
 
         return Game {
