@@ -2,104 +2,14 @@ const std = @import("std");
 const gba = @import("../gba.zig");
 const little = @import("../little.zig");
 const utils = @import("../utils.zig");
+const common = @import("common.zig"); 
 const mem = std.mem;
 const debug = std.debug;
 
 const assert = debug.assert;
+const u1 = @IntType(false, 1);
 
 const Little = little.Little;
-
-pub const Type = enum(u8) {
-    Normal   = 00,
-    Fighting = 01,
-    Flying   = 02,
-    Poison   = 03,
-    Ground   = 04,
-    Rock     = 05,
-    Bug      = 06,
-    Ghost    = 07,
-    Steel    = 08,
-    Unknown  = 09,
-    Fire     = 10,
-    Water    = 11,
-    Grass    = 12,
-    Electric = 13,
-    Psychic  = 14,
-    Ice      = 15,
-    Dragon   = 16,
-    Dark     = 17,
-};
-
-pub const EffortYield = packed struct {
-    hp: u2,
-    attack: u2,
-    defense: u2,
-    speed: u2,
-    sp_attack: u2,
-    sp_defense: u2,
-    padding: u4,
-};
-
-test "pokemon.gen3.EffortYield: Offsets" {
-    var effort : EffortYield = undefined;
-    const base = @ptrToInt(&effort);
-
-    assert(@ptrToInt(&effort.hp        ) - base == 0x00);
-    assert(@ptrToInt(&effort.attack    ) - base == 0x00);
-    assert(@ptrToInt(&effort.defense   ) - base == 0x00);
-    assert(@ptrToInt(&effort.speed     ) - base == 0x00);
-    assert(@ptrToInt(&effort.sp_attack ) - base == 0x01);
-    assert(@ptrToInt(&effort.sp_defense) - base == 0x01);
-    assert(@ptrToInt(&effort.padding   ) - base == 0x01);
-
-    assert(@typeOf(&effort.hp)         == &align(1:0:2) u2);
-    assert(@typeOf(&effort.attack)     == &align(1:2:4) u2);
-    assert(@typeOf(&effort.defense)    == &align(1:4:6) u2);
-    assert(@typeOf(&effort.speed)      == &align(1:6:8) u2);
-    assert(@typeOf(&effort.sp_attack)  == &align(1:0:2) u2);
-    assert(@typeOf(&effort.sp_defense) == &align(1:2:4) u2);
-    assert(@typeOf(&effort.padding)    == &align(1:4:8) u4);
-}
-
-pub const LevelUpType = enum(u8) {
-    MediumFast  = 0,
-    Erratic     = 1,
-    Fluctuating = 2,
-    MediumSlow  = 3,
-    Fast        = 4,
-    Slow        = 5,
-};
-
-pub const EggGroup = enum(u8) {
-    Monster      = 01,
-    Water1       = 02,
-    Bug          = 03,
-    Flying       = 04,
-    Field        = 05,
-    Fairy        = 06,
-    Grass        = 07,
-    HumanLike    = 08,
-    Water3       = 09,
-    Mineral      = 10,
-    Amorphous    = 11,
-    Water2       = 12,
-    Ditto        = 13,
-    Dragon       = 14,
-    Undiscovered = 15,
-};
-
-pub const ColorAndFlip = enum(u8) {
-    Red    = 0,
-    Blue   = 1,
-    Yellow = 2,
-    Green  = 3,
-    Black  = 4,
-    Brown  = 5,
-    Purple = 6,
-    Gray   = 7,
-    White  = 8,
-    Pink   = 9,
-};
 
 pub const BasePokemon = packed struct {
     hp:         u8,
@@ -109,32 +19,35 @@ pub const BasePokemon = packed struct {
     sp_attack:  u8,
     sp_defense: u8,
 
-    type1: Type,
-    type2: Type,
+    type1: common.Type,
+    type2: common.Type,
 
     catch_rate:     u8,
     base_exp_yield: u8,
 
-    effort_yield: EffortYield,
+    ev_yield: common.EvYield,
 
     item1: Little(u16),
     item2: Little(u16),
 
-    gender:          u8,
+    gender_ratio:    u8,
     egg_cycles:      u8,
     base_friendship: u8,
 
-    level_up_type: LevelUpType,
+    growth_rate: common.GrowthRate,
 
-    egg_group1: EggGroup,
-    egg_group2: EggGroup,
+    egg_group1: common.EggGroup,
+    egg_group1_pad: u4,
+    egg_group2: common.EggGroup,
+    egg_group2_pad: u4,
 
     abillity1: u8,
     abillity2: u8,
 
     safari_zone_rate: u8,
 
-    color_and_flip: ColorAndFlip,
+    color: common.Color,
+    flip: u1,
 
     padding: [2]u8
 };
@@ -156,7 +69,7 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@ptrToInt(&stats.catch_rate      ) - base == 08);
     assert(@ptrToInt(&stats.base_exp_yield  ) - base == 09);
 
-    assert(@ptrToInt(&stats.effort_yield    ) - base == 10);
+    assert(@ptrToInt(&stats.ev_yield,    ) - base == 10);
     assert(@ptrToInt(&stats.item1           ) - base == 12);
     assert(@ptrToInt(&stats.item2           ) - base == 14);
 
@@ -264,19 +177,137 @@ error CouldntFindEvolutionOffset;
 
 pub const Game = struct {
     rom: &gba.Rom,
-    pokemon_offset: usize,
-    evolution_offset: usize,
+    pokemons: []BasePokemon,
+    evolutions: [][5]Evolution,
 
     pub fn fromRom(rom: &gba.Rom) -> %Game {
         const bulbasaur_evos_bytes = utils.asConstBytes([5]Evolution, &bulbasaur_evos);
 
-        const pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_fingerprint) ?? return error.CouldntFindPokemonOffset;
-        const evolution_offset = mem.indexOf(u8, rom.data, bulbasaur_evos_bytes) ?? return error.CouldntFindEvolutionOffset;
+        // TODO: Figure out if there is some other way of finding the offsets of this data in the rom.
+        //       Maybe these offsets are present in the assembly?
+        var pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_fingerprint) ?? return error.CouldntFindPokemonOffset;
+        var evolution_offset = mem.indexOf(u8, rom.data, bulbasaur_evos_bytes)  ?? return error.CouldntFindEvolutionOffset;
+
+        // Bulbasaur is pokemon 1, but there is a pokemon 0, so we subtract from our found offset
+        pokemon_offset   -= @sizeOf(BasePokemon);
+        evolution_offset -= @sizeOf([5]Evolution);
+
+        // Source: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
+        const pokemon_count = 440;
+
+        const pokemons   = ([]BasePokemon) (rom.data[pokemon_offset  ..(pokemon_count * @sizeOf(BasePokemon)) ]);
+        const evolutions = ([][5]Evolution)(rom.data[evolution_offset..(pokemon_count * @sizeOf([5]Evolution))]);
 
         return Game {
             .rom = rom,
-            .pokemon_offset = pokemon_offset,
-            .evolution_offset = evolution_offset,
+            .pokemons = pokemons,
+            .evolutions = evolutions,
         };
+    }
+};
+
+error InvalidGeneration;
+error OutOfRange;
+
+pub const GameAdapter = struct {
+    game: &Game,
+    base: common.IGame,
+
+    pub fn init(game: &Game) -> GameAdapter {
+        return GameAdapter {
+            .game = game,
+            .base = common.IGame {
+                .getPokemonFn = getPokemon,
+                .setPokemonFn = setPokemon
+            }
+        };
+    }
+
+    fn getGame(base: &common.IGame) -> &Game {
+        return @fieldParentPtr(GameAdapter, "base", base).game;
+    }
+
+    fn getPokemon(base: &common.IGame, index: usize) -> ?common.BasePokemon {
+        const game = getGame(base);
+
+        if (index < game.pokemons.len) {
+            const pokemon = game.pokemons[index];
+
+            return common.BasePokemon {
+                .hp             = pokemon.hp,
+                .attack         = pokemon.attack,
+                .defense        = pokemon.defense,
+                .speed          = pokemon.speed,
+                .sp_attack      = pokemon.sp_attack,
+                .sp_defense     = pokemon.sp_defense,
+                .type1          = pokemon.type1,
+                .type2          = pokemon.type2,
+                .catch_rate     = pokemon.catch_rate,
+                .base_exp_yield = pokemon.base_exp_yield,
+                .growth_rate    = pokemon.growth_rate,
+                
+                .extra = common.BasePokemon.Extra {
+                    .III = common.BasePokemon.Gen3Extra {
+                        .item1            = pokemon.item1.get(),
+                        .item2            = pokemon.item2.get(),
+                        .gender_ratio     = pokemon.gender_ratio,
+                        .egg_cycles       = pokemon.egg_cycles,
+                        .egg_group1       = pokemon.egg_group1,
+                        .egg_group2       = pokemon.egg_group2,
+                        .ev_yield         = pokemon.ev_yield,
+                        .base_friendship  = pokemon.base_friendship,
+                        .abillity1        = pokemon.abillity1,
+                        .abillity2        = pokemon.abillity2,
+                        .safari_zone_rate = pokemon.safari_zone_rate,
+                        .color            = pokemon.color,
+                        .flip             = pokemon.flip,
+                    }
+                }
+            };
+        } else {
+            return null;
+        }
+    }
+
+    fn setPokemon(base: &common.IGame, index: usize, pokemon: &const common.BasePokemon) -> %void {
+        var game = getGame(base);
+
+        if (game.pokemons.len <= index) 
+            return error.OutOfRange;
+
+        switch (pokemon.extra) {
+            common.Generation.III => |extra| {
+                game.pokemons[index] = BasePokemon {
+                    .hp               = pokemon.hp,
+                    .attack           = pokemon.attack,
+                    .defense          = pokemon.defense,
+                    .speed            = pokemon.speed,
+                    .sp_attack        = pokemon.sp_attack,
+                    .sp_defense       = pokemon.sp_defense,
+                    .type1            = pokemon.type1,
+                    .type2            = pokemon.type2,
+                    .catch_rate       = pokemon.catch_rate,
+                    .base_exp_yield   = pokemon.base_exp_yield,
+                    .ev_yield         = extra.ev_yield,
+                    .item1            = Little(u16).init(extra.item1),
+                    .item2            = Little(u16).init(extra.item2),
+                    .gender_ratio     = extra.gender_ratio,
+                    .egg_cycles       = extra.egg_cycles,
+                    .base_friendship  = extra.base_friendship,
+                    .growth_rate      = pokemon.growth_rate,
+                    .egg_group1       = extra.egg_group1,
+                    .egg_group1_pad   = 0,
+                    .egg_group2       = extra.egg_group2,
+                    .egg_group2_pad   = 0,
+                    .abillity1        = extra.abillity1,
+                    .abillity2        = extra.abillity2,
+                    .safari_zone_rate = extra.safari_zone_rate,
+                    .color            = extra.color,
+                    .flip             = extra.flip,
+                    .padding          = [2]u8 { 0, 0 }
+                };
+            },
+            else => return error.InvalidGeneration,
+        }
     }
 };

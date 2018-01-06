@@ -77,10 +77,11 @@ pub fn main() -> %void {
 
     switch (rom) {
         Rom.Gba => |*gba_rom| {
-            var gen3_game = gen3.Game.fromRom(gba_rom) %% |err| {
+            var game = gen3.Game.fromRom(gba_rom) %% |err| {
                 %return stdout_stream.print("Invalide generation 3 pokemon game.\n");
                 return err;
             };
+            var adapter = gen3.GameAdapter.init(&game);
         },
         Rom.Nds => |*nds_rom| {
             %return nds_rom.root.tree(stdout_stream, 0);
