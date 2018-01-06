@@ -1,13 +1,16 @@
-const std = @import("std");
-const gba = @import("gba.zig");
-const nds = @import("nds.zig");
-const utils = @import("utils.zig");
-const gen3 = @import("pokemon/gen3.zig");
-const os = std.os;
+const std        = @import("std");
+const gba        = @import("gba.zig");
+const nds        = @import("nds.zig");
+const utils      = @import("utils.zig");
+const randomizer = @import("randomizer.zig");
+const gen3       = @import("pokemon/gen3.zig");
+
+const os    = std.os;
 const debug = std.debug;
-const mem = std.mem;
-const io = std.io;
-const path = os.path;
+const mem   = std.mem;
+const io    = std.io;
+const rand  = std.rand;
+const path  = os.path;
 
 const Rom = union(enum) {
     Gba: gba.Rom,
@@ -53,21 +56,21 @@ pub fn main() -> %void {
     const argsWithExe = %return os.argsAlloc(allocator);
     defer os.argsFree(allocator, argsWithExe);
 
-    const exeFile = %return utils.first([]const u8, argsWithExe);
-    const inFile  = %return utils.first([]const u8, argsWithExe[1..]);
-    const outFile = %return utils.first([]const u8, argsWithExe[2..]);
+    const exe_path = %return utils.first([]const u8, argsWithExe);
+    const in_path  = %return utils.first([]const u8, argsWithExe[1..]);
+    const out_path = %return utils.first([]const u8, argsWithExe[2..]);
     const args = argsWithExe[3..];
 
-    var rom = loadRom(inFile, allocator) %% |err| {
+    var rom = loadRom(in_path, allocator) %% |err| {
         switch (err) {
             error.NotARom => {
-                %return stdout_stream.print("{} is not a rom.\n", inFile);
+                %return stdout_stream.print("{} is not a rom.\n", in_path);
             },
             else => {
                 // TODO: This could also be an allocation error.
                 //       Follow issue https://github.com/zig-lang/zig/issues/632
                 //       and refactor when we can check if error is part of an error set.
-                %return stdout_stream.print("Unable to open {}.\n", inFile);
+                %return stdout_stream.print("Unable to open {}.\n", in_path);
             }
         }
 
@@ -82,6 +85,22 @@ pub fn main() -> %void {
                 return err;
             };
             var adapter = gen3.GameAdapter.init(&game);
+            var random = rand.Rand.init(0);
+            randomizer.randomizeStats(&adapter.base, &random) %% |err| {
+                %return stdout_stream.print("Couldn't randomize stats.\n");
+                return err;
+            };
+
+            var out_file = io.File.openWrite(out_path, null) %% |err| {
+                %return stdout_stream.print("Couldn't open {}.\n", out_path);
+                return err;
+            };
+
+            var file_stream = io.FileOutStream.init(&out_file);
+            gba_rom.writeToStream(&file_stream.stream) %% |err| {
+                %return stdout_stream.print("Unable to write gba to {}.\n", out_path);
+                return err;
+            };
         },
         Rom.Nds => |*nds_rom| {
             %return nds_rom.root.tree(stdout_stream, 0);

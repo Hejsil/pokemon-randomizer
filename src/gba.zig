@@ -116,6 +116,12 @@ pub const Rom = struct {
         };
     }
 
+    pub fn writeToStream(self: &const Rom, stream: &io.OutStream) -> %void {
+        %return self.header.validate();
+        %return stream.write(utils.asBytes(Header, self.header));
+        %return stream.write(self.data);
+    }
+
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
         allocator.destroy(self.header);
         allocator.free(self.data);

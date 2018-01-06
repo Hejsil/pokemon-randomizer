@@ -194,9 +194,11 @@ pub const Game = struct {
 
         // Source: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
         const pokemon_count = 440;
+        const pokemon_byte_count   = pokemon_count * @sizeOf(BasePokemon);
+        const evolution_byte_count = pokemon_count * @sizeOf([5]Evolution);
 
-        const pokemons   = ([]BasePokemon) (rom.data[pokemon_offset  ..(pokemon_count * @sizeOf(BasePokemon)) ]);
-        const evolutions = ([][5]Evolution)(rom.data[evolution_offset..(pokemon_count * @sizeOf([5]Evolution))]);
+        const pokemons   = ([]BasePokemon) (rom.data[pokemon_offset  ..(pokemon_offset   + pokemon_byte_count  )]);
+        const evolutions = ([][5]Evolution)(rom.data[evolution_offset..(evolution_offset + evolution_byte_count)]);
 
         return Game {
             .rom = rom,
