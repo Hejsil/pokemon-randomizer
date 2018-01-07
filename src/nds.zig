@@ -333,191 +333,191 @@ pub const Header = packed struct {
     }
 
     pub fn prettyPrint(self: &const Header, stream: &io.OutStream) -> %void {
-        %return stream.print("game_title: {}\n", self.game_title);
-        %return stream.print("gamecode: {}\n", self.gamecode);
-        %return stream.print("makercode: {}\n", self.makercode);
+        try stream.print("game_title: {}\n", self.game_title);
+        try stream.print("gamecode: {}\n", self.gamecode);
+        try stream.print("makercode: {}\n", self.makercode);
 
-        %return stream.print("unitcode: {x}\n", self.unitcode);
-        %return stream.print("encryption_seed_select: {x}\n", self.encryption_seed_select);
-        %return stream.print("encryption_seed_select: {x}\n", self.device_capacity);
+        try stream.print("unitcode: {x}\n", self.unitcode);
+        try stream.print("encryption_seed_select: {x}\n", self.encryption_seed_select);
+        try stream.print("encryption_seed_select: {x}\n", self.device_capacity);
 
-        %return stream.print("encryption_seed_select: {x}\n", self.device_capacity);
+        try stream.print("encryption_seed_select: {x}\n", self.device_capacity);
 
-        %return prettyPrintSliceField(u8, "reserved1", "{x}", stream, self.reserved1);
+        try prettyPrintSliceField(u8, "reserved1", "{x}", stream, self.reserved1);
 
-        %return stream.print("reserved2: {x}\n", self.reserved2);
+        try stream.print("reserved2: {x}\n", self.reserved2);
         
-        %return stream.print("nds_region: {x}\n", self.nds_region);
-        %return stream.print("rom_version: {x}\n", self.rom_version);
-        %return stream.print("autostart: {x}\n", self.autostart);
+        try stream.print("nds_region: {x}\n", self.nds_region);
+        try stream.print("rom_version: {x}\n", self.rom_version);
+        try stream.print("autostart: {x}\n", self.autostart);
 
-        %return stream.print("arm9_rom_offset: {x}\n", self.arm9_rom_offset.get());
-        %return stream.print("arm9_entry_address: {x}\n", self.arm9_entry_address.get());
-        %return stream.print("arm9_ram_address: {x}\n", self.arm9_ram_address.get());
-        %return stream.print("arm9_size: {x}\n", self.arm9_size.get());
+        try stream.print("arm9_rom_offset: {x}\n", self.arm9_rom_offset.get());
+        try stream.print("arm9_entry_address: {x}\n", self.arm9_entry_address.get());
+        try stream.print("arm9_ram_address: {x}\n", self.arm9_ram_address.get());
+        try stream.print("arm9_size: {x}\n", self.arm9_size.get());
 
-        %return stream.print("arm7_rom_offset: {x}\n", self.arm7_rom_offset.get());
-        %return stream.print("arm7_entry_address: {x}\n", self.arm7_entry_address.get());
-        %return stream.print("arm7_ram_address: {x}\n", self.arm7_ram_address.get());
-        %return stream.print("arm7_size: {x}\n", self.arm7_size.get());
+        try stream.print("arm7_rom_offset: {x}\n", self.arm7_rom_offset.get());
+        try stream.print("arm7_entry_address: {x}\n", self.arm7_entry_address.get());
+        try stream.print("arm7_ram_address: {x}\n", self.arm7_ram_address.get());
+        try stream.print("arm7_size: {x}\n", self.arm7_size.get());
 
-        %return stream.print("fnt_offset: {x}\n", self.fnt_offset.get());
-        %return stream.print("fnt_size: {x}\n", self.fnt_size.get());
+        try stream.print("fnt_offset: {x}\n", self.fnt_offset.get());
+        try stream.print("fnt_size: {x}\n", self.fnt_size.get());
 
-        %return stream.print("fat_offset: {x}\n", self.fat_offset.get());
-        %return stream.print("fat_size: {x}\n", self.fat_size.get());
+        try stream.print("fat_offset: {x}\n", self.fat_offset.get());
+        try stream.print("fat_size: {x}\n", self.fat_size.get());
 
-        %return stream.print("arm9_overlay_offset: {x}\n", self.arm9_overlay_offset.get());
-        %return stream.print("arm9_overlay_size: {x}\n", self.arm9_overlay_size.get());
+        try stream.print("arm9_overlay_offset: {x}\n", self.arm9_overlay_offset.get());
+        try stream.print("arm9_overlay_size: {x}\n", self.arm9_overlay_size.get());
 
-        %return stream.print("arm7_overlay_offset: {x}\n", self.arm7_overlay_offset.get());
-        %return stream.print("arm7_overlay_size: {x}\n", self.arm7_overlay_size.get());
+        try stream.print("arm7_overlay_offset: {x}\n", self.arm7_overlay_offset.get());
+        try stream.print("arm7_overlay_size: {x}\n", self.arm7_overlay_size.get());
 
-        %return prettyPrintSliceField(u8, "port_40001A4h_setting_for_normal_commands", "{x}", stream, self.port_40001A4h_setting_for_normal_commands);
-        %return prettyPrintSliceField(u8, "port_40001A4h_setting_for_key1_commands", "{x}", stream, self.port_40001A4h_setting_for_key1_commands);
+        try prettyPrintSliceField(u8, "port_40001A4h_setting_for_normal_commands", "{x}", stream, self.port_40001A4h_setting_for_normal_commands);
+        try prettyPrintSliceField(u8, "port_40001A4h_setting_for_key1_commands", "{x}", stream, self.port_40001A4h_setting_for_key1_commands);
 
-        %return stream.print("icon_title_offset: {x}\n", self.icon_title_offset.get());
+        try stream.print("icon_title_offset: {x}\n", self.icon_title_offset.get());
 
-        %return stream.print("secure_area_checksum: {x}\n", self.secure_area_checksum.get());
-        %return stream.print("secure_area_delay: {x}\n", self.secure_area_delay.get());
+        try stream.print("secure_area_checksum: {x}\n", self.secure_area_checksum.get());
+        try stream.print("secure_area_delay: {x}\n", self.secure_area_delay.get());
 
-        %return stream.print("arm9_auto_load_list_ram_address: {x}\n", self.arm9_auto_load_list_ram_address.get());
-        %return stream.print("arm7_auto_load_list_ram_address: {x}\n", self.arm7_auto_load_list_ram_address.get());
+        try stream.print("arm9_auto_load_list_ram_address: {x}\n", self.arm9_auto_load_list_ram_address.get());
+        try stream.print("arm7_auto_load_list_ram_address: {x}\n", self.arm7_auto_load_list_ram_address.get());
 
-        %return stream.print("secure_area_disable: {x}\n", self.secure_area_disable.get());
-        %return stream.print("total_used_rom_size: {x}\n", self.total_used_rom_size.get());
-        %return stream.print("rom_header_size: {x}\n", self.rom_header_size.get());
+        try stream.print("secure_area_disable: {x}\n", self.secure_area_disable.get());
+        try stream.print("total_used_rom_size: {x}\n", self.total_used_rom_size.get());
+        try stream.print("rom_header_size: {x}\n", self.rom_header_size.get());
 
-        %return prettyPrintSliceField(u8, "reserved3", "{x}", stream, self.reserved3);
-        %return prettyPrintSliceField(u8, "nintendo_logo", "{x}", stream, self.nintendo_logo);
+        try prettyPrintSliceField(u8, "reserved3", "{x}", stream, self.reserved3);
+        try prettyPrintSliceField(u8, "nintendo_logo", "{x}", stream, self.nintendo_logo);
 
-        %return stream.print("nintendo_logo_checksum: {x}\n", self.nintendo_logo_checksum.get());
-        %return stream.print("header_checksum: {x}\n", self.header_checksum.get());
+        try stream.print("nintendo_logo_checksum: {x}\n", self.nintendo_logo_checksum.get());
+        try stream.print("header_checksum: {x}\n", self.header_checksum.get());
 
-        %return stream.print("debug_rom_offset: {x}\n", self.debug_rom_offset.get());
-        %return stream.print("debug_size: {x}\n", self.debug_size.get());
-        %return stream.print("debug_ram_address: {x}\n", self.debug_ram_address.get());
+        try stream.print("debug_rom_offset: {x}\n", self.debug_rom_offset.get());
+        try stream.print("debug_size: {x}\n", self.debug_size.get());
+        try stream.print("debug_ram_address: {x}\n", self.debug_ram_address.get());
 
-        %return prettyPrintSliceField(u8, "reserved4", "{x}", stream, self.reserved4);
-        %return prettyPrintSliceField(u8, "reserved5", "{x}", stream, self.reserved5);
+        try prettyPrintSliceField(u8, "reserved4", "{x}", stream, self.reserved4);
+        try prettyPrintSliceField(u8, "reserved5", "{x}", stream, self.reserved5);
 
 
-        %return prettyPrintSliceField(u8, "wram_slots", "{x}", stream, self.wram_slots);
-        %return prettyPrintSliceField(u8, "arm9_wram_areas", "{x}", stream, self.arm9_wram_areas);
-        %return prettyPrintSliceField(u8, "arm7_wram_areas", "{x}", stream, self.arm7_wram_areas);
-        %return prettyPrintSliceField(u8, "wram_slot_master", "{x}", stream, self.wram_slot_master);
+        try prettyPrintSliceField(u8, "wram_slots", "{x}", stream, self.wram_slots);
+        try prettyPrintSliceField(u8, "arm9_wram_areas", "{x}", stream, self.arm9_wram_areas);
+        try prettyPrintSliceField(u8, "arm7_wram_areas", "{x}", stream, self.arm7_wram_areas);
+        try prettyPrintSliceField(u8, "wram_slot_master", "{x}", stream, self.wram_slot_master);
 
-        %return stream.print("unknown: {x}\n", self.unknown);
+        try stream.print("unknown: {x}\n", self.unknown);
 
-        %return prettyPrintSliceField(u8, "region_flags", "{x}", stream, self.region_flags);
-        %return prettyPrintSliceField(u8, "access_control", "{x}", stream, self.access_control);
-        %return prettyPrintSliceField(u8, "arm7_scfg_ext_setting", "{x}", stream, self.arm7_scfg_ext_setting);
-        %return prettyPrintSliceField(u8, "reserved6", "{x}", stream, self.reserved6);
+        try prettyPrintSliceField(u8, "region_flags", "{x}", stream, self.region_flags);
+        try prettyPrintSliceField(u8, "access_control", "{x}", stream, self.access_control);
+        try prettyPrintSliceField(u8, "arm7_scfg_ext_setting", "{x}", stream, self.arm7_scfg_ext_setting);
+        try prettyPrintSliceField(u8, "reserved6", "{x}", stream, self.reserved6);
 
-        %return stream.print("unknown: {x}\n", self.unknown_flags);
-        %return stream.print("arm9i_rom_offset: {x}\n", self.arm9i_rom_offset.get());
+        try stream.print("unknown: {x}\n", self.unknown_flags);
+        try stream.print("arm9i_rom_offset: {x}\n", self.arm9i_rom_offset.get());
 
-        %return prettyPrintSliceField(u8, "reserved7", "{x}", stream, self.reserved7);
+        try prettyPrintSliceField(u8, "reserved7", "{x}", stream, self.reserved7);
 
-        %return stream.print("arm9i_ram_load_address: {x}\n", self.arm9i_ram_load_address.get());
-        %return stream.print("arm9i_size: {x}\n", self.arm9i_size.get());
-        %return stream.print("arm7i_rom_offset: {x}\n", self.arm7i_rom_offset.get());
+        try stream.print("arm9i_ram_load_address: {x}\n", self.arm9i_ram_load_address.get());
+        try stream.print("arm9i_size: {x}\n", self.arm9i_size.get());
+        try stream.print("arm7i_rom_offset: {x}\n", self.arm7i_rom_offset.get());
 
-        %return stream.print("device_list_arm7_ram_addr: {x}\n", self.device_list_arm7_ram_addr.get());
+        try stream.print("device_list_arm7_ram_addr: {x}\n", self.device_list_arm7_ram_addr.get());
 
-        %return stream.print("arm7i_ram_load_address: {x}\n", self.arm7i_ram_load_address.get());
-        %return stream.print("arm7i_size: {x}\n", self.arm7i_size.get());
+        try stream.print("arm7i_ram_load_address: {x}\n", self.arm7i_ram_load_address.get());
+        try stream.print("arm7i_size: {x}\n", self.arm7i_size.get());
         
-        %return stream.print("digest_ntr_region_offset: {x}\n", self.digest_ntr_region_offset.get());
+        try stream.print("digest_ntr_region_offset: {x}\n", self.digest_ntr_region_offset.get());
 
-        %return stream.print("digest_ntr_region_offset: {x}",       self.digest_ntr_region_offset.get()      );
-        %return stream.print("digest_ntr_region_length: {x}",       self.digest_ntr_region_length.get()      );
-        %return stream.print("digest_twl_region_offset: {x}",       self.digest_twl_region_offset.get()      );
-        %return stream.print("digest_twl_region_length: {x}",       self.digest_twl_region_length.get()      );
-        %return stream.print("digest_sector_hashtable_offset: {x}", self.digest_sector_hashtable_offset.get());
-        %return stream.print("digest_sector_hashtable_length: {x}", self.digest_sector_hashtable_length.get()); 
-        %return stream.print("digest_block_hashtable_offset: {x}",  self.digest_block_hashtable_offset.get() );   
-        %return stream.print("digest_block_hashtable_length: {x}",  self.digest_block_hashtable_length.get() );    
-        %return stream.print("digest_sector_size: {x}",             self.digest_sector_size.get()            );             
-        %return stream.print("digest_block_sectorcount: {x}",       self.digest_block_sectorcount.get()      ); 
+        try stream.print("digest_ntr_region_offset: {x}",       self.digest_ntr_region_offset.get()      );
+        try stream.print("digest_ntr_region_length: {x}",       self.digest_ntr_region_length.get()      );
+        try stream.print("digest_twl_region_offset: {x}",       self.digest_twl_region_offset.get()      );
+        try stream.print("digest_twl_region_length: {x}",       self.digest_twl_region_length.get()      );
+        try stream.print("digest_sector_hashtable_offset: {x}", self.digest_sector_hashtable_offset.get());
+        try stream.print("digest_sector_hashtable_length: {x}", self.digest_sector_hashtable_length.get()); 
+        try stream.print("digest_block_hashtable_offset: {x}",  self.digest_block_hashtable_offset.get() );   
+        try stream.print("digest_block_hashtable_length: {x}",  self.digest_block_hashtable_length.get() );    
+        try stream.print("digest_sector_size: {x}",             self.digest_sector_size.get()            );             
+        try stream.print("digest_block_sectorcount: {x}",       self.digest_block_sectorcount.get()      ); 
 
-        %return stream.print("icon_title_size: {x}", self.icon_title_size.get());
+        try stream.print("icon_title_size: {x}", self.icon_title_size.get());
 
-        %return prettyPrintSliceField(u8, "reserved8", "{x}", stream, self.reserved8);
+        try prettyPrintSliceField(u8, "reserved8", "{x}", stream, self.reserved8);
 
-        %return stream.print("total_used_rom_size_including_dsi_area: {x}", self.total_used_rom_size_including_dsi_area.get());
+        try stream.print("total_used_rom_size_including_dsi_area: {x}", self.total_used_rom_size_including_dsi_area.get());
 
-        %return prettyPrintSliceField(u8, "reserved9", "{x}", stream, self.reserved9);
-        %return prettyPrintSliceField(u8, "reserved10", "{x}", stream, self.reserved10);
-        %return prettyPrintSliceField(u8, "reserved11", "{x}", stream, self.reserved11);
+        try prettyPrintSliceField(u8, "reserved9", "{x}", stream, self.reserved9);
+        try prettyPrintSliceField(u8, "reserved10", "{x}", stream, self.reserved10);
+        try prettyPrintSliceField(u8, "reserved11", "{x}", stream, self.reserved11);
 
-        %return stream.print("modcrypt_area_1_offset: {x}", self.modcrypt_area_1_offset.get());
-        %return stream.print("modcrypt_area_1_size: {x}", self.modcrypt_area_1_size.get());
-        %return stream.print("modcrypt_area_2_offset: {x}", self.modcrypt_area_2_offset.get());
-        %return stream.print("modcrypt_area_2_size: {x}", self.modcrypt_area_2_size.get());
+        try stream.print("modcrypt_area_1_offset: {x}", self.modcrypt_area_1_offset.get());
+        try stream.print("modcrypt_area_1_size: {x}", self.modcrypt_area_1_size.get());
+        try stream.print("modcrypt_area_2_offset: {x}", self.modcrypt_area_2_offset.get());
+        try stream.print("modcrypt_area_2_size: {x}", self.modcrypt_area_2_size.get());
 
-        %return prettyPrintSliceField(u8, "title_id_emagcode", "{x}", stream, self.title_id_emagcode);
+        try prettyPrintSliceField(u8, "title_id_emagcode", "{x}", stream, self.title_id_emagcode);
 
-        %return stream.print("title_id_filetype: {x}", self.title_id_filetype);
+        try stream.print("title_id_filetype: {x}", self.title_id_filetype);
 
-        %return prettyPrintSliceField(u8, "title_id_rest", "{x}", stream, self.title_id_rest);
+        try prettyPrintSliceField(u8, "title_id_rest", "{x}", stream, self.title_id_rest);
 
-        %return stream.print("public_sav_filesize: {x}", self.public_sav_filesize.get());
-        %return stream.print("private_sav_filesize: {x}", self.private_sav_filesize.get());
+        try stream.print("public_sav_filesize: {x}", self.public_sav_filesize.get());
+        try stream.print("private_sav_filesize: {x}", self.private_sav_filesize.get());
 
-        %return prettyPrintSliceField(u8, "reserved12", "{x}", stream, self.reserved12);
+        try prettyPrintSliceField(u8, "reserved12", "{x}", stream, self.reserved12);
 
-        %return stream.print("cero_japan: {x}", self.cero_japan);
-        %return stream.print("esrb_us_canada: {x}", self.esrb_us_canada);
+        try stream.print("cero_japan: {x}", self.cero_japan);
+        try stream.print("esrb_us_canada: {x}", self.esrb_us_canada);
 
-        %return stream.print("reserved13: {x}", self.reserved13);
+        try stream.print("reserved13: {x}", self.reserved13);
 
-        %return stream.print("usk_germany: {x}", self.usk_germany);
-        %return stream.print("pegi_pan_europe: {x}", self.pegi_pan_europe);
+        try stream.print("usk_germany: {x}", self.usk_germany);
+        try stream.print("pegi_pan_europe: {x}", self.pegi_pan_europe);
 
-        %return stream.print("resereved14: {x}", self.resereved14);
+        try stream.print("resereved14: {x}", self.resereved14);
 
-        %return stream.print("pegi_portugal: {x}", self.pegi_portugal);
-        %return stream.print("pegi_and_bbfc_uk: {x}", self.pegi_and_bbfc_uk);
-        %return stream.print("agcb_australia: {x}", self.agcb_australia);
-        %return stream.print("grb_south_korea: {x}", self.grb_south_korea);
+        try stream.print("pegi_portugal: {x}", self.pegi_portugal);
+        try stream.print("pegi_and_bbfc_uk: {x}", self.pegi_and_bbfc_uk);
+        try stream.print("agcb_australia: {x}", self.agcb_australia);
+        try stream.print("grb_south_korea: {x}", self.grb_south_korea);
 
-        %return prettyPrintSliceField(u8, "reserved15", "{x}", stream, self.reserved15);
+        try prettyPrintSliceField(u8, "reserved15", "{x}", stream, self.reserved15);
 
-        %return prettyPrintSliceField(u8, "arm9_hash_with_secure_area", "{x}", stream, self.arm9_hash_with_secure_area);
-        %return prettyPrintSliceField(u8, "arm7_hash", "{x}", stream, self.arm7_hash);
-        %return prettyPrintSliceField(u8, "digest_master_hash", "{x}", stream, self.digest_master_hash);
-        %return prettyPrintSliceField(u8, "icon_title_hash", "{x}", stream, self.icon_title_hash);
-        %return prettyPrintSliceField(u8, "arm9i_hash", "{x}", stream, self.arm9i_hash);
-        %return prettyPrintSliceField(u8, "arm7i_hash", "{x}", stream, self.arm7i_hash);
+        try prettyPrintSliceField(u8, "arm9_hash_with_secure_area", "{x}", stream, self.arm9_hash_with_secure_area);
+        try prettyPrintSliceField(u8, "arm7_hash", "{x}", stream, self.arm7_hash);
+        try prettyPrintSliceField(u8, "digest_master_hash", "{x}", stream, self.digest_master_hash);
+        try prettyPrintSliceField(u8, "icon_title_hash", "{x}", stream, self.icon_title_hash);
+        try prettyPrintSliceField(u8, "arm9i_hash", "{x}", stream, self.arm9i_hash);
+        try prettyPrintSliceField(u8, "arm7i_hash", "{x}", stream, self.arm7i_hash);
 
-        %return prettyPrintSliceField(u8, "reserved16", "{x}", stream, self.reserved16);
+        try prettyPrintSliceField(u8, "reserved16", "{x}", stream, self.reserved16);
 
-        %return prettyPrintSliceField(u8, "arm9_hash_without_secure_area", "{x}", stream, self.arm9_hash_without_secure_area);
+        try prettyPrintSliceField(u8, "arm9_hash_without_secure_area", "{x}", stream, self.arm9_hash_without_secure_area);
 
-        %return prettyPrintSliceField(u8, "reserved17", "{x}", stream, self.reserved17);
-        %return prettyPrintSliceField(u8, "reserved18", "{x}", stream, self.reserved18);
+        try prettyPrintSliceField(u8, "reserved17", "{x}", stream, self.reserved17);
+        try prettyPrintSliceField(u8, "reserved18", "{x}", stream, self.reserved18);
 
-        %return prettyPrintSliceField(u8, "signature_across_header_entries", "{x}", stream, self.signature_across_header_entries);
+        try prettyPrintSliceField(u8, "signature_across_header_entries", "{x}", stream, self.signature_across_header_entries);
     }
 
     fn prettyPrintSliceField(comptime T: type, comptime field_name: []const u8, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
-        %return stream.print(field_name ++ ": ");
-        %return prettyPrintSlice(T, format, stream, slice);
-        %return stream.print("\n");
+        try stream.print(field_name ++ ": ");
+        try prettyPrintSlice(T, format, stream, slice);
+        try stream.print("\n");
     }
 
     fn prettyPrintSlice(comptime T: type, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
-        %return stream.write("{ ");
+        try stream.write("{ ");
         
         for (slice) |item, i| {
-            %return stream.print(format, item);
+            try stream.print(format, item);
 
             if (i != slice.len - 1) 
-                %return stream.print(", ");
+                try stream.print(", ");
         }
 
-        %return stream.write(" }");
+        try stream.write(" }");
     }
 };
 
@@ -710,18 +710,18 @@ pub const Nitro = struct {
     pub fn tree(self: &const Nitro, stream: &io.OutStream, indent: usize) -> %void {
         var i : usize = 0;
         while (i < indent) : (i += 1) {
-            %return stream.write("    ");
+            try stream.write("    ");
         }
 
         switch (self.data) {
             Data.Folder => |folder| {
-                %return stream.print("{}/\n", self.name);
+                try stream.print("{}/\n", self.name);
                 for (folder.files) |file| {
-                    %return file.tree(stream, indent + 1);
+                    try file.tree(stream, indent + 1);
                 }
             },
             Data.File => {
-                %return stream.print("{}\n", self.name);
+                try stream.print("{}\n", self.name);
             }
         }
     }
@@ -748,24 +748,24 @@ pub const Rom = struct {
     root: Nitro,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
-        const header = %return utils.createAndReadNoEof(Header, file, allocator);
+        const header = try utils.createAndReadNoEof(Header, file, allocator);
         %defer allocator.destroy(header);
 
-        %return header.validate();
+        try header.validate();
 
-        var arm9 = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        var arm9 = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
         %defer allocator.free(arm9);
 
-        var arm7 = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        var arm7 = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
         %defer allocator.free(arm7);
 
-        var arm9_overlay = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
+        var arm9_overlay = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
         %defer allocator.free(arm9_overlay);
 
-        var arm7_overlay = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
+        var arm7_overlay = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
         %defer allocator.free(arm7_overlay);
 
-        var root = %return readFileSystem(
+        var root = try readFileSystem(
             file, 
             allocator, 
             header.fnt_offset.get(),
@@ -805,20 +805,20 @@ pub const Rom = struct {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
         
-        %return file.seekTo(fnt_offset + 0x06);
+        try file.seekTo(fnt_offset + 0x06);
         var count : Little(u16) = undefined;
-        %return stream.readNoEof(utils.asBytes(Little(u16), &count));
+        try stream.readNoEof(utils.asBytes(Little(u16), &count));
 
-        const fnt_main_table = %return utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
+        const fnt_main_table = try utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
         defer allocator.free(fnt_main_table);
         
         if (4096 < fnt_main_table.len)                             return error.InvalidFntMainTableSize;
         if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
 
-        const fat = %return utils.seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
+        const fat = try utils.seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
         defer allocator.free(fat);
 
-        const root_name = %return allocator.alloc(u8, 0);
+        const root_name = try allocator.alloc(u8, 0);
         %defer allocator.free(root_name);
 
         return buildFolderFromFntMainEntry(
@@ -841,7 +841,7 @@ pub const Rom = struct {
         fnt_offset: usize,
         name: []u8) -> %Nitro {
 
-        %return file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
+        try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
@@ -858,7 +858,7 @@ pub const Rom = struct {
         // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
         var file_id = fnt_entry.first_id_in_subtable.get();
         while (true) {
-            const type_length = %return stream.readByte();
+            const type_length = try stream.readByte();
 
             if (type_length == 0x80) return error.InvalidSubTableTypeLength;
             if (type_length == 0x00) break;
@@ -875,7 +875,7 @@ pub const Rom = struct {
 
             const kind = type_length_pair.first;
             const length = type_length_pair.second;
-            const child_name = %return utils.allocAndReadNoEof(u8, file, allocator, length);
+            const child_name = try utils.allocAndReadNoEof(u8, file, allocator, length);
             %defer allocator.free(child_name);
 
             switch (kind) {
@@ -887,14 +887,14 @@ pub const Rom = struct {
                     // (See File Allocation Table (FAT))
                     // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
                     if (entry.start.get() == 0 or entry.end.get() == 0) continue;
-                    const current_pos = %return file.getPos();
+                    const current_pos = try file.getPos();
 
                     // TODO: Doc doesn't seem to be sure where entry.end actually is:                       (Start+Len...-1?)
-                    var file_data = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
+                    var file_data = try utils.seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
                     %defer allocator.free(file_data);
                     
-                    %return file.seekTo(current_pos);
-                    %return nitro_files.append(
+                    try file.seekTo(current_pos);
+                    try nitro_files.append(
                         Nitro.initFile(
                             child_name,
                             Nitro.File { .Other = file_data }
@@ -905,16 +905,16 @@ pub const Rom = struct {
                 },
                 Nitro.Kind.Folder => { 
                     var id : Little(u16) = undefined;
-                    %return stream.readNoEof(utils.asBytes(Little(u16), &id));
+                    try stream.readNoEof(utils.asBytes(Little(u16), &id));
 
                     if (!utils.between(u16, id.get(), 0xF001, 0xFFFF))
                         return error.InvalidSubDirectoryId;
                     if (fnt_main_table.len <= id.get() & 0x0FFF)
                         return error.InvalidSubDirectoryId;
-                    const current_pos = %return file.getPos();
+                    const current_pos = try file.getPos();
 
-                    %return nitro_files.append(
-                        %return buildFolderFromFntMainEntry(
+                    try nitro_files.append(
+                        try buildFolderFromFntMainEntry(
                             file,
                             allocator,
                             fat,
@@ -925,7 +925,7 @@ pub const Rom = struct {
                         )
                     );
 
-                    %return file.seekTo(current_pos);
+                    try file.seekTo(current_pos);
                 }
             }
 
@@ -997,8 +997,8 @@ pub const Rom = struct {
         fn writeToFile(self: &NitroWriter, nitro: &const Nitro, parent_id: u16) -> %void {
             switch (nitro.data) {
                 Nitro.Kind.Folder => |folder| {
-                    %return self.file.seekTo(self.fnt_main_offset);
-                    %return self.file.write(utils.asConstBytes(
+                    try self.file.seekTo(self.fnt_main_offset);
+                    try self.file.write(utils.asConstBytes(
                         FntMainEntry,
                         FntMainEntry {
                             .offset_to_subtable   = Little(u32).init(self.fnt_sub_offset - self.fnt_main_start),
@@ -1006,8 +1006,8 @@ pub const Rom = struct {
                             .parent_id            = Little(u16).init(parent_id), 
                         }));
 
-                    self.fnt_main_offset = %return self.file.getPos();
-                    %return self.file.seekTo(self.fnt_sub_offset);
+                    self.fnt_main_offset = try self.file.getPos();
+                    try self.file.seekTo(self.fnt_sub_offset);
 
                     // Writing sub-table
                     for (folder.files) |file| {
@@ -1015,45 +1015,45 @@ pub const Rom = struct {
 
                         switch (file.data) {
                             Nitro.Kind.Folder => |sub_folder| {
-                                %return self.file.write([]u8 { u8(file.name.len) });
-                                %return self.file.write(file.name);
-                                %return self.file.write(utils.asConstBytes(Little(u16), Little(u16).init(self.fnt_sub_table_folder_id)));
+                                try self.file.write([]u8 { u8(file.name.len) });
+                                try self.file.write(file.name);
+                                try self.file.write(utils.asConstBytes(Little(u16), Little(u16).init(self.fnt_sub_table_folder_id)));
                                 self.fnt_sub_table_folder_id += 1;
                             },
                             Nitro.Kind.File => |sub_file| {
-                                %return self.file.write([]u8 { u8(file.name.len + 0x80) });
-                                %return self.file.write(file.name);
+                                try self.file.write([]u8 { u8(file.name.len + 0x80) });
+                                try self.file.write(file.name);
                             }
                         }
                     }
 
                     // Write sub-table null terminator
-                    %return self.file.write([]u8 { 0x00 });
-                    self.fnt_sub_offset = u32(%return self.file.getPos());
+                    try self.file.write([]u8 { 0x00 });
+                    self.fnt_sub_offset = u32(try self.file.getPos());
                     
                     const id = self.folder_id;  
                     self.folder_id += 1;
 
                     for (folder.files) |file| {
-                        %return self.writeToFile(file, id);
+                        try self.writeToFile(file, id);
                     }
                 },
                 Nitro.Kind.File => |file| {
                     const start = self.file_offset;
-                    %return self.file.seekTo(start);
+                    try self.file.seekTo(start);
 
                     switch (file) {
                         Nitro.File.Other => |other| {
-                            %return self.file.write(other);
+                            try self.file.write(other);
                         },
                         else => @panic("TODO: Write code for writing other file types"),
                     }
 
-                    self.file_offset = u32(%return self.file.getPos());
+                    self.file_offset = u32(try self.file.getPos());
                     const end = self.file_offset - 1;
 
-                    %return self.file.seekTo(self.fat_offset);
-                    %return self.file.write(
+                    try self.file.seekTo(self.fat_offset);
+                    try self.file.write(
                         utils.asConstBytes(
                             FatEntry,
                             FatEntry {
@@ -1062,7 +1062,7 @@ pub const Rom = struct {
                             }
                         )
                     );    
-                    self.fat_offset = %return self.file.getPos();
+                    self.fat_offset = try self.file.getPos();
                 }
             }
         }
@@ -1080,27 +1080,27 @@ pub const Rom = struct {
 
         const alignment = 0x200;
 
-        %return file.seekTo(0x4000);
-        header.arm9_rom_offset = toLittle(u32, u32(%return file.getPos()));
+        try file.seekTo(0x4000);
+        header.arm9_rom_offset = toLittle(u32, u32(try file.getPos()));
         header.arm9_size = toLittle(u32, u32(self.arm9.len));
-        %return file.write(self.arm9);
+        try file.write(self.arm9);
 
-        %return file.seekTo(toAlignment(%return file.getPos(), alignment));
-        header.arm9_overlay_offset = toLittle(u32, u32(%return file.getPos()));
+        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        header.arm9_overlay_offset = toLittle(u32, u32(try file.getPos()));
         header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay.len));
-        %return file.write(self.arm9_overlay);
+        try file.write(self.arm9_overlay);
 
-        %return file.seekTo(toAlignment(%return file.getPos(), alignment));
-        header.arm7_rom_offset = toLittle(u32, u32(%return file.getPos()));
+        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        header.arm7_rom_offset = toLittle(u32, u32(try file.getPos()));
         header.arm7_size = toLittle(u32, u32(self.arm7.len));
-        %return file.write(self.arm7);
+        try file.write(self.arm7);
 
-        %return file.seekTo(toAlignment(%return file.getPos(), alignment));
-        header.arm7_overlay_offset = toLittle(u32, u32(%return file.getPos()));
+        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        header.arm7_overlay_offset = toLittle(u32, u32(try file.getPos()));
         header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
-        %return file.write(self.arm7_overlay);
+        try file.write(self.arm7_overlay);
 
-        header.fnt_offset = toLittle(u32, u32(toAlignment(%return file.getPos(), alignment)));
+        header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), alignment)));
         header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
 
         header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), alignment)));
@@ -1118,7 +1118,7 @@ pub const Rom = struct {
         if (header.fat_size.get() == 0x00)
             header.fat_offset = toLittle(u32, 0x00);
 
-        %return header.validate();
+        try header.validate();
 
         // 00h  4    Offset to Sub-table             (originated at FNT base)
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
@@ -1136,10 +1136,10 @@ pub const Rom = struct {
             .file_offset = file_offset,
         };
 
-        %return writer.writeToFile(self.root, fs_info.folders);
+        try writer.writeToFile(self.root, fs_info.folders);
         
-        %return file.seekTo(0x00);
-        %return file.write(utils.asBytes(Header, header));
+        try file.seekTo(0x00);
+        try file.write(utils.asBytes(Header, header));
     }
 
     fn toAlignment(address: usize, alignment: usize) -> usize {

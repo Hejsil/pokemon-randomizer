@@ -185,35 +185,35 @@ pub const Game = struct {
     last: []u8,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Game {
-        const header = %return utils.createAndReadNoEof(gba.Header, file, allocator);
+        const header = try utils.createAndReadNoEof(gba.Header, file, allocator);
         %defer allocator.destroy(header);
         
-        %return header.validate();
+        try header.validate();
 
         // TODO: These are emerald offsets for now
         const base_stats_offset = 0x03203CC;
         const evolution_table_offset = 0x032531C;
 
-        const bytes_before_base_stats = base_stats_offset - %return file.getPos();
-        const before_base_stats = %return utils.allocAndReadNoEof(u8, file, allocator, bytes_before_base_stats);
+        const bytes_before_base_stats = base_stats_offset - try file.getPos();
+        const before_base_stats = try utils.allocAndReadNoEof(u8, file, allocator, bytes_before_base_stats);
         %defer allocator.destroy(before_base_stats);
 
         const base_stats_len = (0x032531C - base_stats_offset) / @sizeOf(BasePokemon);
-        const base_stats = %return utils.allocAndReadNoEof(BasePokemon, file, allocator, base_stats_len);
+        const base_stats = try utils.allocAndReadNoEof(BasePokemon, file, allocator, base_stats_len);
 
-        const bytes_before_evolution_table = evolution_table_offset - %return file.getPos();
-        const before_evolution_table = %return utils.allocAndReadNoEof(u8, file, allocator, bytes_before_evolution_table);
+        const bytes_before_evolution_table = evolution_table_offset - try file.getPos();
+        const before_evolution_table = try utils.allocAndReadNoEof(u8, file, allocator, bytes_before_evolution_table);
         %defer allocator.destroy(before_evolution_table);
 
         const evolution_table_len = (0x032937C - evolution_table_offset) / @sizeOf([5]Evolution);
-        const evolution_table = %return utils.allocAndReadNoEof([5]Evolution, file, allocator, evolution_table_len);
+        const evolution_table = try utils.allocAndReadNoEof([5]Evolution, file, allocator, evolution_table_len);
 
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
-        const last = %return stream.readAllAlloc(allocator, @maxValue(usize));
+        const last = try stream.readAllAlloc(allocator, @maxValue(usize));
 
-        if ((%return file.getPos()) % 0x1000000 != 0)
+        if ((try file.getPos()) % 0x1000000 != 0)
             return error.InvalidRomSize;
 
         return Game {
@@ -230,14 +230,14 @@ pub const Game = struct {
     }
 
     pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
-        %return game.header.validate();
+        try game.header.validate();
 
-        %return stream.write(utils.asConstBytes(gba.Header, game.header));
-        %return stream.write(game.before_base_stats);
-        %return stream.write(([]u8)(game.base_stats));
-        %return stream.write(game.before_evolution_table);
-        %return stream.write(([]u8)(game.evolution_table));
-        %return stream.write(game.last);
+        try stream.write(utils.asConstBytes(gba.Header, game.header));
+        try stream.write(game.before_base_stats);
+        try stream.write(([]u8)(game.base_stats));
+        try stream.write(game.before_evolution_table);
+        try stream.write(([]u8)(game.evolution_table));
+        try stream.write(game.last);
     }
 
     pub fn destroy(game: &const Game, allocator: &mem.Allocator) {

@@ -13,6 +13,6 @@ pub fn randomizeStats(game: &common.IGame, random: &rand.Rand) -> %void {
         pokemon.sp_attack  = random.scalar(u8);
         pokemon.sp_defense = random.scalar(u8);
 
-        %return game.setPokemon(i, pokemon);
+        try game.setPokemon(i, pokemon);
     }
 }
