@@ -6,6 +6,7 @@ const common = @import("common.zig");
 
 const mem   = std.mem;
 const debug = std.debug;
+const io    = std.io;
 
 const assert = debug.assert;
 const u1     = @IntType(false, 1);
@@ -170,41 +171,82 @@ const bulbasaur_evos = [5]Evolution {
     zero_evo,
 };
 
-error CouldntFindPokemonOffset;
-error CouldntFindEvolutionOffset;
+error InvalidRomSize;
 
 pub const Game = struct {
-    rom: &gba.Rom,
-    pokemons: []BasePokemon,
-    evolutions: [][5]Evolution,
+    header: &gba.Header,
+    
+    before_base_stats: []u8,
+    base_stats: []BasePokemon,
 
-    pub fn fromRom(rom: &gba.Rom) -> %Game {
-        const bulbasaur_evos_bytes = utils.asConstBytes([5]Evolution, &bulbasaur_evos);
+    before_evolution_table: []u8,
+    evolution_table: [][5]Evolution,
 
-        // TODO: Figure out if there is some other way of finding the offsets of this data in the rom.
-        //       Maybe these offsets are present in the assembly?
-        // TODO: It seems like we can assume that the order of our offsets are as followed (Ememrald only):
-        //       https://github.com/pret/pokeemerald/blob/c9f196cdfea08eefffd39ebc77a150f197e1250e/data/data2c.s
-        var pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_fingerprint) ?? return error.CouldntFindPokemonOffset;
-        var evolution_offset = mem.indexOf(u8, rom.data, bulbasaur_evos_bytes)  ?? return error.CouldntFindEvolutionOffset;
+    last: []u8,
 
-        // Bulbasaur is pokemon 1, but there is a pokemon 0, so we subtract from our found offset
-        pokemon_offset   -= @sizeOf(BasePokemon);
-        evolution_offset -= @sizeOf([5]Evolution);
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Game {
+        const header = %return utils.createAndReadNoEof(gba.Header, file, allocator);
+        %defer allocator.destroy(header);
+        
+        %return header.validate();
 
-        // Source: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
-        const pokemon_count = 440;
-        const pokemon_byte_count   = pokemon_count * @sizeOf(BasePokemon);
-        const evolution_byte_count = pokemon_count * @sizeOf([5]Evolution);
+        // TODO: These are emerald offsets for now
+        const base_stats_offset = 0x03203CC;
+        const evolution_table_offset = 0x032531C;
 
-        const pokemons   = ([]BasePokemon) (rom.data[pokemon_offset  ..(pokemon_offset   + pokemon_byte_count  )]);
-        const evolutions = ([][5]Evolution)(rom.data[evolution_offset..(evolution_offset + evolution_byte_count)]);
+        const bytes_before_base_stats = base_stats_offset - %return file.getPos();
+        const before_base_stats = %return utils.allocAndReadNoEof(u8, file, allocator, bytes_before_base_stats);
+        %defer allocator.destroy(before_base_stats);
+
+        const base_stats_len = (0x032531C - base_stats_offset) / @sizeOf(BasePokemon);
+        const base_stats = %return utils.allocAndReadNoEof(BasePokemon, file, allocator, base_stats_len);
+
+        const bytes_before_evolution_table = evolution_table_offset - %return file.getPos();
+        const before_evolution_table = %return utils.allocAndReadNoEof(u8, file, allocator, bytes_before_evolution_table);
+        %defer allocator.destroy(before_evolution_table);
+
+        const evolution_table_len = (0x032937C - evolution_table_offset) / @sizeOf([5]Evolution);
+        const evolution_table = %return utils.allocAndReadNoEof([5]Evolution, file, allocator, evolution_table_len);
+
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
+
+        const last = %return stream.readAllAlloc(allocator, @maxValue(usize));
+
+        if ((%return file.getPos()) % 0x1000000 != 0)
+            return error.InvalidRomSize;
 
         return Game {
-            .rom = rom,
-            .pokemons = pokemons,
-            .evolutions = evolutions,
+            .header = header,
+            
+            .before_base_stats = before_base_stats,
+            .base_stats = base_stats,
+
+            .before_evolution_table = before_evolution_table,
+            .evolution_table = evolution_table,
+
+            .last = last,
         };
+    }
+
+    pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
+        %return game.header.validate();
+
+        %return stream.write(utils.asConstBytes(gba.Header, game.header));
+        %return stream.write(game.before_base_stats);
+        %return stream.write(([]u8)(game.base_stats));
+        %return stream.write(game.before_evolution_table);
+        %return stream.write(([]u8)(game.evolution_table));
+        %return stream.write(game.last);
+    }
+
+    pub fn destroy(game: &const Game, allocator: &mem.Allocator) {
+        allocator.destroy(game.header);
+        allocator.free(game.before_base_stats);
+        allocator.free(game.base_stats);
+        allocator.free(game.before_evolution_table);
+        allocator.free(game.evolution_table);
+        allocator.free(game.last);
     }
 };
 
@@ -232,8 +274,8 @@ pub const GameAdapter = struct {
     fn getPokemon(base: &common.IGame, index: usize) -> ?common.BasePokemon {
         const game = getGame(base);
 
-        if (index < game.pokemons.len) {
-            const pokemon = game.pokemons[index];
+        if (index < game.base_stats.len) {
+            const pokemon = game.base_stats[index];
 
             return common.BasePokemon {
                 .hp             = pokemon.hp,
@@ -274,12 +316,12 @@ pub const GameAdapter = struct {
     fn setPokemon(base: &common.IGame, index: usize, pokemon: &const common.BasePokemon) -> %void {
         var game = getGame(base);
 
-        if (game.pokemons.len <= index) 
+        if (game.base_stats.len <= index) 
             return error.OutOfRange;
 
         switch (pokemon.extra) {
             common.Generation.III => |extra| {
-                game.pokemons[index] = BasePokemon {
+                game.base_stats[index] = BasePokemon {
                     .hp               = pokemon.hp,
                     .attack           = pokemon.attack,
                     .defense          = pokemon.defense,

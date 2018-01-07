@@ -13,13 +13,13 @@ const rand  = std.rand;
 const path  = os.path;
 
 const Rom = union(enum) {
-    Gba: gba.Rom,
+    Gba: gen3.Game,
     Nds: nds.Rom,
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
         switch (*self) {
-            Rom.Gba => |gba_rom| gba_rom.destroy(allocator),
-            Rom.Nds => |nds_rom| nds_rom.destroy(allocator),
+            Rom.Gba => |gen3_rom| gen3_rom.destroy(allocator),
+            Rom.Nds => |nds_rom|  nds_rom.destroy(allocator),
         }
     }
 };
@@ -29,8 +29,7 @@ error NotARom;
 fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
     gba_blk: {
         var rom_file = %return io.File.openRead(file_path, null);
-        var file_stream = io.FileInStream.init(&rom_file);
-        var rom = gba.Rom.fromStream(&file_stream.stream, allocator) %% {
+        var rom = gen3.Game.fromFile(&rom_file, allocator) %% {
             rom_file.close();
             break :gba_blk;
         };
@@ -87,12 +86,8 @@ pub fn main() -> %void {
     defer rom.destroy(allocator);
 
     switch (rom) {
-        Rom.Gba => |*gba_rom| {
-            var game = gen3.Game.fromRom(gba_rom) %% |err| {
-                %return stdout_stream.print("Invalide generation 3 pokemon game.\n");
-                return err;
-            };
-            var adapter = gen3.GameAdapter.init(&game);
+        Rom.Gba => |*gen3_rom| {
+            var adapter = gen3.GameAdapter.init(gen3_rom);
             var random = rand.Rand.init(0);
             randomizer.randomizeStats(&adapter.base, &random) %% |err| {
                 %return stdout_stream.print("Couldn't randomize stats.\n");
@@ -106,7 +101,7 @@ pub fn main() -> %void {
             defer out_file.close();
 
             var file_stream = io.FileOutStream.init(&out_file);
-            gba_rom.writeToStream(&file_stream.stream) %% |err| {
+            gen3_rom.writeToStream(&file_stream.stream) %% |err| {
                 %return stdout_stream.print("Unable to write gba to {}.\n", out_path);
                 return err;
             };

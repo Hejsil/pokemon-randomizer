@@ -748,25 +748,21 @@ pub const Rom = struct {
     root: Nitro,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
-        var file_stream = io.FileInStream.init(file);
-        var stream = &file_stream.stream;
-
-        var header = %return allocator.create(Header);
+        const header = %return utils.createAndReadNoEof(Header, file, allocator);
         %defer allocator.destroy(header);
 
-        %return stream.readNoEof(utils.asBytes(Header, header));
         %return header.validate();
 
-        var arm9 = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        var arm9 = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
         %defer allocator.free(arm9);
 
-        var arm7 = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        var arm7 = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
         %defer allocator.free(arm7);
 
-        var arm9_overlay = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
+        var arm9_overlay = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
         %defer allocator.free(arm9_overlay);
 
-        var arm7_overlay = %return seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
+        var arm7_overlay = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
         %defer allocator.free(arm7_overlay);
 
         var root = %return readFileSystem(
@@ -787,24 +783,6 @@ pub const Rom = struct {
             .root = root,
         };
     }
-
-    fn seekToAllocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]T {
-        %return file.seekTo(offset);
-
-        return allocAndReadNoEof(T, file, allocator, size);
-    }  
-
-    fn allocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, size: usize) -> %[]T {
-        var file_stream = io.FileInStream.init(file);
-        var stream = &file_stream.stream;
-
-        var data = %return allocator.alloc(T, size);
-        %defer allocator.free(data);
-
-        %return stream.readNoEof(([]u8)(data));
-
-        return data;
-    }  
         
     const FatEntry = packed struct {
         start: Little(u32),
@@ -831,13 +809,13 @@ pub const Rom = struct {
         var count : Little(u16) = undefined;
         %return stream.readNoEof(utils.asBytes(Little(u16), &count));
 
-        const fnt_main_table = %return seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
+        const fnt_main_table = %return utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
         defer allocator.free(fnt_main_table);
         
         if (4096 < fnt_main_table.len)                             return error.InvalidFntMainTableSize;
         if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
 
-        const fat = %return seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
+        const fat = %return utils.seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
         defer allocator.free(fat);
 
         const root_name = %return allocator.alloc(u8, 0);
@@ -897,7 +875,7 @@ pub const Rom = struct {
 
             const kind = type_length_pair.first;
             const length = type_length_pair.second;
-            const child_name = %return allocAndReadNoEof(u8, file, allocator, length);
+            const child_name = %return utils.allocAndReadNoEof(u8, file, allocator, length);
             %defer allocator.free(child_name);
 
             switch (kind) {
@@ -912,7 +890,7 @@ pub const Rom = struct {
                     const current_pos = %return file.getPos();
 
                     // TODO: Doc doesn't seem to be sure where entry.end actually is:                       (Start+Len...-1?)
-                    var file_data = %return seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
+                    var file_data = %return utils.seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
                     %defer allocator.free(file_data);
                     
                     %return file.seekTo(current_pos);

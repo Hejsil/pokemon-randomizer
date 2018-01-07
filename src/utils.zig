@@ -1,3 +1,8 @@
+const std = @import("std");
+
+const io  = std.io;
+const mem = std.mem;
+
 pub fn Pair(comptime F: type, comptime S: type) -> type {
     return struct {
         const Self = this;
@@ -39,3 +44,32 @@ pub fn first(comptime T: type, args: []const T) -> %T {
         return error.EmptySlice;
     }
 }
+
+pub fn seekToAllocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]T {
+    %return file.seekTo(offset);
+
+    return allocAndReadNoEof(T, file, allocator, size);
+}  
+
+pub fn allocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, size: usize) -> %[]T {
+    var file_stream = io.FileInStream.init(file);
+    var stream = &file_stream.stream;
+
+    var data = %return allocator.alloc(T, size);
+    %defer allocator.free(data);
+
+    %return stream.readNoEof(([]u8)(data));
+
+    return data;
+}  
+
+pub fn seekToCreateAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize) -> %&T {
+    %return file.seekTo(offset);
+
+    return createAndReadNoEof(T, file, allocator, size);
+}  
+
+pub fn createAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator) -> %&T {
+    const res = %return allocAndReadNoEof(T, file, allocator, 1);
+    return &res[0];
+}  
