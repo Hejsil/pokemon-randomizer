@@ -264,8 +264,8 @@ pub const Header = packed struct {
         if (!utils.between(u32, self.arm7_ram_address.get(), 0x2000000, 0x23BFE00) and
             !utils.between(u32, self.arm7_ram_address.get(), 0x37F8000, 0x3807E00))
             return error.InvalidArm7RamAddress;
-        if (self.arm9_size.get() > 0x3BFE00) 
-            return error.InvalidArm9Size;
+        if (self.arm7_size.get() > 0x3BFE00) 
+            return error.InvalidArm7Size;
 
         if (utils.between(u32, self.icon_title_offset.get(), 0x1, 0x7FFF))
             return error.InvalidIconTitleOffset;
@@ -330,6 +330,194 @@ pub const Header = packed struct {
 
     fn isUpperAsciiOrZero(char: u8) -> bool {
         return ascii.isUpperAscii(char) or char == 0;
+    }
+
+    pub fn prettyPrint(self: &const Header, stream: &io.OutStream) -> %void {
+        %return stream.print("game_title: {}\n", self.game_title);
+        %return stream.print("gamecode: {}\n", self.gamecode);
+        %return stream.print("makercode: {}\n", self.makercode);
+
+        %return stream.print("unitcode: {x}\n", self.unitcode);
+        %return stream.print("encryption_seed_select: {x}\n", self.encryption_seed_select);
+        %return stream.print("encryption_seed_select: {x}\n", self.device_capacity);
+
+        %return stream.print("encryption_seed_select: {x}\n", self.device_capacity);
+
+        %return prettyPrintSliceField(u8, "reserved1", "{x}", stream, self.reserved1);
+
+        %return stream.print("reserved2: {x}\n", self.reserved2);
+        
+        %return stream.print("nds_region: {x}\n", self.nds_region);
+        %return stream.print("rom_version: {x}\n", self.rom_version);
+        %return stream.print("autostart: {x}\n", self.autostart);
+
+        %return stream.print("arm9_rom_offset: {x}\n", self.arm9_rom_offset.get());
+        %return stream.print("arm9_entry_address: {x}\n", self.arm9_entry_address.get());
+        %return stream.print("arm9_ram_address: {x}\n", self.arm9_ram_address.get());
+        %return stream.print("arm9_size: {x}\n", self.arm9_size.get());
+
+        %return stream.print("arm7_rom_offset: {x}\n", self.arm7_rom_offset.get());
+        %return stream.print("arm7_entry_address: {x}\n", self.arm7_entry_address.get());
+        %return stream.print("arm7_ram_address: {x}\n", self.arm7_ram_address.get());
+        %return stream.print("arm7_size: {x}\n", self.arm7_size.get());
+
+        %return stream.print("fnt_offset: {x}\n", self.fnt_offset.get());
+        %return stream.print("fnt_size: {x}\n", self.fnt_size.get());
+
+        %return stream.print("fat_offset: {x}\n", self.fat_offset.get());
+        %return stream.print("fat_size: {x}\n", self.fat_size.get());
+
+        %return stream.print("arm9_overlay_offset: {x}\n", self.arm9_overlay_offset.get());
+        %return stream.print("arm9_overlay_size: {x}\n", self.arm9_overlay_size.get());
+
+        %return stream.print("arm7_overlay_offset: {x}\n", self.arm7_overlay_offset.get());
+        %return stream.print("arm7_overlay_size: {x}\n", self.arm7_overlay_size.get());
+
+        %return prettyPrintSliceField(u8, "port_40001A4h_setting_for_normal_commands", "{x}", stream, self.port_40001A4h_setting_for_normal_commands);
+        %return prettyPrintSliceField(u8, "port_40001A4h_setting_for_key1_commands", "{x}", stream, self.port_40001A4h_setting_for_key1_commands);
+
+        %return stream.print("icon_title_offset: {x}\n", self.icon_title_offset.get());
+
+        %return stream.print("secure_area_checksum: {x}\n", self.secure_area_checksum.get());
+        %return stream.print("secure_area_delay: {x}\n", self.secure_area_delay.get());
+
+        %return stream.print("arm9_auto_load_list_ram_address: {x}\n", self.arm9_auto_load_list_ram_address.get());
+        %return stream.print("arm7_auto_load_list_ram_address: {x}\n", self.arm7_auto_load_list_ram_address.get());
+
+        %return stream.print("secure_area_disable: {x}\n", self.secure_area_disable.get());
+        %return stream.print("total_used_rom_size: {x}\n", self.total_used_rom_size.get());
+        %return stream.print("rom_header_size: {x}\n", self.rom_header_size.get());
+
+        %return prettyPrintSliceField(u8, "reserved3", "{x}", stream, self.reserved3);
+        %return prettyPrintSliceField(u8, "nintendo_logo", "{x}", stream, self.nintendo_logo);
+
+        %return stream.print("nintendo_logo_checksum: {x}\n", self.nintendo_logo_checksum.get());
+        %return stream.print("header_checksum: {x}\n", self.header_checksum.get());
+
+        %return stream.print("debug_rom_offset: {x}\n", self.debug_rom_offset.get());
+        %return stream.print("debug_size: {x}\n", self.debug_size.get());
+        %return stream.print("debug_ram_address: {x}\n", self.debug_ram_address.get());
+
+        %return prettyPrintSliceField(u8, "reserved4", "{x}", stream, self.reserved4);
+        %return prettyPrintSliceField(u8, "reserved5", "{x}", stream, self.reserved5);
+
+
+        %return prettyPrintSliceField(u8, "wram_slots", "{x}", stream, self.wram_slots);
+        %return prettyPrintSliceField(u8, "arm9_wram_areas", "{x}", stream, self.arm9_wram_areas);
+        %return prettyPrintSliceField(u8, "arm7_wram_areas", "{x}", stream, self.arm7_wram_areas);
+        %return prettyPrintSliceField(u8, "wram_slot_master", "{x}", stream, self.wram_slot_master);
+
+        %return stream.print("unknown: {x}\n", self.unknown);
+
+        %return prettyPrintSliceField(u8, "region_flags", "{x}", stream, self.region_flags);
+        %return prettyPrintSliceField(u8, "access_control", "{x}", stream, self.access_control);
+        %return prettyPrintSliceField(u8, "arm7_scfg_ext_setting", "{x}", stream, self.arm7_scfg_ext_setting);
+        %return prettyPrintSliceField(u8, "reserved6", "{x}", stream, self.reserved6);
+
+        %return stream.print("unknown: {x}\n", self.unknown_flags);
+        %return stream.print("arm9i_rom_offset: {x}\n", self.arm9i_rom_offset.get());
+
+        %return prettyPrintSliceField(u8, "reserved7", "{x}", stream, self.reserved7);
+
+        %return stream.print("arm9i_ram_load_address: {x}\n", self.arm9i_ram_load_address.get());
+        %return stream.print("arm9i_size: {x}\n", self.arm9i_size.get());
+        %return stream.print("arm7i_rom_offset: {x}\n", self.arm7i_rom_offset.get());
+
+        %return stream.print("device_list_arm7_ram_addr: {x}\n", self.device_list_arm7_ram_addr.get());
+
+        %return stream.print("arm7i_ram_load_address: {x}\n", self.arm7i_ram_load_address.get());
+        %return stream.print("arm7i_size: {x}\n", self.arm7i_size.get());
+        
+        %return stream.print("digest_ntr_region_offset: {x}\n", self.digest_ntr_region_offset.get());
+
+        %return stream.print("digest_ntr_region_offset: {x}",       self.digest_ntr_region_offset.get()      );
+        %return stream.print("digest_ntr_region_length: {x}",       self.digest_ntr_region_length.get()      );
+        %return stream.print("digest_twl_region_offset: {x}",       self.digest_twl_region_offset.get()      );
+        %return stream.print("digest_twl_region_length: {x}",       self.digest_twl_region_length.get()      );
+        %return stream.print("digest_sector_hashtable_offset: {x}", self.digest_sector_hashtable_offset.get());
+        %return stream.print("digest_sector_hashtable_length: {x}", self.digest_sector_hashtable_length.get()); 
+        %return stream.print("digest_block_hashtable_offset: {x}",  self.digest_block_hashtable_offset.get() );   
+        %return stream.print("digest_block_hashtable_length: {x}",  self.digest_block_hashtable_length.get() );    
+        %return stream.print("digest_sector_size: {x}",             self.digest_sector_size.get()            );             
+        %return stream.print("digest_block_sectorcount: {x}",       self.digest_block_sectorcount.get()      ); 
+
+        %return stream.print("icon_title_size: {x}", self.icon_title_size.get());
+
+        %return prettyPrintSliceField(u8, "reserved8", "{x}", stream, self.reserved8);
+
+        %return stream.print("total_used_rom_size_including_dsi_area: {x}", self.total_used_rom_size_including_dsi_area.get());
+
+        %return prettyPrintSliceField(u8, "reserved9", "{x}", stream, self.reserved9);
+        %return prettyPrintSliceField(u8, "reserved10", "{x}", stream, self.reserved10);
+        %return prettyPrintSliceField(u8, "reserved11", "{x}", stream, self.reserved11);
+
+        %return stream.print("modcrypt_area_1_offset: {x}", self.modcrypt_area_1_offset.get());
+        %return stream.print("modcrypt_area_1_size: {x}", self.modcrypt_area_1_size.get());
+        %return stream.print("modcrypt_area_2_offset: {x}", self.modcrypt_area_2_offset.get());
+        %return stream.print("modcrypt_area_2_size: {x}", self.modcrypt_area_2_size.get());
+
+        %return prettyPrintSliceField(u8, "title_id_emagcode", "{x}", stream, self.title_id_emagcode);
+
+        %return stream.print("title_id_filetype: {x}", self.title_id_filetype);
+
+        %return prettyPrintSliceField(u8, "title_id_rest", "{x}", stream, self.title_id_rest);
+
+        %return stream.print("public_sav_filesize: {x}", self.public_sav_filesize.get());
+        %return stream.print("private_sav_filesize: {x}", self.private_sav_filesize.get());
+
+        %return prettyPrintSliceField(u8, "reserved12", "{x}", stream, self.reserved12);
+
+        %return stream.print("cero_japan: {x}", self.cero_japan);
+        %return stream.print("esrb_us_canada: {x}", self.esrb_us_canada);
+
+        %return stream.print("reserved13: {x}", self.reserved13);
+
+        %return stream.print("usk_germany: {x}", self.usk_germany);
+        %return stream.print("pegi_pan_europe: {x}", self.pegi_pan_europe);
+
+        %return stream.print("resereved14: {x}", self.resereved14);
+
+        %return stream.print("pegi_portugal: {x}", self.pegi_portugal);
+        %return stream.print("pegi_and_bbfc_uk: {x}", self.pegi_and_bbfc_uk);
+        %return stream.print("agcb_australia: {x}", self.agcb_australia);
+        %return stream.print("grb_south_korea: {x}", self.grb_south_korea);
+
+        %return prettyPrintSliceField(u8, "reserved15", "{x}", stream, self.reserved15);
+
+        %return prettyPrintSliceField(u8, "arm9_hash_with_secure_area", "{x}", stream, self.arm9_hash_with_secure_area);
+        %return prettyPrintSliceField(u8, "arm7_hash", "{x}", stream, self.arm7_hash);
+        %return prettyPrintSliceField(u8, "digest_master_hash", "{x}", stream, self.digest_master_hash);
+        %return prettyPrintSliceField(u8, "icon_title_hash", "{x}", stream, self.icon_title_hash);
+        %return prettyPrintSliceField(u8, "arm9i_hash", "{x}", stream, self.arm9i_hash);
+        %return prettyPrintSliceField(u8, "arm7i_hash", "{x}", stream, self.arm7i_hash);
+
+        %return prettyPrintSliceField(u8, "reserved16", "{x}", stream, self.reserved16);
+
+        %return prettyPrintSliceField(u8, "arm9_hash_without_secure_area", "{x}", stream, self.arm9_hash_without_secure_area);
+
+        %return prettyPrintSliceField(u8, "reserved17", "{x}", stream, self.reserved17);
+        %return prettyPrintSliceField(u8, "reserved18", "{x}", stream, self.reserved18);
+
+        %return prettyPrintSliceField(u8, "signature_across_header_entries", "{x}", stream, self.signature_across_header_entries);
+    }
+
+    fn prettyPrintSliceField(comptime T: type, comptime field_name: []const u8, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
+        %return stream.print(field_name ++ ": ");
+        %return prettyPrintSlice(T, format, stream, slice);
+        %return stream.print("\n");
+    }
+
+    fn prettyPrintSlice(comptime T: type, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
+        %return stream.write("{ ");
+        
+        for (slice) |item, i| {
+            %return stream.print(format, item);
+
+            if (i != slice.len - 1) 
+                %return stream.print(", ");
+        }
+
+        %return stream.write(" }");
     }
 };
 
@@ -912,34 +1100,51 @@ pub const Rom = struct {
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files * @sizeOf(FatEntry))       return error.InvalidSizeInHeader;
 
-        header.arm9_rom_offset = toLittle(u32, 0x4000);
+        const alignment = 0x200;
+
+        %return file.seekTo(0x4000);
+        header.arm9_rom_offset = toLittle(u32, u32(%return file.getPos()));
         header.arm9_size = toLittle(u32, u32(self.arm9.len));
+        %return file.write(self.arm9);
 
-        header.arm7_rom_offset = little.add(u32, header.arm9_rom_offset, header.arm9_size);
-        header.arm7_size = toLittle(u32, u32(self.arm7.len));
-
-        header.arm9_overlay_offset = little.add(u32, header.arm7_rom_offset, header.arm7_size);
+        %return file.seekTo(toAlignment(%return file.getPos(), alignment));
+        header.arm9_overlay_offset = toLittle(u32, u32(%return file.getPos()));
         header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay.len));
-        
-        header.arm7_overlay_offset = little.add(u32, header.arm9_overlay_offset, header.arm9_overlay_size);
-        header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
+        %return file.write(self.arm9_overlay);
 
-        header.fnt_offset = little.add(u32, header.arm7_overlay_offset, header.arm7_overlay_size);
+        %return file.seekTo(toAlignment(%return file.getPos(), alignment));
+        header.arm7_rom_offset = toLittle(u32, u32(%return file.getPos()));
+        header.arm7_size = toLittle(u32, u32(self.arm7.len));
+        %return file.write(self.arm7);
+
+        %return file.seekTo(toAlignment(%return file.getPos(), alignment));
+        header.arm7_overlay_offset = toLittle(u32, u32(%return file.getPos()));
+        header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
+        %return file.write(self.arm7_overlay);
+
+        header.fnt_offset = toLittle(u32, u32(toAlignment(%return file.getPos(), alignment)));
         header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
 
-        header.fat_offset = little.add(u32, header.fnt_offset, header.fnt_size);
+        header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), alignment)));
         header.fat_size = toLittle(u32, u32(fs_info.files * @sizeOf(FatEntry)));
+
+        if (header.arm9_overlay_size.get() == 0x00)
+            header.arm9_overlay_offset = toLittle(u32, 0x00);
+
+        if (header.arm7_overlay_size.get() == 0x00)
+            header.arm7_overlay_offset = toLittle(u32, 0x00);
+
+        if (header.fnt_size.get() == 0x00)
+            header.fnt_offset = toLittle(u32, 0x00);
+
+        if (header.fat_size.get() == 0x00)
+            header.fat_offset = toLittle(u32, 0x00);
+
+        %return header.validate();
 
         // 00h  4    Offset to Sub-table             (originated at FNT base)
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
-
-        %return file.write(utils.asBytes(Header, header));
-        %return file.write([]u8{ 0 } ** (0x4000 - @sizeOf(Header)));
-        %return file.write(self.arm9);
-        %return file.write(self.arm7);
-        %return file.write(self.arm9_overlay);
-        %return file.write(self.arm7_overlay);
 
         var writer = NitroWriter {
             .file = file,
@@ -953,7 +1158,20 @@ pub const Rom = struct {
             .file_offset = file_offset,
         };
 
-        return writer.writeToFile(self.root, fs_info.folders);
+        %return writer.writeToFile(self.root, fs_info.folders);
+        
+        %return file.seekTo(0x00);
+        %return file.write(utils.asBytes(Header, header));
+    }
+
+    fn toAlignment(address: usize, alignment: usize) -> usize {
+        const res = address % alignment;
+        const result = address + (alignment - res);
+
+        assert(result % alignment == 0);
+        assert(address <= result);
+
+        return result;
     }
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {

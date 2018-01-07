@@ -30,14 +30,22 @@ fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
     gba_blk: {
         var rom_file = %return io.File.openRead(file_path, null);
         var file_stream = io.FileInStream.init(&rom_file);
-        var rom = gba.Rom.fromStream(&file_stream.stream, allocator) %% break :gba_blk;
+        var rom = gba.Rom.fromStream(&file_stream.stream, allocator) %% {
+            rom_file.close();
+            break :gba_blk;
+        };
+        rom_file.close();
 
         return Rom { .Gba = rom };
     }
 
     nds_blk: {
         var rom_file = %return io.File.openRead(file_path, null);
-        var rom = nds.Rom.fromFile(&rom_file, allocator) %% break :nds_blk;
+        var rom = nds.Rom.fromFile(&rom_file, allocator) %% {
+            rom_file.close();
+            break :nds_blk;
+        };
+        rom_file.close();
 
         return Rom { .Nds = rom };
     }
@@ -95,6 +103,7 @@ pub fn main() -> %void {
                 %return stdout_stream.print("Couldn't open {}.\n", out_path);
                 return err;
             };
+            defer out_file.close();
 
             var file_stream = io.FileOutStream.init(&out_file);
             gba_rom.writeToStream(&file_stream.stream) %% |err| {
@@ -103,17 +112,35 @@ pub fn main() -> %void {
             };
         },
         Rom.Nds => |*nds_rom| {
-            %return nds_rom.root.tree(stdout_stream, 0);
+            var before = io.File.openWrite("before", null) %% |err| {
+                %return stdout_stream.print("Couldn't open {}.\n", out_path);
+                return err;
+            };
+            defer before.close();
+
+            var before_file_stream = io.FileOutStream.init(&before);
+            var before_stream = &before_file_stream.stream;
+            %return nds_rom.header.prettyPrint(before_stream);
 
             var out_file = io.File.openWrite(out_path, null) %% |err| {
                 %return stdout_stream.print("Couldn't open {}.\n", out_path);
                 return err;
             };
+            defer out_file.close();
 
             nds_rom.writeToFile(&out_file) %% |err| {
-                %return stdout_stream.print("Unable to write nds to {}\n", out_path);
+                %return stdout_stream.print("Unable to write nds to {}: {}\n", out_path, @errorName(err));
                 return err;
             };
+
+            var after = io.File.openWrite("after", null) %% |err| {
+                %return stdout_stream.print("Couldn't open {}.\n", out_path);
+                return err;
+            };
+            defer after.close();
+            var after_file_stream = io.FileOutStream.init(&after);
+            var after_stream = &after_file_stream.stream;
+            %return nds_rom.header.prettyPrint(after_stream);
         },
         else => {
             %return stdout_stream.print("Rom type not supported (yet)\n");
