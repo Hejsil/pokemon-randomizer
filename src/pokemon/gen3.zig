@@ -10,7 +10,8 @@ const debug = std.debug;
 const assert = debug.assert;
 const u1     = @IntType(false, 1);
 
-const Little = little.Little;
+const toLittle = little.toLittle;
+const Little   = little.Little;
 
 pub const BasePokemon = packed struct {
     hp:         u8,
@@ -92,27 +93,23 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@sizeOf(BasePokemon) == 28);
 }
 
-fn toLittle(v: u16) -> u16 {
-    return Little(u16).init(v).get();
-}
-
 pub const EvolutionKind = enum(u16) {
-    Unused                 = toLittle(0x00),
-    FriendShip             = toLittle(0x01),
-    FriendShipDuringDay    = toLittle(0x02),
-    FriendShipDuringNight  = toLittle(0x03),
-    LevelUp                = toLittle(0x04),
-    Trade                  = toLittle(0x05),
-    TradeHoldingItem       = toLittle(0x06),
-    UseItem                = toLittle(0x07),
-    AttackGthDefense       = toLittle(0x08),
-    AttackEqlDefense       = toLittle(0x09),
-    AttackLthDefense       = toLittle(0x0A),
-    PersonalityValue1      = toLittle(0x0B),
-    PersonalityValue2      = toLittle(0x0C),
-    LevelUpMaySpawnPokemon = toLittle(0x0D),
-    LevelUpSpawnIfCond     = toLittle(0x0E),
-    Beauty                 = toLittle(0x0F),
+    Unused                 = toLittle(u16, 0x00).get(),
+    FriendShip             = toLittle(u16, 0x01).get(),
+    FriendShipDuringDay    = toLittle(u16, 0x02).get(),
+    FriendShipDuringNight  = toLittle(u16, 0x03).get(),
+    LevelUp                = toLittle(u16, 0x04).get(),
+    Trade                  = toLittle(u16, 0x05).get(),
+    TradeHoldingItem       = toLittle(u16, 0x06).get(),
+    UseItem                = toLittle(u16, 0x07).get(),
+    AttackGthDefense       = toLittle(u16, 0x08).get(),
+    AttackEqlDefense       = toLittle(u16, 0x09).get(),
+    AttackLthDefense       = toLittle(u16, 0x0A).get(),
+    PersonalityValue1      = toLittle(u16, 0x0B).get(),
+    PersonalityValue2      = toLittle(u16, 0x0C).get(),
+    LevelUpMaySpawnPokemon = toLittle(u16, 0x0D).get(),
+    LevelUpSpawnIfCond     = toLittle(u16, 0x0E).get(),
+    Beauty                 = toLittle(u16, 0x0F).get(),
 };
 
 pub const Evolution = packed struct {

@@ -104,7 +104,16 @@ pub fn main() -> %void {
         },
         Rom.Nds => |*nds_rom| {
             %return nds_rom.root.tree(stdout_stream, 0);
-            %return stdout_stream.print("Rom type not supported (yet)\n");
+
+            var out_file = io.File.openWrite(out_path, null) %% |err| {
+                %return stdout_stream.print("Couldn't open {}.\n", out_path);
+                return err;
+            };
+
+            nds_rom.writeToFile(&out_file) %% |err| {
+                %return stdout_stream.print("Unable to write nds to {}\n", out_path);
+                return err;
+            };
         },
         else => {
             %return stdout_stream.print("Rom type not supported (yet)\n");

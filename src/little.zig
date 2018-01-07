@@ -28,3 +28,11 @@ pub fn Little(comptime Int: type) -> type {
         }
     };
 }
+
+pub fn add(comptime T: type, l: &const Little(T), r: &const Little(T)) -> Little(T) {
+    return toLittle(T, l.get() + r.get());
+}
+
+pub fn toLittle(comptime Int: type, v: Int) -> Little(Int) {
+    return Little(Int).init(v);
+}

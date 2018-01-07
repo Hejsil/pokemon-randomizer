@@ -10,7 +10,8 @@ const sort  = std.sort;
 
 const assert = debug.assert;
 
-const Little = little.Little;
+const toLittle = little.toLittle;
+const Little   = little.Little;
 
 error InvalidGameTitle;
 error InvalidGamecode;
@@ -545,6 +546,8 @@ error InvalidFntSubDirectoryId;
 error InvalidSubTableTypeLength;
 error InvalidSubDirectoryId;
 error InvalidFileId;
+error InvalidNameLength;
+error InvalidSizeInHeader;
 error FailedToWriteNitroToFnt;
 error FailedToWriteNitroToFat;
 
@@ -768,40 +771,190 @@ pub const Rom = struct {
         );
     }
 
-    pub fn writeToFile(self: &const Rom, file: &io.File, allocator: &mem.Allocator) -> %void {
-        var header = self.header;
-        header.arm9_rom_offset = 0x4000;
-        header.arm9_size = self.arm9.len;
+    const FSInfo = struct {
+        files: u32,
+        folders: u16,
+        fnt_sub_size: u32,
 
-        header.arm7_rom_offset = header.arm9_rom_offset + header.arm9_size;
-        header.arm7_size = self.arm7.len;
+        fn fromNitro(nitro: &const Nitro, root: bool) -> FSInfo {
+            var result = FSInfo {
+                .files = 0,
+                .folders = 0,
+                .fnt_sub_size = 0,
+            };
 
-        header.arm9_overlay_offset = header.arm7_rom_offset + header.arm7_size;
-        header.arm9_overlay_size = self.arm9_overlay.len;
+            // If we are not root, then we are part of a folder, 
+            // aka, we have an entry one of the sub fnt
+            if (!root) {
+                // TODO: Handle if nitro.name.len is > @maxValue(u16)?
+                result.fnt_sub_size += u16(nitro.name.len) + 1;
+            }
+
+            switch (nitro.data) {
+                Nitro.Kind.Folder => |folder| {
+                    // Directories have an id in their sub fnt entry
+                    if (!root) {
+                        result.fnt_sub_size += 2;
+                    }
+
+                    // Each folder have a sub fnt, which is terminated by 0x00
+                    result.fnt_sub_size += 1;
+                    result.folders      += 1;
+
+                    for (folder.files) |sub_file| {
+                        const sizes = fromNitro(sub_file, false);
+                        result.files         += sizes.files;
+                        result.folders       += sizes.folders;
+                        result.fnt_sub_size  += sizes.fnt_sub_size;
+                    }
+                },
+                Nitro.Kind.File => {
+                    result.files += 1;
+                }
+            }
+
+            return result;
+        }
+    };
+
+    const NitroWriter = struct {
+        file: &io.File, 
+        fat_offset: u32,
+        fnt_main_start: u32,
+        fnt_main_offset: u32,
+        fnt_sub_offset: u32,
+        fnt_first_file_id: u16,
+        fnt_sub_table_folder_id: u16,
+        folder_id: u16,
+        file_offset: u32,
         
-        header.arm7_overlay_offset = header.arm9_overlay_offset + header.arm9_overlay_size;
-        header.arm7_overlay_size = self.arm7_overlay.len;
+        fn writeToFile(self: &NitroWriter, nitro: &const Nitro, parent_id: u16) -> %void {
+            switch (nitro.data) {
+                Nitro.Kind.Folder => |folder| {
+                    %return self.file.seekTo(self.fnt_main_offset);
+                    %return self.file.write(utils.asConstBytes(
+                        FntMainEntry,
+                        FntMainEntry {
+                            .offset_to_subtable   = Little(u32).init(self.fnt_sub_offset - self.fnt_main_start),
+                            .first_id_in_subtable = Little(u16).init(self.fnt_first_file_id),
+                            .parent_id            = Little(u16).init(parent_id), 
+                        }));
 
-        const files_and_folders = countFilesAndFolders(self.root);
-        const files = files_and_folders.files;
-        const folders = files_and_folders.folders;
+                    self.fnt_main_offset = u32(%return self.file.getPos());
+                    %return self.file.seekTo(self.fnt_sub_offset);
 
-        header.fnt_offset = header.arm7_overlay_offset + header.arm7_overlay_size;
-        header.fnt_size = folders * @sizeOf(FntMainEntry);
+                    // Writing sub-table
+                    for (folder.files) |file| {
+                        if (file.name.len < 1 or 127 < file.name.len) return error.InvalidNameLength;
 
-        header.fat_offset = header.fnt_offset + header.fnt_size;
-        header.fat_size = files * @sizeOf(FatEntry);
+                        switch (file.data) {
+                            Nitro.Kind.Folder => |sub_folder| {
+                                %return self.file.write([]u8 { u8(file.name.len) });
+                                %return self.file.write(file.name);
+                                %return self.file.write(utils.asConstBytes(Little(u16), Little(u16).init(self.fnt_sub_table_folder_id)));
+                                self.fnt_sub_table_folder_id += 1;
+                            },
+                            Nitro.Kind.File => |sub_file| {
+                                %return self.file.write([]u8 { u8(file.name.len + 0x80) });
+                                %return self.file.write(file.name);
+                            }
+                        }
+                    }
 
-        file.write(utils.toBytes(Header, header));
-        file.write([]u8{ 0 } ** (0x4000 - @sizeOf(Header)));
-        file.write(self.arm9);
-        file.write(self.arm7);
-        file.write(self.arm9_overlay);
-        file.write(self.arm7_overlay);
+                    // Write sub-table null terminator
+                    %return self.file.write([]u8 { 0x00 });
+                    self.fnt_sub_offset = u32(%return self.file.getPos());
+                    
+                    const id = self.folder_id;  
+                    self.folder_id += 1;
 
-        // TODO: Write Nitro Filesystem
+                    for (folder.files) |file| {
+                        %return self.writeToFile(file, id);
+                    }
+                },
+                Nitro.Kind.File => |file| {
+                    const start = self.file_offset;
+                    %return self.file.seekTo(start);
+
+                    switch (file) {
+                        Nitro.File.Other => |other| {
+                            %return self.file.write(other);
+                        },
+                        else => @panic("TODO: Write code for writing other file types"),
+                    }
+
+                    self.file_offset = u32(%return self.file.getPos());
+                    const end = self.file_offset - 1;
+
+                    %return self.file.seekTo(self.fat_offset);
+                    %return self.file.write(
+                        utils.asConstBytes(
+                            FatEntry,
+                            FatEntry {
+                                .start = toLittle(u32, start),
+                                .end   = toLittle(u32, end),
+                            }
+                        )
+                    );    
+                    self.fat_offset = u32(%return self.file.getPos());
+                }
+            }
+        }
+    };
+
+    pub fn writeToFile(self: &const Rom, file: &io.File) -> %void {
+        var header = self.header;
+        var fs_info = FSInfo.fromNitro(self.root, true);
+
+        if (@maxValue(u32) < self.arm9.len)                           return error.InvalidSizeInHeader;
+        if (@maxValue(u32) < self.arm7.len)                           return error.InvalidSizeInHeader;
+        if (@maxValue(u32) < self.arm9_overlay.len)                   return error.InvalidSizeInHeader;
+        if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
+        if (@maxValue(u16) < fs_info.files * @sizeOf(FatEntry))       return error.InvalidSizeInHeader;
+
+        header.arm9_rom_offset = toLittle(u32, 0x4000);
+        header.arm9_size = toLittle(u32, u32(self.arm9.len));
+
+        header.arm7_rom_offset = little.add(u32, header.arm9_rom_offset, header.arm9_size);
+        header.arm7_size = toLittle(u32, u32(self.arm7.len));
+
+        header.arm9_overlay_offset = little.add(u32, header.arm7_rom_offset, header.arm7_size);
+        header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay.len));
+        
+        header.arm7_overlay_offset = little.add(u32, header.arm9_overlay_offset, header.arm9_overlay_size);
+        header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
+
+        header.fnt_offset = little.add(u32, header.arm7_overlay_offset, header.arm7_overlay_size);
+        header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
+
+        header.fat_offset = little.add(u32, header.fnt_offset, header.fnt_size);
+        header.fat_size = toLittle(u32, u32(fs_info.files * @sizeOf(FatEntry)));
+
+        // 00h  4    Offset to Sub-table             (originated at FNT base)
+        const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
+        const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
+
+        %return file.write(utils.asBytes(Header, header));
+        %return file.write([]u8{ 0 } ** (0x4000 - @sizeOf(Header)));
+        %return file.write(self.arm9);
+        %return file.write(self.arm7);
+        %return file.write(self.arm9_overlay);
+        %return file.write(self.arm7_overlay);
+
+        var writer = NitroWriter {
+            .file = file,
+            .fat_offset = header.fat_offset.get(),
+            .fnt_main_start = header.fnt_offset.get(),
+            .fnt_main_offset = 0,
+            .fnt_sub_offset = fnt_sub_offset,
+            .fnt_first_file_id = 0,
+            .fnt_sub_table_folder_id = 1,
+            .folder_id = 0xF000,
+            .file_offset = file_offset,
+        };
+
+        return writer.writeToFile(self.root, fs_info.folders);
     }
-
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
         allocator.destroy(self.header);
