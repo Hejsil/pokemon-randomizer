@@ -985,9 +985,9 @@ pub const Rom = struct {
 
     const NitroWriter = struct {
         file: &io.File, 
-        fat_offset: u32,
+        fat_offset: usize,
         fnt_main_start: u32,
-        fnt_main_offset: u32,
+        fnt_main_offset: usize,
         fnt_sub_offset: u32,
         fnt_first_file_id: u16,
         fnt_sub_table_folder_id: u16,
@@ -1006,7 +1006,7 @@ pub const Rom = struct {
                             .parent_id            = Little(u16).init(parent_id), 
                         }));
 
-                    self.fnt_main_offset = u32(%return self.file.getPos());
+                    self.fnt_main_offset = %return self.file.getPos();
                     %return self.file.seekTo(self.fnt_sub_offset);
 
                     // Writing sub-table
@@ -1062,7 +1062,7 @@ pub const Rom = struct {
                             }
                         )
                     );    
-                    self.fat_offset = u32(%return self.file.getPos());
+                    self.fat_offset = %return self.file.getPos();
                 }
             }
         }
