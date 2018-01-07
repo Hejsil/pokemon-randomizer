@@ -183,6 +183,8 @@ pub const Game = struct {
 
         // TODO: Figure out if there is some other way of finding the offsets of this data in the rom.
         //       Maybe these offsets are present in the assembly?
+        // TODO: It seems like we can assume that the order of our offsets are as followed (Ememrald only):
+        //       https://github.com/pret/pokeemerald/blob/c9f196cdfea08eefffd39ebc77a150f197e1250e/data/data2c.s
         var pokemon_offset   = mem.indexOf(u8, rom.data, bulbasaur_fingerprint) ?? return error.CouldntFindPokemonOffset;
         var evolution_offset = mem.indexOf(u8, rom.data, bulbasaur_evos_bytes)  ?? return error.CouldntFindEvolutionOffset;
 
