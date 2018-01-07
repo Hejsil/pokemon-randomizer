@@ -1,12 +1,14 @@
-const std = @import("std");
-const utils = @import("utils.zig");
-const ascii = @import("ascii.zig");
+const std    = @import("std");
+const utils  = @import("utils.zig");
+const ascii  = @import("ascii.zig");
 const little = @import("little.zig");
+
 const debug = std.debug;
-const mem = std.mem;
-const io = std.io;
+const mem   = std.mem;
+const io    = std.io;
+const sort  = std.sort;
+
 const assert = debug.assert;
-const sort = std.sort;
 
 const Little = little.Little;
 

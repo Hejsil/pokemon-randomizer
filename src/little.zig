@@ -1,7 +1,8 @@
-const std = @import("std");
+const std     = @import("std");
 const builtin = @import("builtin");
+
 const debug = std.debug;
-const mem = std.mem;
+const mem   = std.mem;
 
 /// A data structure representing an Little Endian Integer
 pub fn Little(comptime Int: type) -> type {

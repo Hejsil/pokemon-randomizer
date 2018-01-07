@@ -1,9 +1,11 @@
-const std = @import("std");
+const std   = @import("std");
 const utils = @import("utils.zig");
 const ascii = @import("ascii.zig");
+
 const debug = std.debug;
-const mem = std.mem;
-const io = std.io;
+const mem   = std.mem;
+const io    = std.io;
+
 const assert = debug.assert;
 
 pub const nintendo_logo = []u8 {

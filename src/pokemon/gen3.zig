@@ -1,13 +1,14 @@
-const std = @import("std");
-const gba = @import("../gba.zig");
+const std    = @import("std");
+const gba    = @import("../gba.zig");
 const little = @import("../little.zig");
-const utils = @import("../utils.zig");
-const common = @import("common.zig"); 
-const mem = std.mem;
+const utils  = @import("../utils.zig");
+const common = @import("common.zig");
+
+const mem   = std.mem;
 const debug = std.debug;
 
 const assert = debug.assert;
-const u1 = @IntType(false, 1);
+const u1     = @IntType(false, 1);
 
 const Little = little.Little;
 
@@ -69,7 +70,7 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@ptrToInt(&stats.catch_rate      ) - base == 08);
     assert(@ptrToInt(&stats.base_exp_yield  ) - base == 09);
 
-    assert(@ptrToInt(&stats.ev_yield,    ) - base == 10);
+    assert(@ptrToInt(&stats.ev_yield,       ) - base == 10);
     assert(@ptrToInt(&stats.item1           ) - base == 12);
     assert(@ptrToInt(&stats.item2           ) - base == 14);
 
