@@ -597,49 +597,6 @@ pub const Rom = struct {
         };
     }
 
-    pub fn writeToFile(self: &const Rom, file: &io.File, allocator: &mem.Allocator) -> %void {
-        var header = self.header;
-        header.arm9_rom_offset = 0x4000;
-        header.arm9_size = self.arm9.len;
-
-        header.arm7_rom_offset = header.arm9_rom_offset + header.arm9_size;
-        header.arm7_size = self.arm7.len;
-
-        header.arm9_overlay_offset = header.arm7_rom_offset + header.arm7_size;
-        header.arm9_overlay_size = self.arm9_overlay.len;
-        
-        header.arm7_overlay_offset = header.arm9_overlay_offset + header.arm9_overlay_size;
-        header.arm7_overlay_size = self.arm7_overlay.len;
-
-        const files_and_folders = countFilesAndFolders(self.root);
-        const files = files_and_folders.files;
-        const folders = files_and_folders.folders;
-
-        header.fnt_offset = header.arm7_overlay_offset + header.arm7_overlay_size;
-        header.fnt_size = folders * @sizeOf(FntMainEntry);
-
-        header.fat_offset = header.fnt_offset + header.fnt_size;
-        header.fat_size = files * @sizeOf(FatEntry);
-
-        file.write(utils.toBytes(Header, header));
-        file.write([]u8{ 0 } ** (0x4000 - @sizeOf(Header)));
-        file.write(self.arm9);
-        file.write(self.arm7);
-        file.write(self.arm9_overlay);
-        file.write(self.arm7_overlay);
-
-        // TODO: Write Nitro Filesystem
-    }
-
-    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
-        allocator.destroy(self.header);
-        allocator.free(self.arm9);
-        allocator.free(self.arm7);
-        allocator.free(self.arm9_overlay);
-        allocator.free(self.arm7_overlay);
-        self.root.destroy(allocator);
-    }
-
     fn seekToAllocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) -> %[]T {
         %return file.seekTo(offset);
 
@@ -810,4 +767,50 @@ pub const Rom = struct {
             Nitro.Folder { .files = nitro_files.toOwnedSlice() }
         );
     }
+
+    pub fn writeToFile(self: &const Rom, file: &io.File, allocator: &mem.Allocator) -> %void {
+        var header = self.header;
+        header.arm9_rom_offset = 0x4000;
+        header.arm9_size = self.arm9.len;
+
+        header.arm7_rom_offset = header.arm9_rom_offset + header.arm9_size;
+        header.arm7_size = self.arm7.len;
+
+        header.arm9_overlay_offset = header.arm7_rom_offset + header.arm7_size;
+        header.arm9_overlay_size = self.arm9_overlay.len;
+        
+        header.arm7_overlay_offset = header.arm9_overlay_offset + header.arm9_overlay_size;
+        header.arm7_overlay_size = self.arm7_overlay.len;
+
+        const files_and_folders = countFilesAndFolders(self.root);
+        const files = files_and_folders.files;
+        const folders = files_and_folders.folders;
+
+        header.fnt_offset = header.arm7_overlay_offset + header.arm7_overlay_size;
+        header.fnt_size = folders * @sizeOf(FntMainEntry);
+
+        header.fat_offset = header.fnt_offset + header.fnt_size;
+        header.fat_size = files * @sizeOf(FatEntry);
+
+        file.write(utils.toBytes(Header, header));
+        file.write([]u8{ 0 } ** (0x4000 - @sizeOf(Header)));
+        file.write(self.arm9);
+        file.write(self.arm7);
+        file.write(self.arm9_overlay);
+        file.write(self.arm7_overlay);
+
+        // TODO: Write Nitro Filesystem
+    }
+
+
+    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
+        allocator.destroy(self.header);
+        allocator.free(self.arm9);
+        allocator.free(self.arm7);
+        allocator.free(self.arm9_overlay);
+        allocator.free(self.arm7_overlay);
+        self.root.destroy(allocator);
+    }
+
+    
 };
