@@ -430,57 +430,57 @@ pub const Header = packed struct {
         
         try stream.print("digest_ntr_region_offset: {x}\n", self.digest_ntr_region_offset.get());
 
-        try stream.print("digest_ntr_region_offset: {x}",       self.digest_ntr_region_offset.get()      );
-        try stream.print("digest_ntr_region_length: {x}",       self.digest_ntr_region_length.get()      );
-        try stream.print("digest_twl_region_offset: {x}",       self.digest_twl_region_offset.get()      );
-        try stream.print("digest_twl_region_length: {x}",       self.digest_twl_region_length.get()      );
-        try stream.print("digest_sector_hashtable_offset: {x}", self.digest_sector_hashtable_offset.get());
-        try stream.print("digest_sector_hashtable_length: {x}", self.digest_sector_hashtable_length.get()); 
-        try stream.print("digest_block_hashtable_offset: {x}",  self.digest_block_hashtable_offset.get() );   
-        try stream.print("digest_block_hashtable_length: {x}",  self.digest_block_hashtable_length.get() );    
-        try stream.print("digest_sector_size: {x}",             self.digest_sector_size.get()            );             
-        try stream.print("digest_block_sectorcount: {x}",       self.digest_block_sectorcount.get()      ); 
+        try stream.print("digest_ntr_region_offset: {x}\n",       self.digest_ntr_region_offset.get()      );
+        try stream.print("digest_ntr_region_length: {x}\n",       self.digest_ntr_region_length.get()      );
+        try stream.print("digest_twl_region_offset: {x}\n",       self.digest_twl_region_offset.get()      );
+        try stream.print("digest_twl_region_length: {x}\n",       self.digest_twl_region_length.get()      );
+        try stream.print("digest_sector_hashtable_offset: {x}\n", self.digest_sector_hashtable_offset.get());
+        try stream.print("digest_sector_hashtable_length: {x}\n", self.digest_sector_hashtable_length.get()); 
+        try stream.print("digest_block_hashtable_offset: {x}\n",  self.digest_block_hashtable_offset.get() );   
+        try stream.print("digest_block_hashtable_length: {x}\n",  self.digest_block_hashtable_length.get() );    
+        try stream.print("digest_sector_size: {x}\n",             self.digest_sector_size.get()            );             
+        try stream.print("digest_block_sectorcount: {x}\n",       self.digest_block_sectorcount.get()      ); 
 
-        try stream.print("icon_title_size: {x}", self.icon_title_size.get());
+        try stream.print("icon_title_size: {x}\n", self.icon_title_size.get());
 
-        try prettyPrintSliceField(u8, "reserved8", "{x}", stream, self.reserved8);
+        try prettyPrintSliceField(u8, "reserved8", "{x}\n", stream, self.reserved8);
 
-        try stream.print("total_used_rom_size_including_dsi_area: {x}", self.total_used_rom_size_including_dsi_area.get());
+        try stream.print("total_used_rom_size_including_dsi_area: {x}\n", self.total_used_rom_size_including_dsi_area.get());
 
         try prettyPrintSliceField(u8, "reserved9", "{x}", stream, self.reserved9);
         try prettyPrintSliceField(u8, "reserved10", "{x}", stream, self.reserved10);
         try prettyPrintSliceField(u8, "reserved11", "{x}", stream, self.reserved11);
 
-        try stream.print("modcrypt_area_1_offset: {x}", self.modcrypt_area_1_offset.get());
-        try stream.print("modcrypt_area_1_size: {x}", self.modcrypt_area_1_size.get());
-        try stream.print("modcrypt_area_2_offset: {x}", self.modcrypt_area_2_offset.get());
-        try stream.print("modcrypt_area_2_size: {x}", self.modcrypt_area_2_size.get());
+        try stream.print("modcrypt_area_1_offset: {x}\n", self.modcrypt_area_1_offset.get());
+        try stream.print("modcrypt_area_1_size: {x}\n", self.modcrypt_area_1_size.get());
+        try stream.print("modcrypt_area_2_offset: {x}\n", self.modcrypt_area_2_offset.get());
+        try stream.print("modcrypt_area_2_size: {x}\n", self.modcrypt_area_2_size.get());
 
         try prettyPrintSliceField(u8, "title_id_emagcode", "{x}", stream, self.title_id_emagcode);
 
-        try stream.print("title_id_filetype: {x}", self.title_id_filetype);
+        try stream.print("title_id_filetype: {x}\n", self.title_id_filetype);
 
         try prettyPrintSliceField(u8, "title_id_rest", "{x}", stream, self.title_id_rest);
 
-        try stream.print("public_sav_filesize: {x}", self.public_sav_filesize.get());
-        try stream.print("private_sav_filesize: {x}", self.private_sav_filesize.get());
+        try stream.print("public_sav_filesize: {x}\n", self.public_sav_filesize.get());
+        try stream.print("private_sav_filesize: {x}\n", self.private_sav_filesize.get());
 
         try prettyPrintSliceField(u8, "reserved12", "{x}", stream, self.reserved12);
 
-        try stream.print("cero_japan: {x}", self.cero_japan);
-        try stream.print("esrb_us_canada: {x}", self.esrb_us_canada);
+        try stream.print("cero_japan: {x}\n", self.cero_japan);
+        try stream.print("esrb_us_canada: {x}\n", self.esrb_us_canada);
 
-        try stream.print("reserved13: {x}", self.reserved13);
+        try stream.print("reserved13: {x}\n", self.reserved13);
 
-        try stream.print("usk_germany: {x}", self.usk_germany);
-        try stream.print("pegi_pan_europe: {x}", self.pegi_pan_europe);
+        try stream.print("usk_germany: {x}\n", self.usk_germany);
+        try stream.print("pegi_pan_europe: {x}\n", self.pegi_pan_europe);
 
-        try stream.print("resereved14: {x}", self.resereved14);
+        try stream.print("resereved14: {x}\n", self.resereved14);
 
-        try stream.print("pegi_portugal: {x}", self.pegi_portugal);
-        try stream.print("pegi_and_bbfc_uk: {x}", self.pegi_and_bbfc_uk);
-        try stream.print("agcb_australia: {x}", self.agcb_australia);
-        try stream.print("grb_south_korea: {x}", self.grb_south_korea);
+        try stream.print("pegi_portugal: {x}\n", self.pegi_portugal);
+        try stream.print("pegi_and_bbfc_uk: {x}\n", self.pegi_and_bbfc_uk);
+        try stream.print("agcb_australia: {x}\n", self.agcb_australia);
+        try stream.print("grb_south_korea: {x}\n", self.grb_south_korea);
 
         try prettyPrintSliceField(u8, "reserved15", "{x}", stream, self.reserved15);
 
