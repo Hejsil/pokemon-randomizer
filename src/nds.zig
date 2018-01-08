@@ -333,7 +333,9 @@ pub const Header = packed struct {
     }
 
     pub fn prettyPrint(self: &const Header, stream: &io.OutStream) -> %void {
-        try stream.print("game_title: {}\n", self.game_title);
+        // game_title might be \0 terminated, but we don't want to print that
+        const zero_index = mem.indexOfScalar(u8, self.game_title, 0) ?? self.game_title.len;
+        try stream.print("game_title: {}\n", self.game_title[0..zero_index]);
         try stream.print("gamecode: {}\n", self.gamecode);
         try stream.print("makercode: {}\n", self.makercode);
 
