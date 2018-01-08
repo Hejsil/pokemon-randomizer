@@ -650,7 +650,7 @@ pub const IconTitle = packed struct {
         WithChineseAndKoreanTitle                   = toLittle(u16, 0x0003).get(),
         // TODO: Seems like we can split this enum into Version byte and has_animated_dsi_icon byte
         WithChineseAndKoreanTitleAndAnimatedDSiIcon = toLittle(u16, 0x0103).get(),
-    }
+    };
 
     version: Version,
 
