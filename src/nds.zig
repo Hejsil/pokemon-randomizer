@@ -807,6 +807,7 @@ pub const Rom = struct {
     arm7: []u8,
     arm9_overlay: []u8,
     arm7_overlay: []u8,
+    icon_title: &IconTitle,
     root: Nitro,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
@@ -814,11 +815,6 @@ pub const Rom = struct {
         %defer allocator.destroy(header);
 
         try header.validate();
-
-        var stdout = try io.getStdOut();
-        var stdout_file_stream = io.FileOutStream.init(&stdout);
-        var stdout_stream = &stdout_file_stream.stream;
-        try header.prettyPrint(stdout_stream);
 
         var arm9 = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
         %defer allocator.free(arm9);
@@ -831,6 +827,10 @@ pub const Rom = struct {
 
         var arm7_overlay = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
         %defer allocator.free(arm7_overlay);
+
+        // TODO: On dsi, this can be of different sizes
+        const icon_title = try utils.seekToCreateAndReadNoEof(IconTitle, file, allocator, header.icon_title_offset.get());
+        %defer allocator.destroy(icon_title);
 
         var root = try readFileSystem(
             file, 
@@ -847,6 +847,7 @@ pub const Rom = struct {
             .arm7 = arm7,
             .arm9_overlay = arm9_overlay,
             .arm7_overlay = arm7_overlay,
+            .icon_title = icon_title,
             .root = root,
         };
     }
@@ -1166,6 +1167,16 @@ pub const Rom = struct {
         header.arm7_overlay_offset = toLittle(u32, u32(try file.getPos()));
         header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
         try file.write(self.arm7_overlay);
+
+        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        header.icon_title_offset = toLittle(u32, u32(try file.getPos()));
+
+        if (header.isDsi()) {
+            // TODO: On dsi, this can be of different sizes
+            header.icon_title_size = toLittle(u32, @sizeOf(IconTitle));
+        }
+        
+        try file.write(utils.asBytes(IconTitle, self.icon_title));
 
         header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), alignment)));
         header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
