@@ -146,6 +146,32 @@ test "pokemon.gen3.[5]Evolution: Offsets" {
 }
 
 error InvalidRomSize;
+error InvalidGen3PokemonHeader;
+
+// SOURCE: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
+// TODO: Can we get this data without hardcoding?
+const pokemon_count = 440;
+
+const Offsets = struct {
+    base_stats:      usize,
+    evolution_table: usize,
+
+    fn assertNoOverlap(self: &const Offsets) -> void {
+        assert(self.base_stats + inBytes(BasePokemon, pokemon_count)       <= self.evolution_table);
+        //assert(self.evolution_table + inBytes([5]Evolution, pokemon_count) <= SOMETHING);
+    }
+
+    fn inBytes(comptime T: type, count: usize) -> usize {
+        return @sizeOf(T) * count;
+    }
+};
+
+// TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
+const emerald_offsets = Offsets {
+    .base_stats      = 0x03203CC,
+    .evolution_table = 0x032531C,
+};
+comptime { emerald_offsets.assertNoOverlap(); }
 
 pub const Game = struct {
     header: &gba.Header,
@@ -163,24 +189,19 @@ pub const Game = struct {
         %defer allocator.destroy(header);
         
         try header.validate();
+        const offsets = try getOffsets(header);
 
-        // TODO: These are emerald offsets for now
-        const base_stats_offset = 0x03203CC;
-        const evolution_table_offset = 0x032531C;
+        const unknown1 = try utils.allocAndReadNoEof(u8, file, allocator, offsets.base_stats - try file.getPos());
+        %defer allocator.free(unknown1);
 
-        const unknown1_len = base_stats_offset - try file.getPos();
-        const unknown1 = try utils.allocAndReadNoEof(u8, file, allocator, unknown1_len);
-        %defer allocator.destroy(unknown1);
+        const base_stats = try utils.allocAndReadNoEof(BasePokemon, file, allocator, pokemon_count);
+        %defer allocator.free(base_stats);
 
-        const base_stats_len = (0x032531C - base_stats_offset) / @sizeOf(BasePokemon);
-        const base_stats = try utils.allocAndReadNoEof(BasePokemon, file, allocator, base_stats_len);
+        const unknown2 = try utils.allocAndReadNoEof(u8, file, allocator, offsets.evolution_table - try file.getPos());
+        %defer allocator.free(unknown2);
 
-        const unknown2_len = evolution_table_offset - try file.getPos();
-        const unknown2 = try utils.allocAndReadNoEof(u8, file, allocator, unknown2_len);
-        %defer allocator.destroy(unknown2);
-
-        const evolution_table_len = (0x032937C - evolution_table_offset) / @sizeOf([5]Evolution);
-        const evolution_table = try utils.allocAndReadNoEof([5]Evolution, file, allocator, evolution_table_len);
+        const evolution_table = try utils.allocAndReadNoEof([5]Evolution, file, allocator, pokemon_count);
+        %defer allocator.free(evolution_table);
 
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
@@ -203,46 +224,9 @@ pub const Game = struct {
         };
     }
 
-    pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
-        try game.header.validate();
-
-        try stream.write(utils.asConstBytes(gba.Header, game.header));
-        try stream.write(game.before_base_stats);
-        try stream.write(([]u8)(game.base_stats));
-        try stream.write(game.before_evolution_table);
-        try stream.write(([]u8)(game.evolution_table));
-        try stream.write(game.last);
-    }
-
-    pub fn destroy(game: &const Game, allocator: &mem.Allocator) {
-        allocator.destroy(game.header);
-        allocator.free(game.before_base_stats);
-        allocator.free(game.base_stats);
-        allocator.free(game.before_evolution_table);
-        allocator.free(game.evolution_table);
-        allocator.free(game.last);
-    }
-
-    // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
-    const Offsets = struct {
-        battle_moves: usize,
-        species_to_hoenn_dex_table: usize,
-        species_id_to_national_dex_table: usize,
-        hoenn_to_national_dex_table: usize,
-        spinda_spot_grahpics: usize,
-        item_effect_info: usize,
-        nature_stat_table: usize,
-        tm_hm_learnsets: usize,
-        trainer_pic_indices: usize,
-        trainer_class_name_indices: usize,
-        species_cry_id_table: usize,
-        experience_tables: usize,
-        base_stats: usize,
-    };
-
-    fn getOffsets(header: &const gba.Header) -> %Offsets {
+    fn getOffsets(header: &const gba.Header) -> %&const Offsets {
         if (mem.eql(u8, header.game_title, "POKEMON EMER")) {
-
+            return &emerald_offsets;
         }
 
         // TODO:
@@ -254,8 +238,28 @@ pub const Game = struct {
         //if (mem.eql(u8, header.game_title, "POKEMON RUBY")) {
         //
         //}
-        const base_stats_offset = 0x03203CC;
-        const evolution_table_offset = 0x032531C;
+        
+        return error.InvalidGen3PokemonHeader;
+    }
+
+    pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
+        try game.header.validate();
+
+        try stream.write(utils.asConstBytes(gba.Header, game.header));
+        try stream.write(game.unknown1);
+        try stream.write(([]u8)(game.base_stats));
+        try stream.write(game.unknown2);
+        try stream.write(([]u8)(game.evolution_table));
+        try stream.write(game.unknown3);
+    }
+
+    pub fn destroy(game: &const Game, allocator: &mem.Allocator) {
+        allocator.destroy(game.header);
+        allocator.free(game.unknown1);
+        allocator.free(game.base_stats);
+        allocator.free(game.unknown2);
+        allocator.free(game.evolution_table);
+        allocator.free(game.unknown3);
     }
 };
 
