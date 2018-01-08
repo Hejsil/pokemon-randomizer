@@ -76,10 +76,10 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@ptrToInt(&stats.item1           ) - base == 12);
     assert(@ptrToInt(&stats.item2           ) - base == 14);
 
-    assert(@ptrToInt(&stats.gender          ) - base == 16);
+    assert(@ptrToInt(&stats.gender_ratio    ) - base == 16);
     assert(@ptrToInt(&stats.egg_cycles      ) - base == 17);
     assert(@ptrToInt(&stats.base_friendship ) - base == 18);
-    assert(@ptrToInt(&stats.level_up_type   ) - base == 19);
+    assert(@ptrToInt(&stats.growth_rate     ) - base == 19);
 
     assert(@ptrToInt(&stats.egg_group1      ) - base == 20);
     assert(@ptrToInt(&stats.egg_group2      ) - base == 21);
@@ -88,7 +88,7 @@ test "pokemon.gen3.BasePokemon: Offsets" {
     assert(@ptrToInt(&stats.abillity2       ) - base == 23);
 
     assert(@ptrToInt(&stats.safari_zone_rate) - base == 24);
-    assert(@ptrToInt(&stats.color_and_flip  ) - base == 25);
+    assert(@ptrToInt(&stats.color           ) - base == 25);
     assert(@ptrToInt(&stats.padding         ) - base == 26);
 
     assert(@sizeOf(BasePokemon) == 28);

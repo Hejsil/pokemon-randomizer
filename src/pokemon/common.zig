@@ -1,4 +1,9 @@
-const u1 = @IntType(false, 1);
+const std = @import("std");
+
+const debug = std.debug;
+
+const assert = debug.assert;
+const u1     = @IntType(false, 1);
 
 // TODO: Figure out if the this have the same id in all games.
 //       They probably have, so let's assume that for now and if a bug 
