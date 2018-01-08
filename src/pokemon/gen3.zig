@@ -145,9 +145,6 @@ test "pokemon.gen3.[5]Evolution: Offsets" {
     assert(@sizeOf([5]Evolution) == 0x08 * 5);
 }
 
-error InvalidRomSize;
-error InvalidGen3PokemonHeader;
-
 // SOURCE: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
 // TODO: Can we get this data without hardcoding?
 const pokemon_count = 440;
@@ -171,7 +168,19 @@ const emerald_offsets = Offsets {
     .base_stats      = 0x03203CC,
     .evolution_table = 0x032531C,
 };
-comptime { emerald_offsets.assertNoOverlap(); }
+
+comptime { 
+    emerald_offsets.assertNoOverlap(); 
+}
+
+error InvalidRomSize;
+error InvalidGen3PokemonHeader;
+error NoBulbasaurFound;
+
+const bulbasaur_fingerprint = []u8 {
+    0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00, 
+    0x00, 0x00, 0x1F, 0x14, 0x46, 0x03, 0x01, 0x07, 0x41, 0x00, 0x00, 0x03, 0x00, 0x00,
+};
 
 pub const Game = struct {
     header: &gba.Header,
@@ -240,6 +249,11 @@ pub const Game = struct {
         //}
         
         return error.InvalidGen3PokemonHeader;
+    }
+
+    pub fn validateData(game: &const Game) -> %void {
+        if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
+            return error.NoBulbasaurFound;
     }
 
     pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {

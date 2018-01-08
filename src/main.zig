@@ -87,6 +87,18 @@ pub fn main() -> %void {
 
     switch (rom) {
         Rom.Gba => |*gen3_rom| {
+            gen3_rom.validateData() catch |err| {
+                try stdout_stream.print("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
+                
+                switch (err) {
+                    error.NoBulbasaurFound => {
+                        try stdout_stream.print("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
+                        try stdout_stream.print("Note: If you are randomizing a hacked version, then .\n");
+                    },
+                    else => {}
+                }
+            };
+
             var adapter = gen3.GameAdapter.init(gen3_rom);
             var random = rand.Rand.init(0);
             randomizer.randomizeStats(&adapter.base, &random) catch |err| {
