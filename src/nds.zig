@@ -644,7 +644,15 @@ test "nds.Header: Offsets" {
 }
 
 pub const IconTitle = packed struct {
-    version: Little(u16),
+    pub const Version = enum(u16) {
+        Original                                    = toLittle(u16, 0x0001).get(),
+        WithChineseTitle                            = toLittle(u16, 0x0002).get(),
+        WithChineseAndKoreanTitle                   = toLittle(u16, 0x0003).get(),
+        // TODO: Seems like we can split this enum into Version byte and has_animated_dsi_icon byte
+        WithChineseAndKoreanTitleAndAnimatedDSiIcon = toLittle(u16, 0x0103).get(),
+    }
+
+    version: Version,
 
     crc16_across_0020h_083Fh: Little(u16),
     crc16_across_0020h_093Fh: Little(u16),
