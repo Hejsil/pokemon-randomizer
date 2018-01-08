@@ -145,32 +145,6 @@ test "pokemon.gen3.[5]Evolution: Offsets" {
     assert(@sizeOf([5]Evolution) == 0x08 * 5);
 }
 
-// Source: https://bulbapedia.bulbagarden.net/wiki/Pok%C3%A9mon_base_stats_data_structure_in_Generation_III#Fingerprint
-const bulbasaur_fingerprint = []u8 { 
-    0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x14, 0x46, 0x03, 
-    0x01, 0x07, 0x41, 0x00, 0x00, 0x03, 0x00, 0x00 
-};
-
-const zero_evo = Evolution { 
-    .kind = EvolutionKind.Unused,
-    .param = Little(u16).init(0),
-    .target = Little(u16).init(0),
-    .padding = [2]u8{ 0, 0 }
-};
-const bulbasaur_evos = [5]Evolution {
-    Evolution {
-        .kind = EvolutionKind.LevelUp,
-        .param = Little(u16).init(16),
-        .target = Little(u16).init(2),
-        .padding = [2]u8{ 0, 0 }
-    },
-    zero_evo,
-    zero_evo,
-    zero_evo,
-    zero_evo,
-};
-
 error InvalidRomSize;
 
 pub const Game = struct {
