@@ -812,7 +812,7 @@ pub const Rom = struct {
         const fnt_main_table = try utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
         defer allocator.free(fnt_main_table);
         
-        if (4096 < fnt_main_table.len)                             return error.InvalidFntMainTableSize;
+        if (!utils.between(usize, fnt_main_table.len, 1, 4096))    return error.InvalidFntMainTableSize;
         if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
 
         const fat = try utils.seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
