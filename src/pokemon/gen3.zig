@@ -150,13 +150,13 @@ error InvalidRomSize;
 pub const Game = struct {
     header: &gba.Header,
     
-    before_base_stats: []u8,
+    unknown1: []u8,
     base_stats: []BasePokemon,
 
-    before_evolution_table: []u8,
+    unknown2: []u8,
     evolution_table: [][5]Evolution,
 
-    last: []u8,
+    unknown3: []u8,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Game {
         const header = try utils.createAndReadNoEof(gba.Header, file, allocator);
@@ -168,16 +168,16 @@ pub const Game = struct {
         const base_stats_offset = 0x03203CC;
         const evolution_table_offset = 0x032531C;
 
-        const bytes_before_base_stats = base_stats_offset - try file.getPos();
-        const before_base_stats = try utils.allocAndReadNoEof(u8, file, allocator, bytes_before_base_stats);
-        %defer allocator.destroy(before_base_stats);
+        const unknown1_len = base_stats_offset - try file.getPos();
+        const unknown1 = try utils.allocAndReadNoEof(u8, file, allocator, unknown1_len);
+        %defer allocator.destroy(unknown1);
 
         const base_stats_len = (0x032531C - base_stats_offset) / @sizeOf(BasePokemon);
         const base_stats = try utils.allocAndReadNoEof(BasePokemon, file, allocator, base_stats_len);
 
-        const bytes_before_evolution_table = evolution_table_offset - try file.getPos();
-        const before_evolution_table = try utils.allocAndReadNoEof(u8, file, allocator, bytes_before_evolution_table);
-        %defer allocator.destroy(before_evolution_table);
+        const unknown2_len = evolution_table_offset - try file.getPos();
+        const unknown2 = try utils.allocAndReadNoEof(u8, file, allocator, unknown2_len);
+        %defer allocator.destroy(unknown2);
 
         const evolution_table_len = (0x032937C - evolution_table_offset) / @sizeOf([5]Evolution);
         const evolution_table = try utils.allocAndReadNoEof([5]Evolution, file, allocator, evolution_table_len);
@@ -185,7 +185,7 @@ pub const Game = struct {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
-        const last = try stream.readAllAlloc(allocator, @maxValue(usize));
+        const unknown3 = try stream.readAllAlloc(allocator, @maxValue(usize));
 
         if ((try file.getPos()) % 0x1000000 != 0)
             return error.InvalidRomSize;
@@ -193,13 +193,13 @@ pub const Game = struct {
         return Game {
             .header = header,
             
-            .before_base_stats = before_base_stats,
+            .unknown1 = unknown1,
             .base_stats = base_stats,
 
-            .before_evolution_table = before_evolution_table,
+            .unknown2 = unknown2,
             .evolution_table = evolution_table,
 
-            .last = last,
+            .unknown3 = unknown3,
         };
     }
 
@@ -221,6 +221,41 @@ pub const Game = struct {
         allocator.free(game.before_evolution_table);
         allocator.free(game.evolution_table);
         allocator.free(game.last);
+    }
+
+    // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
+    const Offsets = struct {
+        battle_moves: usize,
+        species_to_hoenn_dex_table: usize,
+        species_id_to_national_dex_table: usize,
+        hoenn_to_national_dex_table: usize,
+        spinda_spot_grahpics: usize,
+        item_effect_info: usize,
+        nature_stat_table: usize,
+        tm_hm_learnsets: usize,
+        trainer_pic_indices: usize,
+        trainer_class_name_indices: usize,
+        species_cry_id_table: usize,
+        experience_tables: usize,
+        base_stats: usize,
+    };
+
+    fn getOffsets(header: &const gba.Header) -> %Offsets {
+        if (mem.eql(u8, header.game_title, "POKEMON EMER")) {
+
+        }
+
+        // TODO:
+        //if (mem.eql(u8, header.game_title, "POKEMON SAPP")) {
+        //
+        //}
+
+        // TODO:
+        //if (mem.eql(u8, header.game_title, "POKEMON RUBY")) {
+        //
+        //}
+        const base_stats_offset = 0x03203CC;
+        const evolution_table_offset = 0x032531C;
     }
 };
 
