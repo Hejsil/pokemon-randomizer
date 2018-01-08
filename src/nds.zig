@@ -643,6 +643,68 @@ test "nds.Header: Offsets" {
     assert(@sizeOf(Header) == 0x1000);
 }
 
+pub const IconTitle = packed struct {
+    version: Little(u16),
+
+    crc16_across_0020h_083Fh: Little(u16),
+    crc16_across_0020h_093Fh: Little(u16),
+    crc16_across_0020h_0A3Fh: Little(u16),
+    crc16_across_1240h_23BFh: Little(u16),
+
+    reserved1: [0x16]u8,
+
+    icon_bitmap: [0x200]u8,
+    icon_palette: [0x20]u8,
+
+    title_japanese: [0x100]u8,
+    title_english:  [0x100]u8,
+    title_french:   [0x100]u8,
+    title_german:   [0x100]u8,
+    title_italian:  [0x100]u8,
+    title_spanish:  [0x100]u8,
+    title_chinese:  [0x100]u8,
+    title_korean:   [0x100]u8,
+
+    reserved2: [0x800]u8,
+
+    // animated DSi icons only
+    icon_animation_bitmap: [0x1000]u8,
+    icon_animation_palette: [0x100]u8,
+    icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
+};
+
+test "nds.IconTitle: Offsets" {
+    const icontitle : IconTitle = undefined;
+    const base = @ptrToInt(&icontitle);
+
+    assert(@ptrToInt(&icontitle.version                 ) - base == 0x0000);
+
+    assert(@ptrToInt(&icontitle.crc16_across_0020h_083Fh) - base == 0x0002);
+    assert(@ptrToInt(&icontitle.crc16_across_0020h_093Fh) - base == 0x0004);
+    assert(@ptrToInt(&icontitle.crc16_across_0020h_0A3Fh) - base == 0x0006);
+    assert(@ptrToInt(&icontitle.crc16_across_1240h_23BFh) - base == 0x0008);
+    assert(@ptrToInt(&icontitle.reserved1               ) - base == 0x000A);
+
+    assert(@ptrToInt(&icontitle.icon_bitmap             ) - base == 0x0020);
+    assert(@ptrToInt(&icontitle.icon_palette            ) - base == 0x0220);
+
+    assert(@ptrToInt(&icontitle.title_japanese          ) - base == 0x0240);
+    assert(@ptrToInt(&icontitle.title_english           ) - base == 0x0340);
+    assert(@ptrToInt(&icontitle.title_french            ) - base == 0x0440);
+    assert(@ptrToInt(&icontitle.title_german            ) - base == 0x0540);
+    assert(@ptrToInt(&icontitle.title_italian           ) - base == 0x0640);
+    assert(@ptrToInt(&icontitle.title_spanish           ) - base == 0x0740);
+    assert(@ptrToInt(&icontitle.title_chinese           ) - base == 0x0840);
+    assert(@ptrToInt(&icontitle.title_korean            ) - base == 0x0940);
+    assert(@ptrToInt(&icontitle.reserved2               ) - base == 0x0A40);
+
+    assert(@ptrToInt(&icontitle.icon_animation_bitmap   ) - base == 0x1240);
+    assert(@ptrToInt(&icontitle.icon_animation_palette  ) - base == 0x2240);
+    assert(@ptrToInt(&icontitle.icon_animation_sequence ) - base == 0x2340);
+    
+    assert(@sizeOf(IconTitle) == 0x23C0);
+}
+
 error AddressesOverlap;
 
 pub const Narc = struct {
@@ -752,6 +814,11 @@ pub const Rom = struct {
         %defer allocator.destroy(header);
 
         try header.validate();
+
+        var stdout = try io.getStdOut();
+        var stdout_file_stream = io.FileOutStream.init(&stdout);
+        var stdout_stream = &stdout_file_stream.stream;
+        try header.prettyPrint(stdout_stream);
 
         var arm9 = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
         %defer allocator.free(arm9);
@@ -1136,6 +1203,7 @@ pub const Rom = struct {
             .file_offset = file_offset,
         };
 
+        debug.warn("folders: {}\n", fs_info.folders);
         try writer.writeToFile(self.root, fs_info.folders);
         
         try file.seekTo(0x00);
