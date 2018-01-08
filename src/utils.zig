@@ -66,7 +66,7 @@ pub fn allocAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Alloc
 pub fn seekToCreateAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize) -> %&T {
     try file.seekTo(offset);
 
-    return createAndReadNoEof(T, file, allocator, size);
+    return createAndReadNoEof(T, file, allocator);
 }  
 
 pub fn createAndReadNoEof(comptime T: type, file: &io.File, allocator: &mem.Allocator) -> %&T {
