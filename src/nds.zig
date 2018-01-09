@@ -341,9 +341,7 @@ pub const Header = packed struct {
 
         try stream.print("unitcode: {x}\n", self.unitcode);
         try stream.print("encryption_seed_select: {x}\n", self.encryption_seed_select);
-        try stream.print("encryption_seed_select: {x}\n", self.device_capacity);
-
-        try stream.print("encryption_seed_select: {x}\n", self.device_capacity);
+        try stream.print("device_capacity: {x}\n", self.device_capacity);
 
         try prettyPrintSliceField(u8, "reserved1", "{x}", stream, self.reserved1);
 
