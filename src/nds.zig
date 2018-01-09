@@ -333,7 +333,9 @@ pub const Header = packed struct {
     }
 
     pub fn prettyPrint(self: &const Header, stream: &io.OutStream) -> %void {
-        try stream.print("game_title: {}\n", self.game_title);
+        // game_title might be \0 terminated, but we don't want to print that
+        const zero_index = mem.indexOfScalar(u8, self.game_title, 0) ?? self.game_title.len;
+        try stream.print("game_title: {}\n", self.game_title[0..zero_index]);
         try stream.print("gamecode: {}\n", self.gamecode);
         try stream.print("makercode: {}\n", self.makercode);
 
@@ -655,9 +657,9 @@ error InvalidIconAnimationSequence;
 
 pub const IconTitle = packed struct {
     pub const Version = enum(u8) {
-        Original                                    = toLittle(u16, 0x0001).get(),
-        WithChineseTitle                            = toLittle(u16, 0x0002).get(),
-        WithChineseAndKoreanTitle                   = toLittle(u16, 0x0003).get(),
+        Original                  = toLittle(u16, 0x0001).get(),
+        WithChineseTitle          = toLittle(u16, 0x0002).get(),
+        WithChineseAndKoreanTitle = toLittle(u16, 0x0003).get(),
     };
 
     version: Version,
@@ -1262,7 +1264,7 @@ pub const Rom = struct {
             .file = file,
             .fat_offset = header.fat_offset.get(),
             .fnt_main_start = header.fnt_offset.get(),
-            .fnt_main_offset = 0,
+            .fnt_main_offset = header.fnt_offset.get(),
             .fnt_sub_offset = fnt_sub_offset,
             .fnt_first_file_id = 0,
             .fnt_sub_table_folder_id = 1,
