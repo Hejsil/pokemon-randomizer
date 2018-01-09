@@ -928,11 +928,11 @@ pub const Rom = struct {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
         
-        try file.seekTo(fnt_offset + 0x06);
-        var count : Little(u16) = undefined;
-        try stream.readNoEof(utils.asBytes(Little(u16), &count));
+        try file.seekTo(fnt_offset);
+        var first_entry : FntMainEntry = undefined;
+        try stream.readNoEof(utils.asBytes(FntMainEntry, &first_entry));
 
-        const fnt_main_table = try utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
+        const fnt_main_table = try utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, first_entry.parent_id.get());
         defer allocator.free(fnt_main_table);
         
         if (!utils.between(usize, fnt_main_table.len, 1, 4096))    return error.InvalidFntMainTableSize;
@@ -1256,7 +1256,6 @@ pub const Rom = struct {
 
         try header.validate();
 
-        // 00h  4    Offset to Sub-table             (originated at FNT base)
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
 
@@ -1280,8 +1279,8 @@ pub const Rom = struct {
     }
 
     fn toAlignment(address: usize, alignment: usize) -> usize {
-        const res = address % alignment;
-        const result = address + (alignment - res);
+        const rem = address % alignment;
+        const result = address + (alignment - rem);
 
         assert(result % alignment == 0);
         assert(address <= result);
