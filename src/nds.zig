@@ -643,16 +643,25 @@ test "nds.Header: Offsets" {
     assert(@sizeOf(Header) == 0x1000);
 }
 
+error InvalidVersion;
+error InvalidHasAnimatedDsiIcon;
+error InvalidReserved1;
+error InvalidReserved2;
+error InvalidChinese;
+error InvalidKorean;
+error InvalidIconAnimationBitmap;
+error InvalidIconAnimationPalette;
+error InvalidIconAnimationSequence;
+
 pub const IconTitle = packed struct {
-    pub const Version = enum(u16) {
+    pub const Version = enum(u8) {
         Original                                    = toLittle(u16, 0x0001).get(),
         WithChineseTitle                            = toLittle(u16, 0x0002).get(),
         WithChineseAndKoreanTitle                   = toLittle(u16, 0x0003).get(),
-        // TODO: Seems like we can split this enum into Version byte and has_animated_dsi_icon byte
-        WithChineseAndKoreanTitleAndAnimatedDSiIcon = toLittle(u16, 0x0103).get(),
-    }
+    };
 
     version: Version,
+    has_animated_dsi_icon: bool,
 
     crc16_across_0020h_083Fh: Little(u16),
     crc16_across_0020h_093Fh: Little(u16),
@@ -679,6 +688,40 @@ pub const IconTitle = packed struct {
     icon_animation_bitmap: [0x1000]u8,
     icon_animation_palette: [0x100]u8,
     icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
+
+    pub fn validate(self: &const IconTitle) -> %void {
+        if (!utils.between(u8, u8(self.version), 1, 3))
+            return error.InvalidVersion;
+        if (!utils.between(u8, u8(self.has_animated_dsi_icon), 0, 1))
+            return error.InvalidHasAnimatedDsiIcon;
+
+        if (!utils.all(u8, self.reserved1, ascii.isZero))
+            return error.InvalidReserved1;
+
+        if (self.version < Version.WithChineseTitle) {
+            if (!utils.all(u8, self.chinese, ascii.isZero))
+                return error.InvalidChinese;
+        }
+
+        if (self.version < Version.WithChineseAndKoreanTitle) {
+            if (!utils.all(u8, self.korean, ascii.isZero))
+                return error.InvalidKorean;
+        }
+
+        if (!utils.all(u8, self.reserved2, ascii.isZero))
+            return error.InvalidReserved2;
+
+        if (self.version != Version.WithChineseAndKoreanTitle) {
+            if (!utils.all(u8, self.icon_animation_bitmap, ascii.is0xFF))
+                return error.InvalidIconAnimationBitmap;
+            if (!utils.all(u8, self.icon_animation_palette, ascii.is0xFF))
+                return error.InvalidIconAnimationPalette;
+            if (!utils.all(u8, self.icon_animation_sequence, ascii.is0xFF))
+                return error.InvalidIconAnimationSequence;
+        }
+    }
+
+    fn is0xFF(char: u8) -> bool { return char == 0xFF; }
 };
 
 test "nds.IconTitle: Offsets" {
@@ -839,6 +882,8 @@ pub const Rom = struct {
         // TODO: On dsi, this can be of different sizes
         const icon_title = try utils.seekToCreateAndReadNoEof(IconTitle, file, allocator, header.icon_title_offset.get());
         %defer allocator.destroy(icon_title);
+
+        try icon_title.validate();
 
         var root = try readFileSystem(
             file, 
@@ -1145,14 +1190,17 @@ pub const Rom = struct {
     };
 
     pub fn writeToFile(self: &const Rom, file: &io.File) -> %void {
+        if (@maxValue(u32) < self.arm9.len)         return error.InvalidSizeInHeader;
+        if (@maxValue(u32) < self.arm7.len)         return error.InvalidSizeInHeader;
+        if (@maxValue(u32) < self.arm9_overlay.len) return error.InvalidSizeInHeader;
+
+        try self.icon_title.validate();
+
         var header = self.header;
         var fs_info = FSInfo.fromNitro(self.root, true);
 
-        if (@maxValue(u32) < self.arm9.len)                           return error.InvalidSizeInHeader;
-        if (@maxValue(u32) < self.arm7.len)                           return error.InvalidSizeInHeader;
-        if (@maxValue(u32) < self.arm9_overlay.len)                   return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
-        if (@maxValue(u16) < fs_info.files * @sizeOf(FatEntry))       return error.InvalidSizeInHeader;
+        if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
 
         const alignment = 0x200;
 
