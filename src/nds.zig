@@ -1134,19 +1134,19 @@ pub const Rom = struct {
 
                     // Writing sub-table
                     for (folder.files) |file| {
-                        if (file.name.len < 1 or 127 < file.name.len) return error.InvalidNameLength;
+                        if (file.name.len < 0x01 or 0x7F < file.name.len) return error.InvalidNameLength;
 
                         switch (file.data) {
-                            Nitro.Kind.Folder => |sub_folder| {
+                            Nitro.Kind.File => |sub_file| {
                                 try self.file.write([]u8 { u8(file.name.len) });
+                                try self.file.write(file.name);
+                            },
+                            Nitro.Kind.Folder => |sub_folder| {
+                                try self.file.write([]u8 { u8(file.name.len + 0x80) });
                                 try self.file.write(file.name);
                                 try self.file.write(utils.asConstBytes(Little(u16), Little(u16).init(self.fnt_sub_table_folder_id)));
                                 self.fnt_sub_table_folder_id += 1;
                             },
-                            Nitro.Kind.File => |sub_file| {
-                                try self.file.write([]u8 { u8(file.name.len + 0x80) });
-                                try self.file.write(file.name);
-                            }
                         }
                     }
 
@@ -1266,7 +1266,7 @@ pub const Rom = struct {
             .fnt_main_offset = header.fnt_offset.get(),
             .fnt_sub_offset = fnt_sub_offset,
             .fnt_first_file_id = 0,
-            .fnt_sub_table_folder_id = 1,
+            .fnt_sub_table_folder_id = 0xF001,
             .folder_id = 0xF000,
             .file_offset = file_offset,
         };
