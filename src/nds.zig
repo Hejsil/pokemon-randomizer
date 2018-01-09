@@ -646,7 +646,8 @@ test "nds.Header: Offsets" {
 }
 
 error InvalidVersion;
-error InvalidHasAnimatedDsiIcon;
+error InvalidVersionPadding;
+error InvalidHasAnimatedDsiIconPadding;
 error InvalidReserved1;
 error InvalidReserved2;
 error InvalidChinese;
@@ -656,14 +657,17 @@ error InvalidIconAnimationPalette;
 error InvalidIconAnimationSequence;
 
 pub const IconTitle = packed struct {
-    pub const Version = enum(u8) {
+    pub const Version = enum(u2) {
         Original                  = 0x01,
         WithChineseTitle          = 0x02,
         WithChineseAndKoreanTitle = 0x03,
     };
 
     version: Version,
+    version_padding: u6,
+
     has_animated_dsi_icon: bool,
+    has_animated_dsi_icon_padding: u7,
 
     crc16_across_0020h_083Fh: Little(u16),
     crc16_across_0020h_093Fh: Little(u16),
@@ -684,43 +688,38 @@ pub const IconTitle = packed struct {
     title_chinese:  [0x100]u8,
     title_korean:   [0x100]u8,
 
-    reserved2: [0x800]u8,
+    // TODO: IconTitle is actually a variable size structure.
+    //       "original Icon/Title structure rounded to 200h-byte sector boundary (ie. A00h bytes for Version 1 or 2)," 
+    //       "however, later DSi carts are having a size entry at CartHdr[208h] (usually 23C0h)."
+    //reserved2: [0x800]u8,
 
-    // animated DSi icons only
-    icon_animation_bitmap: [0x1000]u8,
-    icon_animation_palette: [0x100]u8,
-    icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
+    //// animated DSi icons only
+    //icon_animation_bitmap: [0x1000]u8,
+    //icon_animation_palette: [0x100]u8,
+    //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
 
     pub fn validate(self: &const IconTitle) -> %void {
-        if (!utils.between(u8, u8(self.version), 1, 3))
+        if (u2(self.version) == 0)
             return error.InvalidVersion;
-        if (!utils.between(u8, u8(self.has_animated_dsi_icon), 0, 1))
-            return error.InvalidHasAnimatedDsiIcon;
+        if (self.version_padding != 0)
+            return error.InvalidVersionPadding;
+        if (self.has_animated_dsi_icon_padding != 0)
+            return error.InvalidHasAnimatedDsiIconPadding;
 
         if (!utils.all(u8, self.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
-        if (u8(self.version) < u8(Version.WithChineseTitle)) {
-            if (!utils.all(u8, self.title_chinese, ascii.isZero))
-                return error.InvalidChinese;
-        }
+        //if (!utils.all(u8, self.reserved2, ascii.isZero))
+        //    return error.InvalidReserved2;
 
-        if (u8(self.version) < u8(Version.WithChineseAndKoreanTitle)) {
-            if (!utils.all(u8, self.title_korean, ascii.isZero))
-                return error.InvalidKorean;
-        }
-
-        if (!utils.all(u8, self.reserved2, ascii.isZero))
-            return error.InvalidReserved2;
-
-        if (self.version != Version.WithChineseAndKoreanTitle) {
-            if (!utils.all(u8, self.icon_animation_bitmap, is0xFF))
-                return error.InvalidIconAnimationBitmap;
-            if (!utils.all(u8, self.icon_animation_palette, is0xFF))
-                return error.InvalidIconAnimationPalette;
-            if (!utils.all(u8, self.icon_animation_sequence, is0xFF))
-                return error.InvalidIconAnimationSequence;
-        }
+        //if (!self.has_animated_dsi_icon) {
+        //    if (!utils.all(u8, self.icon_animation_bitmap, is0xFF))
+        //        return error.InvalidIconAnimationBitmap;
+        //    if (!utils.all(u8, self.icon_animation_palette, is0xFF))
+        //        return error.InvalidIconAnimationPalette;
+        //    if (!utils.all(u8, self.icon_animation_sequence, is0xFF))
+        //        return error.InvalidIconAnimationSequence;
+        //}
     }
 
     fn is0xFF(char: u8) -> bool { return char == 0xFF; }
@@ -731,6 +730,7 @@ test "nds.IconTitle: Offsets" {
     const base = @ptrToInt(&icontitle);
 
     assert(@ptrToInt(&icontitle.version                 ) - base == 0x0000);
+    assert(@ptrToInt(&icontitle.has_animated_dsi_icon   ) - base == 0x0001);
 
     assert(@ptrToInt(&icontitle.crc16_across_0020h_083Fh) - base == 0x0002);
     assert(@ptrToInt(&icontitle.crc16_across_0020h_093Fh) - base == 0x0004);
@@ -749,13 +749,13 @@ test "nds.IconTitle: Offsets" {
     assert(@ptrToInt(&icontitle.title_spanish           ) - base == 0x0740);
     assert(@ptrToInt(&icontitle.title_chinese           ) - base == 0x0840);
     assert(@ptrToInt(&icontitle.title_korean            ) - base == 0x0940);
-    assert(@ptrToInt(&icontitle.reserved2               ) - base == 0x0A40);
+    //assert(@ptrToInt(&icontitle.reserved2               ) - base == 0x0A40);
 
-    assert(@ptrToInt(&icontitle.icon_animation_bitmap   ) - base == 0x1240);
-    assert(@ptrToInt(&icontitle.icon_animation_palette  ) - base == 0x2240);
-    assert(@ptrToInt(&icontitle.icon_animation_sequence ) - base == 0x2340);
-    
-    assert(@sizeOf(IconTitle) == 0x23C0);
+    //assert(@ptrToInt(&icontitle.icon_animation_bitmap   ) - base == 0x1240);
+    //assert(@ptrToInt(&icontitle.icon_animation_palette  ) - base == 0x2240);
+    //assert(@ptrToInt(&icontitle.icon_animation_sequence ) - base == 0x2340);
+    //
+    //assert(@sizeOf(IconTitle) == 0x23C0);
 }
 
 error AddressesOverlap;
