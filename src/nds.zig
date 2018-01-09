@@ -657,9 +657,9 @@ error InvalidIconAnimationSequence;
 
 pub const IconTitle = packed struct {
     pub const Version = enum(u8) {
-        Original                  = toLittle(u16, 0x0001).get(),
-        WithChineseTitle          = toLittle(u16, 0x0002).get(),
-        WithChineseAndKoreanTitle = toLittle(u16, 0x0003).get(),
+        Original                  = 0x01,
+        WithChineseTitle          = 0x02,
+        WithChineseAndKoreanTitle = 0x03,
     };
 
     version: Version,
@@ -700,13 +700,13 @@ pub const IconTitle = packed struct {
         if (!utils.all(u8, self.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
-        if (self.version < Version.WithChineseTitle) {
-            if (!utils.all(u8, self.chinese, ascii.isZero))
+        if (u8(self.version) < u8(Version.WithChineseTitle)) {
+            if (!utils.all(u8, self.title_chinese, ascii.isZero))
                 return error.InvalidChinese;
         }
 
-        if (self.version < Version.WithChineseAndKoreanTitle) {
-            if (!utils.all(u8, self.korean, ascii.isZero))
+        if (u8(self.version) < u8(Version.WithChineseAndKoreanTitle)) {
+            if (!utils.all(u8, self.title_korean, ascii.isZero))
                 return error.InvalidKorean;
         }
 
@@ -714,11 +714,11 @@ pub const IconTitle = packed struct {
             return error.InvalidReserved2;
 
         if (self.version != Version.WithChineseAndKoreanTitle) {
-            if (!utils.all(u8, self.icon_animation_bitmap, ascii.is0xFF))
+            if (!utils.all(u8, self.icon_animation_bitmap, is0xFF))
                 return error.InvalidIconAnimationBitmap;
-            if (!utils.all(u8, self.icon_animation_palette, ascii.is0xFF))
+            if (!utils.all(u8, self.icon_animation_palette, is0xFF))
                 return error.InvalidIconAnimationPalette;
-            if (!utils.all(u8, self.icon_animation_sequence, ascii.is0xFF))
+            if (!utils.all(u8, self.icon_animation_sequence, is0xFF))
                 return error.InvalidIconAnimationSequence;
         }
     }
