@@ -41,7 +41,7 @@ pub const Header = packed struct {
     game_title: [12]u8,
     gamecode:   [4]u8,
     makercode:  [2]u8,
-    
+
     fixed_value:    u8,
     main_unit_code: u8,
     device_type:    u8,
@@ -56,7 +56,7 @@ pub const Header = packed struct {
     pub fn validate(self: &const Header) -> %void {
         if (!mem.eql(u8, self.nintendo_logo, nintendo_logo))
             return error.InvalidNintentoLogo;
-        if (!utils.all(u8, self.game_title, ascii.isUpperAscii)) 
+        if (!utils.all(u8, self.game_title, ascii.isUpperAscii))
             return error.InvalidGameTitle;
         if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
             return error.InvalidGamecode;
@@ -65,7 +65,7 @@ pub const Header = packed struct {
             return error.InvalidMakercode;
         if (self.fixed_value != 0x96)
             return error.InvalidFixedValue;
-            
+
         if (!utils.all(u8, self.reserved1, ascii.isZero))
             return error.InvalidReserved1;
         if (!utils.all(u8, self.reserved2, ascii.isZero))
@@ -89,6 +89,6 @@ test "gba.Header: Offsets" {
     assert(@ptrToInt(&header.software_version) - base == 0x0BC);
     assert(@ptrToInt(&header.complement_check) - base == 0x0BD);
     assert(@ptrToInt(&header.reserved2       ) - base == 0x0BE);
-    
+
     assert(@sizeOf(Header) == 192);
 }

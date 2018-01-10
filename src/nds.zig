@@ -91,13 +91,13 @@ pub const Header = packed struct {
     port_40001A4h_setting_for_key1_commands:   [4]u8,
 
     icon_title_offset: Little(u32),
-    
+
     secure_area_checksum: Little(u16),
     secure_area_delay:    Little(u16),
 
     arm9_auto_load_list_ram_address: Little(u32),
     arm7_auto_load_list_ram_address: Little(u32),
-    
+
     secure_area_disable: Little(u64),
     total_used_rom_size: Little(u32),
     rom_header_size:     Little(u32),
@@ -132,7 +132,7 @@ pub const Header = packed struct {
     access_control: [4]u8,
 
     arm7_scfg_ext_setting: [4]u8,
-    
+
     reserved6: [3]u8,
 
     // 1BFh 1    Flags? (usually 01h) (DSiware Browser: 0Bh)
@@ -140,7 +140,7 @@ pub const Header = packed struct {
     unknown_flags: u8,
 
     arm9i_rom_offset: Little(u32),
-    
+
     reserved7: [4]u8,
 
     arm9i_ram_load_address: Little(u32),
@@ -231,7 +231,7 @@ pub const Header = packed struct {
     }
 
     pub fn validate(self: &const Header) -> %void {
-        if (!utils.all(u8, self.game_title, isUpperAsciiOrZero)) 
+        if (!utils.all(u8, self.game_title, isUpperAsciiOrZero))
             return error.InvalidGameTitle;
         if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
             return error.InvalidGamecode;
@@ -241,30 +241,30 @@ pub const Header = packed struct {
             return error.InvalidUnitcode;
         if (self.encryption_seed_select > 0x07)
             return error.InvalidEncryptionSeedSelect;
-            
+
         if (!utils.all(u8, self.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
         // It seems that arm9 (secure area) is always at 0x4000
         // http://problemkaputt.de/gbatek.htm#dscartridgesecurearea
-        if (self.arm9_rom_offset.get() != 0x4000) 
+        if (self.arm9_rom_offset.get() != 0x4000)
             return error.InvalidArm9RomOffset;
-        if (!utils.between(u32, self.arm9_entry_address.get(), 0x2000000, 0x23BFE00)) 
+        if (!utils.between(u32, self.arm9_entry_address.get(), 0x2000000, 0x23BFE00))
             return error.InvalidArm9EntryAddress;
-        if (!utils.between(u32, self.arm9_ram_address.get(), 0x2000000, 0x23BFE00)) 
+        if (!utils.between(u32, self.arm9_ram_address.get(), 0x2000000, 0x23BFE00))
             return error.InvalidArm9RamAddress;
-        if (self.arm9_size.get() > 0x3BFE00) 
+        if (self.arm9_size.get() > 0x3BFE00)
             return error.InvalidArm9Size;
 
-        if (self.arm7_rom_offset.get() < 0x8000) 
+        if (self.arm7_rom_offset.get() < 0x8000)
             return error.InvalidArm7RomOffset;
         if (!utils.between(u32, self.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
-            !utils.between(u32, self.arm7_entry_address.get(), 0x37F8000, 0x3807E00)) 
+            !utils.between(u32, self.arm7_entry_address.get(), 0x37F8000, 0x3807E00))
             return error.InvalidArm7EntryAddress;
         if (!utils.between(u32, self.arm7_ram_address.get(), 0x2000000, 0x23BFE00) and
             !utils.between(u32, self.arm7_ram_address.get(), 0x37F8000, 0x3807E00))
             return error.InvalidArm7RamAddress;
-        if (self.arm7_size.get() > 0x3BFE00) 
+        if (self.arm7_size.get() > 0x3BFE00)
             return error.InvalidArm7Size;
 
         if (utils.between(u32, self.icon_title_offset.get(), 0x1, 0x7FFF))
@@ -275,7 +275,7 @@ pub const Header = packed struct {
 
         if (self.rom_header_size.get() != 0x4000)
             return error.InvalidRomHeaderSize;
-        
+
         if (self.isDsi()) {
             const dsi_reserved = []u8 {
                 0xB8, 0xD0, 0x04, 0x00,
@@ -305,7 +305,7 @@ pub const Header = packed struct {
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
             //       Does that mean that it also always 0x4000?
-            if (self.digest_ntr_region_offset.get() != 0x4000) 
+            if (self.digest_ntr_region_offset.get() != 0x4000)
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, self.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
@@ -348,7 +348,7 @@ pub const Header = packed struct {
         try prettyPrintSliceField(u8, "reserved1", "{x}", stream, self.reserved1);
 
         try stream.print("reserved2: {x}\n", self.reserved2);
-        
+
         try stream.print("nds_region: {x}\n", self.nds_region);
         try stream.print("rom_version: {x}\n", self.rom_version);
         try stream.print("autostart: {x}\n", self.autostart);
@@ -429,7 +429,7 @@ pub const Header = packed struct {
 
         try stream.print("arm7i_ram_load_address: {x}\n", self.arm7i_ram_load_address.get());
         try stream.print("arm7i_size: {x}\n", self.arm7i_size.get());
-        
+
         try stream.print("digest_ntr_region_offset: {x}\n", self.digest_ntr_region_offset.get());
 
         try stream.print("digest_ntr_region_offset: {x}\n",       self.digest_ntr_region_offset.get()      );
@@ -437,11 +437,11 @@ pub const Header = packed struct {
         try stream.print("digest_twl_region_offset: {x}\n",       self.digest_twl_region_offset.get()      );
         try stream.print("digest_twl_region_length: {x}\n",       self.digest_twl_region_length.get()      );
         try stream.print("digest_sector_hashtable_offset: {x}\n", self.digest_sector_hashtable_offset.get());
-        try stream.print("digest_sector_hashtable_length: {x}\n", self.digest_sector_hashtable_length.get()); 
-        try stream.print("digest_block_hashtable_offset: {x}\n",  self.digest_block_hashtable_offset.get() );   
-        try stream.print("digest_block_hashtable_length: {x}\n",  self.digest_block_hashtable_length.get() );    
-        try stream.print("digest_sector_size: {x}\n",             self.digest_sector_size.get()            );             
-        try stream.print("digest_block_sectorcount: {x}\n",       self.digest_block_sectorcount.get()      ); 
+        try stream.print("digest_sector_hashtable_length: {x}\n", self.digest_sector_hashtable_length.get());
+        try stream.print("digest_block_hashtable_offset: {x}\n",  self.digest_block_hashtable_offset.get() );
+        try stream.print("digest_block_hashtable_length: {x}\n",  self.digest_block_hashtable_length.get() );
+        try stream.print("digest_sector_size: {x}\n",             self.digest_sector_size.get()            );
+        try stream.print("digest_block_sectorcount: {x}\n",       self.digest_block_sectorcount.get()      );
 
         try stream.print("icon_title_size: {x}\n", self.icon_title_size.get());
 
@@ -511,11 +511,11 @@ pub const Header = packed struct {
 
     fn prettyPrintSlice(comptime T: type, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
         try stream.write("{ ");
-        
+
         for (slice) |item, i| {
             try stream.print(format, item);
 
-            if (i != slice.len - 1) 
+            if (i != slice.len - 1)
                 try stream.print(", ");
         }
 
@@ -598,15 +598,15 @@ test "nds.Header: Offsets" {
     assert(@ptrToInt(&header.digest_block_hashtable_offset  ) - base == 0x1F8);
     assert(@ptrToInt(&header.digest_block_hashtable_length  ) - base == 0x1FC);
     assert(@ptrToInt(&header.digest_sector_size             ) - base == 0x200);
-    assert(@ptrToInt(&header.digest_block_sectorcount       ) - base == 0x204);    
-    assert(@ptrToInt(&header.icon_title_size                ) - base == 0x208);    
-    assert(@ptrToInt(&header.reserved8                      ) - base == 0x20C);   
+    assert(@ptrToInt(&header.digest_block_sectorcount       ) - base == 0x204);
+    assert(@ptrToInt(&header.icon_title_size                ) - base == 0x208);
+    assert(@ptrToInt(&header.reserved8                      ) - base == 0x20C);
 
-    assert(@ptrToInt(&header.total_used_rom_size_including_dsi_area) - base == 0x210); 
+    assert(@ptrToInt(&header.total_used_rom_size_including_dsi_area) - base == 0x210);
 
-    assert(@ptrToInt(&header.reserved9                      ) - base == 0x214); 
-    assert(@ptrToInt(&header.reserved10                     ) - base == 0x218); 
-    assert(@ptrToInt(&header.reserved11                     ) - base == 0x21C);     
+    assert(@ptrToInt(&header.reserved9                      ) - base == 0x214);
+    assert(@ptrToInt(&header.reserved10                     ) - base == 0x218);
+    assert(@ptrToInt(&header.reserved11                     ) - base == 0x21C);
     assert(@ptrToInt(&header.modcrypt_area_1_offset         ) - base == 0x220);
     assert(@ptrToInt(&header.modcrypt_area_1_size           ) - base == 0x224);
     assert(@ptrToInt(&header.modcrypt_area_2_offset         ) - base == 0x228);
@@ -641,7 +641,7 @@ test "nds.Header: Offsets" {
     assert(@ptrToInt(&header.reserved17                     ) - base == 0x3B4);
     assert(@ptrToInt(&header.reserved18                     ) - base == 0xE00);
     assert(@ptrToInt(&header.signature_across_header_entries) - base == 0xF80);
-    
+
     assert(@sizeOf(Header) == 0x1000);
 }
 
@@ -711,7 +711,7 @@ test "nds.IconTitle: Offsets" {
     assert(@ptrToInt(&icontitle.icon_animation_bitmap   ) - base == 0x1240);
     assert(@ptrToInt(&icontitle.icon_animation_palette  ) - base == 0x2240);
     assert(@ptrToInt(&icontitle.icon_animation_sequence ) - base == 0x2340);
-    
+
     assert(@sizeOf(IconTitle) == 0x23C0);
 }
 
@@ -745,9 +745,9 @@ pub const Nitro = struct {
     };
 
     pub const Kind = enum { Folder, File };
-    pub const Data = union(Kind) { 
-        Folder: Folder, 
-        File: File 
+    pub const Data = union(Kind) {
+        Folder: Folder,
+        File: File
     };
 
     name: []u8,
@@ -821,30 +821,30 @@ pub const Rom = struct {
     root: Nitro,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Rom {
-        const header = try utils.createAndReadNoEof(Header, file, allocator);
+        const header = try utils.createAndRead(Header, file, allocator);
         %defer allocator.destroy(header);
 
         try header.validate();
 
-        var arm9 = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        const arm9 = try utils.seekToAllocAndRead(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
         %defer allocator.free(arm9);
 
-        var arm7 = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        const arm7 = try utils.seekToAllocAndRead(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
         %defer allocator.free(arm7);
 
-        var arm9_overlay = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
+        const arm9_overlay = try utils.seekToAllocAndRead(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
         %defer allocator.free(arm9_overlay);
 
-        var arm7_overlay = try utils.seekToAllocAndReadNoEof(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
+        const arm7_overlay = try utils.seekToAllocAndRead(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
         %defer allocator.free(arm7_overlay);
 
         // TODO: On dsi, this can be of different sizes
-        const icon_title = try utils.seekToCreateAndReadNoEof(IconTitle, file, allocator, header.icon_title_offset.get());
+        const icon_title = try utils.seekToCreateAndRead(IconTitle, file, allocator, header.icon_title_offset.get());
         %defer allocator.destroy(icon_title);
 
-        var root = try readFileSystem(
-            file, 
-            allocator, 
+        const root = try readFileSystem(
+            file,
+            allocator,
             header.fnt_offset.get(),
             header.fnt_size.get(),
             header.fat_offset.get(),
@@ -861,51 +861,50 @@ pub const Rom = struct {
             .root = root,
         };
     }
-        
+
     const FatEntry = packed struct {
         start: Little(u32),
         end: Little(u32),
+
+        pub fn size(self: &const FatEntry) -> usize {
+            return (self.end.get() - self.start.get()) + 1;
+        }
     };
-    
+
     const FntMainEntry = packed struct {
         offset_to_subtable: Little(u32),
         first_id_in_subtable: Little(u16),
 
         // For the first entry in main-table, the parent id is actually,
-        // the total number of directories (See FNT Directory Main-Table): 
+        // the total number of directories (See FNT Directory Main-Table):
         // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
-        parent_id: Little(u16), 
+        parent_id: Little(u16),
     };
 
     fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %Nitro {
         if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
         if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
-        var file_stream = io.FileInStream.init(file);
-        var stream = &file_stream.stream;
-        
-        try file.seekTo(fnt_offset + 0x06);
-        var count : Little(u16) = undefined;
-        try stream.readNoEof(utils.asBytes(Little(u16), &count));
 
-        const fnt_main_table = try utils.seekToAllocAndReadNoEof(FntMainEntry, file, allocator, fnt_offset, count.get());
+        const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
+        const fnt_main_table = try utils.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
         defer allocator.free(fnt_main_table);
-        
+
         if (!utils.between(usize, fnt_main_table.len, 1, 4096))    return error.InvalidFntMainTableSize;
         if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
 
-        const fat = try utils.seekToAllocAndReadNoEof(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
+        const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
         defer allocator.free(fat);
 
         const root_name = try allocator.alloc(u8, 0);
         %defer allocator.free(root_name);
 
         return buildFolderFromFntMainEntry(
-            file, 
-            allocator, 
-            fat, 
-            fnt_main_table, 
-            fnt_main_table[0], 
-            fnt_offset, 
+            file,
+            allocator,
+            fat,
+            fnt_main_table,
+            fnt_main_table[0],
+            fnt_offset,
             root_name
         );
     }
@@ -920,23 +919,20 @@ pub const Rom = struct {
         name: []u8) -> %Nitro {
 
         try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
-        var file_stream = io.FileInStream.init(file);
-        var stream = &file_stream.stream;
-
         var nitro_files = std.ArrayList(Nitro).init(allocator);
         %defer {
             for (nitro_files.toSlice()) |nitro_file| {
                 nitro_file.destroy(allocator);
             }
 
-            nitro_files.deinit();   
+            nitro_files.deinit();
         }
 
         // See FNT Sub-Tables:
         // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
         var file_id = fnt_entry.first_id_in_subtable.get();
         while (true) {
-            const type_length = try stream.readByte();
+            const type_length = try utils.noAllocRead(u8, file);
 
             if (type_length == 0x80) return error.InvalidSubTableTypeLength;
             if (type_length == 0x00) break;
@@ -953,7 +949,7 @@ pub const Rom = struct {
 
             const kind = type_length_pair.first;
             const length = type_length_pair.second;
-            const child_name = try utils.allocAndReadNoEof(u8, file, allocator, length);
+            const child_name = try utils.allocAndRead(u8, file, allocator, length);
             %defer allocator.free(child_name);
 
             switch (kind) {
@@ -965,12 +961,11 @@ pub const Rom = struct {
                     // (See File Allocation Table (FAT))
                     // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
                     if (entry.start.get() == 0 or entry.end.get() == 0) continue;
-                    const current_pos = try file.getPos();
 
-                    // TODO: Doc doesn't seem to be sure where entry.end actually is:                       (Start+Len...-1?)
-                    var file_data = try utils.seekToAllocAndReadNoEof(u8, file, allocator, entry.start.get(), (entry.end.get() - entry.start.get()) + 1);
+                    const current_pos = try file.getPos();
+                    const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get(), entry.size());
                     %defer allocator.free(file_data);
-                    
+
                     try file.seekTo(current_pos);
                     try nitro_files.append(
                         Nitro.initFile(
@@ -981,16 +976,12 @@ pub const Rom = struct {
 
                     file_id += 1;
                 },
-                Nitro.Kind.Folder => { 
-                    var id : Little(u16) = undefined;
-                    try stream.readNoEof(utils.asBytes(Little(u16), &id));
+                Nitro.Kind.Folder => {
+                    const id = try utils.noAllocRead(Little(u16), file);
+                    if (!utils.between(u16, id.get(), 0xF001, 0xFFFF)) return error.InvalidSubDirectoryId;
+                    if (fnt_main_table.len <= id.get() & 0x0FFF)       return error.InvalidSubDirectoryId;
 
-                    if (!utils.between(u16, id.get(), 0xF001, 0xFFFF))
-                        return error.InvalidSubDirectoryId;
-                    if (fnt_main_table.len <= id.get() & 0x0FFF)
-                        return error.InvalidSubDirectoryId;
                     const current_pos = try file.getPos();
-
                     try nitro_files.append(
                         try buildFolderFromFntMainEntry(
                             file,
@@ -1027,7 +1018,7 @@ pub const Rom = struct {
                 .fnt_sub_size = 0,
             };
 
-            // If we are not root, then we are part of a folder, 
+            // If we are not root, then we are part of a folder,
             // aka, we have an entry one of the sub fnt
             if (!root) {
                 // TODO: Handle if nitro.name.len is > @maxValue(u16)?
@@ -1062,7 +1053,7 @@ pub const Rom = struct {
     };
 
     const NitroWriter = struct {
-        file: &io.File, 
+        file: &io.File,
         fat_offset: usize,
         fnt_main_start: u32,
         fnt_main_offset: usize,
@@ -1071,7 +1062,7 @@ pub const Rom = struct {
         fnt_sub_table_folder_id: u16,
         folder_id: u16,
         file_offset: u32,
-        
+
         fn writeToFile(self: &NitroWriter, nitro: &const Nitro, parent_id: u16) -> %void {
             switch (nitro.data) {
                 Nitro.Kind.Folder => |folder| {
@@ -1081,7 +1072,7 @@ pub const Rom = struct {
                         FntMainEntry {
                             .offset_to_subtable   = Little(u32).init(self.fnt_sub_offset - self.fnt_main_start),
                             .first_id_in_subtable = Little(u16).init(self.fnt_first_file_id),
-                            .parent_id            = Little(u16).init(parent_id), 
+                            .parent_id            = Little(u16).init(parent_id),
                         }));
 
                     self.fnt_main_offset = try self.file.getPos();
@@ -1108,8 +1099,8 @@ pub const Rom = struct {
                     // Write sub-table null terminator
                     try self.file.write([]u8 { 0x00 });
                     self.fnt_sub_offset = u32(try self.file.getPos());
-                    
-                    const id = self.folder_id;  
+
+                    const id = self.folder_id;
                     self.folder_id += 1;
 
                     for (folder.files) |file| {
@@ -1139,7 +1130,7 @@ pub const Rom = struct {
                                 .end   = toLittle(u32, end),
                             }
                         )
-                    );    
+                    );
                     self.fat_offset = try self.file.getPos();
                 }
             }
@@ -1147,8 +1138,8 @@ pub const Rom = struct {
     };
 
     pub fn writeToFile(self: &const Rom, file: &io.File) -> %void {
-        var header = self.header;
-        var fs_info = FSInfo.fromNitro(self.root, true);
+        const header = self.header;
+        const fs_info = FSInfo.fromNitro(self.root, true);
 
         if (@maxValue(u32) < self.arm9.len)                           return error.InvalidSizeInHeader;
         if (@maxValue(u32) < self.arm7.len)                           return error.InvalidSizeInHeader;
@@ -1180,12 +1171,7 @@ pub const Rom = struct {
 
         try file.seekTo(toAlignment(try file.getPos(), alignment));
         header.icon_title_offset = toLittle(u32, u32(try file.getPos()));
-
-        if (header.isDsi()) {
-            // TODO: On dsi, this can be of different sizes
-            header.icon_title_size = toLittle(u32, @sizeOf(IconTitle));
-        }
-        
+        header.icon_title_size = toLittle(u32, @sizeOf(IconTitle));
         try file.write(utils.asBytes(IconTitle, self.icon_title));
 
         header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), alignment)));
@@ -1226,7 +1212,7 @@ pub const Rom = struct {
 
         debug.warn("folders: {}\n", fs_info.folders);
         try writer.writeToFile(self.root, fs_info.folders);
-        
+
         try file.seekTo(0x00);
         try file.write(utils.asBytes(Header, header));
     }
@@ -1250,5 +1236,5 @@ pub const Rom = struct {
         self.root.destroy(allocator);
     }
 
-    
+
 };

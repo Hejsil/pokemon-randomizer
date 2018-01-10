@@ -6,7 +6,7 @@ const assert = debug.assert;
 const u1     = @IntType(false, 1);
 
 // TODO: Figure out if the this have the same id in all games.
-//       They probably have, so let's assume that for now and if a bug 
+//       They probably have, so let's assume that for now and if a bug
 //       is ever encountered related to this, we figure it out.
 pub const Type = enum(u8) {
     Normal   = 0x00,
@@ -71,7 +71,7 @@ pub const Color = enum(u7) {
 };
 
 // TODO: Figure out if the this have the same layout in all games that have it.
-//       They probably have, so let's assume that for now and if a bug 
+//       They probably have, so let's assume that for now and if a bug
 //       is ever encountered related to this, we figure it out.
 pub const EvYield = packed struct {
     hp:         u2,
@@ -165,7 +165,7 @@ pub const Version = enum {
             V.HeartGold, V.SoulSilver,     => Generation.IV,
             V.Black,  V.White,
             V.Black2, V.White2,            => Generation.V,
-            V.X, V.Y, V.OmegaRuby, 
+            V.X, V.Y, V.OmegaRuby,
             V.AlphaSapphire,               => Generation.VI,
             V.Sun, V.Moon, V.UltraSun,
             V.UltraMoon,                   => Generation.VII

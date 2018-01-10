@@ -169,8 +169,8 @@ const emerald_offsets = Offsets {
     .evolution_table = 0x032531C,
 };
 
-comptime { 
-    emerald_offsets.assertNoOverlap(); 
+comptime {
+    emerald_offsets.assertNoOverlap();
 }
 
 error InvalidRomSize;
@@ -178,13 +178,13 @@ error InvalidGen3PokemonHeader;
 error NoBulbasaurFound;
 
 const bulbasaur_fingerprint = []u8 {
-    0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00, 
+    0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
     0x00, 0x00, 0x1F, 0x14, 0x46, 0x03, 0x01, 0x07, 0x41, 0x00, 0x00, 0x03, 0x00, 0x00,
 };
 
 pub const Game = struct {
     header: &gba.Header,
-    
+
     unknown1: []u8,
     base_stats: []BasePokemon,
 
@@ -194,22 +194,22 @@ pub const Game = struct {
     unknown3: []u8,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %Game {
-        const header = try utils.createAndReadNoEof(gba.Header, file, allocator);
+        const header = try utils.createAndRead(gba.Header, file, allocator);
         %defer allocator.destroy(header);
-        
+
         try header.validate();
         const offsets = try getOffsets(header);
 
-        const unknown1 = try utils.allocAndReadNoEof(u8, file, allocator, offsets.base_stats - try file.getPos());
+        const unknown1 = try utils.allocAndRead(u8, file, allocator, offsets.base_stats - try file.getPos());
         %defer allocator.free(unknown1);
 
-        const base_stats = try utils.allocAndReadNoEof(BasePokemon, file, allocator, pokemon_count);
+        const base_stats = try utils.allocAndRead(BasePokemon, file, allocator, pokemon_count);
         %defer allocator.free(base_stats);
 
-        const unknown2 = try utils.allocAndReadNoEof(u8, file, allocator, offsets.evolution_table - try file.getPos());
+        const unknown2 = try utils.allocAndRead(u8, file, allocator, offsets.evolution_table - try file.getPos());
         %defer allocator.free(unknown2);
 
-        const evolution_table = try utils.allocAndReadNoEof([5]Evolution, file, allocator, pokemon_count);
+        const evolution_table = try utils.allocAndRead([5]Evolution, file, allocator, pokemon_count);
         %defer allocator.free(evolution_table);
 
         var file_stream = io.FileInStream.init(file);
@@ -222,7 +222,7 @@ pub const Game = struct {
 
         return Game {
             .header = header,
-            
+
             .unknown1 = unknown1,
             .base_stats = base_stats,
 
@@ -247,7 +247,7 @@ pub const Game = struct {
         //if (mem.eql(u8, header.game_title, "POKEMON RUBY")) {
         //
         //}
-        
+
         return error.InvalidGen3PokemonHeader;
     }
 
@@ -316,7 +316,7 @@ pub const GameAdapter = struct {
                 .catch_rate     = pokemon.catch_rate,
                 .base_exp_yield = pokemon.base_exp_yield,
                 .growth_rate    = pokemon.growth_rate,
-                
+
                 .extra = common.BasePokemon.Extra {
                     .III = common.BasePokemon.Gen3Extra {
                         .item1            = pokemon.item1.get(),
@@ -343,7 +343,7 @@ pub const GameAdapter = struct {
     fn setPokemon(base: &common.IGame, index: usize, pokemon: &const common.BasePokemon) -> %void {
         var game = getGame(base);
 
-        if (game.base_stats.len <= index) 
+        if (game.base_stats.len <= index)
             return error.OutOfRange;
 
         switch (pokemon.extra) {

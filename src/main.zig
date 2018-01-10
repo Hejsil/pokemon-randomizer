@@ -48,7 +48,7 @@ fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
 
         return Rom { .Nds = rom };
     }
-    
+
     return error.NotARom;
 }
 
@@ -89,7 +89,7 @@ pub fn main() -> %void {
         Rom.Gba => |*gen3_rom| {
             gen3_rom.validateData() catch |err| {
                 try stdout_stream.print("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
-                
+
                 switch (err) {
                     error.NoBulbasaurFound => {
                         try stdout_stream.print("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
