@@ -891,6 +891,8 @@ pub const Rom = struct {
 
             const lenght = type_length & 0x7F;
             const kind = Nitro.Kind((type_length & 0x80));
+            assert(kind == Nitro.Kind.File or kind == Nitro.Kind.Folder);
+
             const child_name = try utils.allocAndRead(u8, file, allocator, lenght);
             %defer allocator.free(child_name);
 
