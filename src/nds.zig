@@ -443,7 +443,7 @@ pub const Header = packed struct {
 
         try stream.print("icon_title_size: {x}\n", self.icon_title_size.get());
 
-        try prettyPrintSliceField(u8, "reserved8", "{x}\n", stream, self.reserved8);
+        try prettyPrintSliceField(u8, "reserved8", "{x}", stream, self.reserved8);
 
         try stream.print("total_used_rom_size_including_dsi_area: {x}\n", self.total_used_rom_size_including_dsi_area.get());
 
@@ -801,7 +801,7 @@ pub const Rom = struct {
             try file.seekTo(fat_offset + offset);
             try stream.readNoEof(utils.asBytes(FatEntry, &fat_entry));
 
-            *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.size());
+            *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
         }
 
         return results;
@@ -818,7 +818,14 @@ pub const Rom = struct {
         start: Little(u32),
         end: Little(u32),
 
-        fn size(self: &const FatEntry) -> usize {
+        fn init(offset: u32, size: u32) -> FatEntry {
+            return FatEntry {
+                .start = toLittle(u32, offset),
+                .end   = toLittle(u32, (offset + size) - 1),
+            };
+        }
+
+        fn getSize(self: &const FatEntry) -> usize {
             return (self.end.get() - self.start.get()) + 1;
         }
     };
@@ -907,7 +914,7 @@ pub const Rom = struct {
                     if (entry.start.get() == 0 or entry.end.get() == 0) continue;
 
                     const current_pos = try file.getPos();
-                    const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get(), entry.size());
+                    const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get(), entry.getSize());
                     %defer allocator.free(file_data);
 
                     try file.seekTo(current_pos);
@@ -1049,8 +1056,17 @@ pub const Rom = struct {
                     const id = self.folder_id;
                     self.folder_id += 1;
 
+                    // HACK: With the implementation we have to write files before
+                    //       folders, because this folder has to have its files in
+                    //       order starting at first_id_in_subtable.
                     for (folder.files) |file| {
-                        try self.writeToFile(file, id);
+                        if (file.data == Nitro.Kind.File)
+                            try self.writeToFile(file, id);
+                    }
+
+                    for (folder.files) |file| {
+                        if (file.data == Nitro.Kind.Folder)
+                            try self.writeToFile(file, id);
                     }
                 },
                 Nitro.Kind.File => |file| {
@@ -1065,20 +1081,40 @@ pub const Rom = struct {
                     }
 
                     self.file_offset = u32(try self.file.getPos());
-                    const end = self.file_offset - 1;
+                    const size = self.file_offset - start;
 
                     try self.file.seekTo(self.fat_offset);
                     try self.file.write(
                         utils.asConstBytes(
                             FatEntry,
-                            FatEntry {
-                                .start = toLittle(u32, u32(start)),
-                                .end   = toLittle(u32, end),
-                            }
+                            FatEntry.init(u32(start), u32(size))
                         )
                     );
                     self.fat_offset = try self.file.getPos();
+                    self.fnt_first_file_id += 1;
                 }
+            }
+        }
+    };
+
+    const OverlayWriter = struct {
+        file: &io.File,
+        overlay_file_offset: usize,
+        file_id: usize,
+
+        fn writeOverlayFiles(self: &OverlayWriter, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) -> %void {
+            for (overlay_table) |*overlay_entry, i| {
+                const overlay_file = overlay_files[i];
+                const fat_entry = FatEntry.init(u32(toAlignment(self.overlay_file_offset, nds_alignment)), u32(overlay_file.len));
+                try self.file.seekTo(fat_offset + (self.file_id * @sizeOf(FatEntry)));
+                try self.file.write(utils.asConstBytes(FatEntry, fat_entry));
+
+                try self.file.seekTo(fat_entry.start.get());
+                try self.file.write(overlay_file);
+
+                overlay_entry.file_id = toLittle(u32, u32(self.file_id));
+                self.overlay_file_offset = try self.file.getPos();
+                self.file_id += 1;
             }
         }
     };
@@ -1092,55 +1128,32 @@ pub const Rom = struct {
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
 
-        try file.seekTo(0x4000);
-        header.arm9_rom_offset = toLittle(u32, u32(try file.getPos()));
-        header.arm9_size = toLittle(u32, u32(self.arm9.len));
-        try file.write(self.arm9);
+        header.arm9_rom_offset     = toLittle(u32, 0x4000);
+        header.arm9_size           = toLittle(u32, u32(self.arm9.len));
+        header.arm9_overlay_offset = toLittle(u32, u32(toAlignment(header.arm9_rom_offset.get() + header.arm9_size.get(), nds_alignment)));
+        header.arm9_overlay_size   = toLittle(u32, u32(self.arm9_overlay_table.len * @sizeOf(Overlay)));
+        header.arm7_rom_offset     = toLittle(u32, u32(toAlignment(header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), nds_alignment)));
+        header.arm7_size           = toLittle(u32, u32(self.arm7.len));
+        header.arm7_overlay_offset = toLittle(u32, u32(toAlignment(header.arm7_rom_offset.get() + header.arm7_size.get(), nds_alignment)));
+        header.arm7_overlay_size   = toLittle(u32, u32(self.arm7_overlay_table.len * @sizeOf(Overlay)));
+        header.icon_title_offset   = toLittle(u32, u32(toAlignment(header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment)));
+        header.icon_title_size     = toLittle(u32, @sizeOf(IconTitle));
+        header.fnt_offset          = toLittle(u32, u32(toAlignment(header.icon_title_offset.get() + header.icon_title_size.get(), nds_alignment)));
+        header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
+        header.fat_offset          = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
+        header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(FatEntry)));
 
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
-        header.arm9_overlay_offset = toLittle(u32, u32(try file.getPos()));
-        header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay_table.len));
-        try file.write(([]u8)(self.arm9_overlay_table));
-
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
-        header.arm7_rom_offset = toLittle(u32, u32(try file.getPos()));
-        header.arm7_size = toLittle(u32, u32(self.arm7.len));
-        try file.write(self.arm7);
-
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
-        header.arm7_overlay_offset = toLittle(u32, u32(try file.getPos()));
-        header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay_table.len));
-        try file.write(([]u8)(self.arm7_overlay_table));
-
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
-        header.icon_title_offset = toLittle(u32, u32(try file.getPos()));
-        header.icon_title_size = toLittle(u32, @sizeOf(IconTitle));
-        try file.write(utils.asBytes(IconTitle, self.icon_title));
-
-        header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), nds_alignment)));
-        header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
-
-        header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
-        header.fat_size = toLittle(u32, u32(fs_info.files * @sizeOf(FatEntry)));
-
-        if (header.arm9_overlay_size.get() == 0x00)
-            header.arm9_overlay_offset = toLittle(u32, 0x00);
-
-        if (header.arm7_overlay_size.get() == 0x00)
-            header.arm7_overlay_offset = toLittle(u32, 0x00);
-
-        if (header.fnt_size.get() == 0x00)
-            header.fnt_offset = toLittle(u32, 0x00);
-
-        if (header.fat_size.get() == 0x00)
-            header.fat_offset = toLittle(u32, 0x00);
+        if (header.arm9_overlay_size.get() == 0x00) header.arm9_overlay_offset = toLittle(u32, 0x00);
+        if (header.arm7_overlay_size.get() == 0x00) header.arm7_overlay_offset = toLittle(u32, 0x00);
+        if (header.fnt_size.get() == 0x00)          header.fnt_offset = toLittle(u32, 0x00);
+        if (header.fat_size.get() == 0x00)          header.fat_offset = toLittle(u32, 0x00);
 
         try header.validate();
 
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
 
-        var writer = NitroWriter {
+        var nitro_writer = NitroWriter {
             .file = file,
             .fat_offset = header.fat_offset.get(),
             .fnt_main_start = header.fnt_offset.get(),
@@ -1153,10 +1166,29 @@ pub const Rom = struct {
         };
 
         debug.warn("folders: {}\n", fs_info.folders);
-        try writer.writeToFile(self.root, fs_info.folders);
+        try nitro_writer.writeToFile(self.root, fs_info.folders);
+
+        var overlay_writer = OverlayWriter {
+            .file = file,
+            .overlay_file_offset = nitro_writer.file_offset,
+            .file_id = nitro_writer.fnt_first_file_id,
+        };
+
+        try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
+        try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
         try file.seekTo(0x00);
         try file.write(utils.asBytes(Header, header));
+        try file.seekTo(header.arm9_rom_offset.get());
+        try file.write(self.arm9);
+        try file.seekTo(header.arm9_overlay_offset.get());
+        try file.write(([]u8)(self.arm9_overlay_table));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
+        try file.write(self.arm7);
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
+        try file.write(([]u8)(self.arm7_overlay_table));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
+        try file.write(utils.asBytes(IconTitle, self.icon_title));
     }
 
     fn toAlignment(address: usize, alignment: usize) -> usize {
