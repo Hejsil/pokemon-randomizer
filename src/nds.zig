@@ -1177,6 +1177,9 @@ pub const Rom = struct {
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
+        // TODO: It seems like we are also missing: Header Checksum and Devicecapacity
+        header.total_used_rom_size = toLittle(u32, u32(overlay_writer.overlay_file_offset));
+
         try file.seekTo(0x00);
         try file.write(utils.asBytes(Header, header));
         try file.seekTo(header.arm9_rom_offset.get());
