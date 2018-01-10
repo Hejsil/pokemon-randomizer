@@ -89,6 +89,6 @@ test "gba.Header: Offsets" {
     assert(@ptrToInt(&header.software_version) - base == 0x0BC);
     assert(@ptrToInt(&header.complement_check) - base == 0x0BD);
     assert(@ptrToInt(&header.reserved2       ) - base == 0x0BE);
-    
+
     assert(@sizeOf(Header) == 192);
 }

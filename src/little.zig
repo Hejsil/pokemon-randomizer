@@ -32,17 +32,17 @@ pub fn Little(comptime Int: type) -> type {
     };
 }
 
-test "little.Little" {
-    const value = 0x12345678;
-    const num = Little(u32).init(value);
-    assert(num.get() == value);
-    assert(mem.eql(u8, []u8 { 0x78, 0x56, 0x34, 0x12 }, num.bytes));
-}
-
 pub fn add(comptime T: type, l: &const Little(T), r: &const Little(T)) -> Little(T) {
     return toLittle(T, l.get() + r.get());
 }
 
 pub fn toLittle(comptime Int: type, v: Int) -> Little(Int) {
     return Little(Int).init(v);
+}
+
+test "little.Little" {
+    const value = 0x12345678;
+    const num = Little(u32).init(value);
+    assert(num.get() == value);
+    assert(mem.eql(u8, []u8 { 0x78, 0x56, 0x34, 0x12 }, num.bytes));
 }
