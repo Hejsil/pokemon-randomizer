@@ -630,7 +630,7 @@ pub const Nitro = struct {
         }
     };
 
-    pub const Kind = enum { Folder, File };
+    pub const Kind = enum(u8) { File = 0, Folder = 0x80 };
     pub const Data = union(Kind) {
         Folder: Folder,
         File: File
@@ -889,19 +889,9 @@ pub const Rom = struct {
             if (type_length == 0x80) return error.InvalidSubTableTypeLength;
             if (type_length == 0x00) break;
 
-            const type_length_pair = blk: {
-                const Pair = utils.Pair(Nitro.Kind, u8);
-                if (utils.between(u8, type_length, 0x01, 0x7F))
-                    break :blk Pair.init(Nitro.Kind.File, type_length);
-                if (utils.between(u8, type_length, 0x81, 0xFF))
-                    break :blk Pair.init(Nitro.Kind.Folder, type_length - 0x80);
-
-                unreachable;
-            };
-
-            const kind = type_length_pair.first;
-            const length = type_length_pair.second;
-            const child_name = try utils.allocAndRead(u8, file, allocator, length);
+            const lenght = type_length & 0x7F;
+            const kind = Nitro.Kind((type_length & 0x80));
+            const child_name = try utils.allocAndRead(u8, file, allocator, lenght);
             %defer allocator.free(child_name);
 
             switch (kind) {

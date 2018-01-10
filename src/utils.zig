@@ -3,17 +3,6 @@ const std = @import("std");
 const io  = std.io;
 const mem = std.mem;
 
-pub fn Pair(comptime F: type, comptime S: type) -> type {
-    return struct {
-        const Self = this;
-        first: F, second: S,
-
-        pub fn init(f: &const F, s: &const S) -> Self {
-            return Self { .first = *f, .second = *s };
-        }
-    };
-}
-
 pub fn asConstBytes(comptime T: type, value: &const T) -> []const u8 {
     return ([]const u8)(value[0..1]);
 }
