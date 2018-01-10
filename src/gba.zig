@@ -8,9 +8,6 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-pub const nintendo_logo = @embedFile("logo/gba.logo");
-
-error InvalidNintentoLogo;
 error InvalidGameTitle;
 error InvalidGamecode;
 error InvalidMakercode;
@@ -37,8 +34,6 @@ pub const Header = packed struct {
     reserved2: [2]u8,
 
     pub fn validate(self: &const Header) -> %void {
-        if (!mem.eql(u8, self.nintendo_logo, nintendo_logo))
-            return error.InvalidNintentoLogo;
         if (!utils.all(u8, self.game_title, ascii.isUpperAscii)) 
             return error.InvalidGameTitle;
         if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))

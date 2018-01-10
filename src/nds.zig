@@ -44,11 +44,8 @@ error InvalidReserved12;
 error InvalidReserved16;
 error InvalidReserved17;
 error InvalidReserved18;
-error InvalidNintendoLogo;
 error InvalidDigestNtrRegionOffset;
 error InvalidTitleIdRest;
-
-pub const nintendo_logo = @embedFile("logo/nds.logo");
 
 // http://problemkaputt.de/gbatek.htm#dscartridgeheader
 pub const Header = packed struct {
@@ -294,9 +291,6 @@ pub const Header = packed struct {
             if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         }
-
-        if (!mem.eql(u8, self.nintendo_logo, nintendo_logo))
-            return error.InvalidNintendoLogo;
 
         if (!utils.all(u8, self.reserved4, ascii.isZero))
             return error.InvalidReserved4;
