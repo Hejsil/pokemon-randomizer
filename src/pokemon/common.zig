@@ -229,23 +229,14 @@ pub const BasePokemon = struct {
     };
 };
 
-test "pokemon.common.EvYield: Offsets" {
-    var effort : EvYield = undefined;
-    const base = @ptrToInt(&effort);
+comptime {
+    assert(@offsetOf(EvYield, "hp")         == 0x00);
+    assert(@offsetOf(EvYield, "attack")     == 0x00);
+    assert(@offsetOf(EvYield, "defense")    == 0x00);
+    assert(@offsetOf(EvYield, "speed")      == 0x00);
+    assert(@offsetOf(EvYield, "sp_attack")  == 0x01);
+    assert(@offsetOf(EvYield, "sp_defense") == 0x01);
+    assert(@offsetOf(EvYield, "padding")    == 0x01);
 
-    assert(@ptrToInt(&effort.hp        ) - base == 0x00);
-    assert(@ptrToInt(&effort.attack    ) - base == 0x00);
-    assert(@ptrToInt(&effort.defense   ) - base == 0x00);
-    assert(@ptrToInt(&effort.speed     ) - base == 0x00);
-    assert(@ptrToInt(&effort.sp_attack ) - base == 0x01);
-    assert(@ptrToInt(&effort.sp_defense) - base == 0x01);
-    assert(@ptrToInt(&effort.padding   ) - base == 0x01);
-
-    assert(@typeOf(&effort.hp)         == &align(1:0:2) u2);
-    assert(@typeOf(&effort.attack)     == &align(1:2:4) u2);
-    assert(@typeOf(&effort.defense)    == &align(1:4:6) u2);
-    assert(@typeOf(&effort.speed)      == &align(1:6:8) u2);
-    assert(@typeOf(&effort.sp_attack)  == &align(1:0:2) u2);
-    assert(@typeOf(&effort.sp_defense) == &align(1:2:4) u2);
-    assert(@typeOf(&effort.padding)    == &align(1:4:8) u4);
+    // TODO bitOffsetOf, when that exists
 }

@@ -319,66 +319,47 @@ pub const GameAdapter = struct {
     }
 };
 
-test "pokemon.gen3.BasePokemon: Offsets" {
-    const stats : BasePokemon = undefined;
-    const base = @ptrToInt(&stats);
+comptime {
+    assert(@offsetOf(BasePokemon, "hp")               == 0x00);
+    assert(@offsetOf(BasePokemon, "attack")           == 0x01);
+    assert(@offsetOf(BasePokemon, "defense")          == 0x02);
+    assert(@offsetOf(BasePokemon, "speed")            == 0x03);
+    assert(@offsetOf(BasePokemon, "sp_attack")        == 0x04);
+    assert(@offsetOf(BasePokemon, "sp_defense")       == 0x05);
 
-    assert(@ptrToInt(&stats.hp              ) - base == 00);
-    assert(@ptrToInt(&stats.attack          ) - base == 01);
-    assert(@ptrToInt(&stats.defense         ) - base == 02);
-    assert(@ptrToInt(&stats.speed           ) - base == 03);
-    assert(@ptrToInt(&stats.sp_attack       ) - base == 04);
-    assert(@ptrToInt(&stats.sp_defense      ) - base == 05);
+    assert(@offsetOf(BasePokemon, "type1")            == 0x06);
+    assert(@offsetOf(BasePokemon, "type2")            == 0x07);
 
-    assert(@ptrToInt(&stats.type1           ) - base == 06);
-    assert(@ptrToInt(&stats.type2           ) - base == 07);
+    assert(@offsetOf(BasePokemon, "catch_rate")       == 0x08);
+    assert(@offsetOf(BasePokemon, "base_exp_yield")   == 0x09);
 
-    assert(@ptrToInt(&stats.catch_rate      ) - base == 08);
-    assert(@ptrToInt(&stats.base_exp_yield  ) - base == 09);
+    assert(@offsetOf(BasePokemon, "ev_yield")         == 0x0A);
+    assert(@offsetOf(BasePokemon, "item1")            == 0x0C);
+    assert(@offsetOf(BasePokemon, "item2")            == 0x0E);
 
-    assert(@ptrToInt(&stats.ev_yield,       ) - base == 10);
-    assert(@ptrToInt(&stats.item1           ) - base == 12);
-    assert(@ptrToInt(&stats.item2           ) - base == 14);
+    assert(@offsetOf(BasePokemon, "gender_ratio")     == 0x10);
+    assert(@offsetOf(BasePokemon, "egg_cycles")       == 0x11);
+    assert(@offsetOf(BasePokemon, "base_friendship")  == 0x12);
+    assert(@offsetOf(BasePokemon, "growth_rate")      == 0x13);
 
-    assert(@ptrToInt(&stats.gender_ratio    ) - base == 16);
-    assert(@ptrToInt(&stats.egg_cycles      ) - base == 17);
-    assert(@ptrToInt(&stats.base_friendship ) - base == 18);
-    assert(@ptrToInt(&stats.growth_rate     ) - base == 19);
+    assert(@offsetOf(BasePokemon, "egg_group1")       == 0x14);
+    assert(@offsetOf(BasePokemon, "egg_group2")       == 0x15);
 
-    assert(@ptrToInt(&stats.egg_group1      ) - base == 20);
-    assert(@ptrToInt(&stats.egg_group2      ) - base == 21);
+    assert(@offsetOf(BasePokemon, "abillity1")        == 0x16);
+    assert(@offsetOf(BasePokemon, "abillity2")        == 0x17);
 
-    assert(@ptrToInt(&stats.abillity1       ) - base == 22);
-    assert(@ptrToInt(&stats.abillity2       ) - base == 23);
+    assert(@offsetOf(BasePokemon, "safari_zone_rate") == 0x18);
+    assert(@offsetOf(BasePokemon, "color")            == 0x19);
+    assert(@offsetOf(BasePokemon, "padding")          == 0x1A);
 
-    assert(@ptrToInt(&stats.safari_zone_rate) - base == 24);
-    assert(@ptrToInt(&stats.color           ) - base == 25);
-    assert(@ptrToInt(&stats.padding         ) - base == 26);
-
-    assert(@sizeOf(BasePokemon) == 28);
+    assert(@sizeOf(BasePokemon) == 0x1C);
 }
 
-test "pokemon.gen3.Evolution: Offsets" {
-    const evo : Evolution = undefined;
-    const base = @ptrToInt(&evo);
-
-    assert(@ptrToInt(&evo.kind   ) - base == 0x00);
-    assert(@ptrToInt(&evo.param  ) - base == 0x02);
-    assert(@ptrToInt(&evo.target ) - base == 0x04);
-    assert(@ptrToInt(&evo.padding) - base == 0x06);
+comptime {
+    assert(@offsetOf(Evolution, "kind")    == 0x00);
+    assert(@offsetOf(Evolution, "param")   == 0x02);
+    assert(@offsetOf(Evolution, "target")  == 0x04);
+    assert(@offsetOf(Evolution, "padding") == 0x06);
 
     assert(@sizeOf(Evolution) == 0x08);
-}
-
-test "pokemon.gen3.[5]Evolution: Offsets" {
-    const evos : [5]Evolution = undefined;
-    const base = @ptrToInt(&evos);
-
-    assert(@ptrToInt(&evos[0]) - base == 0x00);
-    assert(@ptrToInt(&evos[1]) - base == 0x08);
-    assert(@ptrToInt(&evos[2]) - base == 0x10);
-    assert(@ptrToInt(&evos[3]) - base == 0x18);
-    assert(@ptrToInt(&evos[4]) - base == 0x20);
-
-    assert(@sizeOf([5]Evolution) == 0x08 * 5);
 }
