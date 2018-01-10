@@ -949,8 +949,10 @@ pub const Rom = struct {
         }
     };
 
+    const nds_alignment = 0x200;
+
     const NitroWriter = struct {
-        file: &io.File, 
+        file: &io.File,
         fat_offset: usize,
         fnt_main_start: u32,
         fnt_main_offset: usize,
@@ -959,7 +961,7 @@ pub const Rom = struct {
         fnt_sub_table_folder_id: u16,
         folder_id: u16,
         file_offset: u32,
-        
+
         fn writeToFile(self: &NitroWriter, nitro: &const Nitro, parent_id: u16) -> %void {
             switch (nitro.data) {
                 Nitro.Kind.Folder => |folder| {
@@ -969,7 +971,7 @@ pub const Rom = struct {
                         FntMainEntry {
                             .offset_to_subtable   = Little(u32).init(self.fnt_sub_offset - self.fnt_main_start),
                             .first_id_in_subtable = Little(u16).init(self.fnt_first_file_id),
-                            .parent_id            = Little(u16).init(parent_id), 
+                            .parent_id            = Little(u16).init(parent_id),
                         }));
 
                     self.fnt_main_offset = try self.file.getPos();
@@ -996,8 +998,8 @@ pub const Rom = struct {
                     // Write sub-table null terminator
                     try self.file.write([]u8 { 0x00 });
                     self.fnt_sub_offset = u32(try self.file.getPos());
-                    
-                    const id = self.folder_id;  
+
+                    const id = self.folder_id;
                     self.folder_id += 1;
 
                     for (folder.files) |file| {
@@ -1005,7 +1007,7 @@ pub const Rom = struct {
                     }
                 },
                 Nitro.Kind.File => |file| {
-                    const start = self.file_offset;
+                    const start = toAlignment(self.file_offset, nds_alignment);
                     try self.file.seekTo(start);
 
                     switch (file) {
@@ -1023,11 +1025,11 @@ pub const Rom = struct {
                         utils.asConstBytes(
                             FatEntry,
                             FatEntry {
-                                .start = toLittle(u32, start),
+                                .start = toLittle(u32, u32(start)),
                                 .end   = toLittle(u32, end),
                             }
                         )
-                    );    
+                    );
                     self.fat_offset = try self.file.getPos();
                 }
             }
@@ -1047,42 +1049,40 @@ pub const Rom = struct {
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
 
-        const alignment = 0x200;
-
         try file.seekTo(0x4000);
         header.arm9_rom_offset = toLittle(u32, u32(try file.getPos()));
         header.arm9_size = toLittle(u32, u32(self.arm9.len));
         try file.write(self.arm9);
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.arm9_overlay_offset = toLittle(u32, u32(try file.getPos()));
         header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay.len));
         try file.write(self.arm9_overlay);
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.arm7_rom_offset = toLittle(u32, u32(try file.getPos()));
         header.arm7_size = toLittle(u32, u32(self.arm7.len));
         try file.write(self.arm7);
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.arm7_overlay_offset = toLittle(u32, u32(try file.getPos()));
         header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
         try file.write(self.arm7_overlay);
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.icon_title_offset = toLittle(u32, u32(try file.getPos()));
 
         if (header.isDsi()) {
             // TODO: On dsi, this can be of different sizes
             header.icon_title_size = toLittle(u32, @sizeOf(IconTitle));
         }
-        
+
         try file.write(utils.asBytes(IconTitle, self.icon_title));
 
-        header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), alignment)));
+        header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), nds_alignment)));
         header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
 
-        header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), alignment)));
+        header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
         header.fat_size = toLittle(u32, u32(fs_info.files * @sizeOf(FatEntry)));
 
         if (header.arm9_overlay_size.get() == 0x00)
@@ -1116,7 +1116,7 @@ pub const Rom = struct {
 
         debug.warn("folders: {}\n", fs_info.folders);
         try writer.writeToFile(self.root, fs_info.folders);
-        
+
         try file.seekTo(0x00);
         try file.write(utils.asBytes(Header, header));
     }
@@ -1140,7 +1140,7 @@ pub const Rom = struct {
         self.root.destroy(allocator);
     }
 
-    
+
 };
 
 comptime {
