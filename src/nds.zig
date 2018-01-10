@@ -341,9 +341,7 @@ pub const Header = packed struct {
 
         try stream.print("unitcode: {x}\n", self.unitcode);
         try stream.print("encryption_seed_select: {x}\n", self.encryption_seed_select);
-        try stream.print("encryption_seed_select: {x}\n", self.device_capacity);
-
-        try stream.print("encryption_seed_select: {x}\n", self.device_capacity);
+        try stream.print("device_capacity: {x}\n", self.device_capacity);
 
         try prettyPrintSliceField(u8, "reserved1", "{x}", stream, self.reserved1);
 
@@ -523,138 +521,29 @@ pub const Header = packed struct {
     }
 };
 
-test "nds.Header: Offsets" {
-    const header : Header = undefined;
-    const base = @ptrToInt(&header);
-
-    assert(@ptrToInt(&header.game_title                     ) - base == 0x000);
-    assert(@ptrToInt(&header.gamecode                       ) - base == 0x00C);
-    assert(@ptrToInt(&header.makercode                      ) - base == 0x010);
-    assert(@ptrToInt(&header.unitcode                       ) - base == 0x012);
-    assert(@ptrToInt(&header.encryption_seed_select         ) - base == 0x013);
-    assert(@ptrToInt(&header.device_capacity                ) - base == 0x014);
-    assert(@ptrToInt(&header.reserved1                      ) - base == 0x015);
-    assert(@ptrToInt(&header.reserved2                      ) - base == 0x01C);
-    assert(@ptrToInt(&header.nds_region                     ) - base == 0x01D);
-    assert(@ptrToInt(&header.rom_version                    ) - base == 0x01E);
-    assert(@ptrToInt(&header.autostart                      ) - base == 0x01F);
-    assert(@ptrToInt(&header.arm9_rom_offset                ) - base == 0x020);
-    assert(@ptrToInt(&header.arm9_entry_address             ) - base == 0x024);
-    assert(@ptrToInt(&header.arm9_size                      ) - base == 0x02C);
-    assert(@ptrToInt(&header.arm7_rom_offset                ) - base == 0x030);
-    assert(@ptrToInt(&header.arm7_entry_address             ) - base == 0x034);
-    assert(@ptrToInt(&header.arm7_size                      ) - base == 0x03C);
-    assert(@ptrToInt(&header.fnt_offset                     ) - base == 0x040);
-    assert(@ptrToInt(&header.fnt_size                       ) - base == 0x044);
-    assert(@ptrToInt(&header.fat_offset                     ) - base == 0x048);
-    assert(@ptrToInt(&header.fat_size                       ) - base == 0x04C);
-    assert(@ptrToInt(&header.arm9_overlay_offset            ) - base == 0x050);
-    assert(@ptrToInt(&header.arm9_overlay_size              ) - base == 0x054);
-    assert(@ptrToInt(&header.arm7_overlay_offset            ) - base == 0x058);
-    assert(@ptrToInt(&header.arm7_overlay_size              ) - base == 0x05C);
-    assert(@ptrToInt(&header.port_40001A4h_setting_for_normal_commands) - base == 0x060);
-    assert(@ptrToInt(&header.port_40001A4h_setting_for_key1_commands  ) - base == 0x064);
-    assert(@ptrToInt(&header.icon_title_offset              ) - base == 0x068);
-    assert(@ptrToInt(&header.secure_area_checksum           ) - base == 0x06C);
-    assert(@ptrToInt(&header.secure_area_delay              ) - base == 0x06E);
-    assert(@ptrToInt(&header.arm9_auto_load_list_ram_address) - base == 0x070);
-    assert(@ptrToInt(&header.arm7_auto_load_list_ram_address) - base == 0x074);
-    assert(@ptrToInt(&header.secure_area_disable            ) - base == 0x078);
-    assert(@ptrToInt(&header.total_used_rom_size            ) - base == 0x080);
-    assert(@ptrToInt(&header.rom_header_size                ) - base == 0x084);
-    assert(@ptrToInt(&header.reserved3                      ) - base == 0x088);
-    assert(@ptrToInt(&header.nintendo_logo                  ) - base == 0x0C0);
-    assert(@ptrToInt(&header.nintendo_logo_checksum         ) - base == 0x15C);
-    assert(@ptrToInt(&header.header_checksum                ) - base == 0x15E);
-    assert(@ptrToInt(&header.debug_rom_offset               ) - base == 0x160);
-    assert(@ptrToInt(&header.debug_size                     ) - base == 0x164);
-    assert(@ptrToInt(&header.debug_ram_address              ) - base == 0x168);
-    assert(@ptrToInt(&header.reserved4                      ) - base == 0x16C);
-    assert(@ptrToInt(&header.reserved5                      ) - base == 0x170);
-    assert(@ptrToInt(&header.wram_slots                     ) - base == 0x180);
-    assert(@ptrToInt(&header.arm9_wram_areas                ) - base == 0x194);
-    assert(@ptrToInt(&header.arm7_wram_areas                ) - base == 0x1A0);
-    assert(@ptrToInt(&header.wram_slot_master               ) - base == 0x1AC);
-    assert(@ptrToInt(&header.unknown                        ) - base == 0x1AF);
-    assert(@ptrToInt(&header.region_flags                   ) - base == 0x1B0);
-    assert(@ptrToInt(&header.access_control                 ) - base == 0x1B4);
-    assert(@ptrToInt(&header.arm7_scfg_ext_setting          ) - base == 0x1B8);
-    assert(@ptrToInt(&header.reserved6                      ) - base == 0x1BC);
-    assert(@ptrToInt(&header.unknown_flags                  ) - base == 0x1BF);
-    assert(@ptrToInt(&header.arm9i_rom_offset               ) - base == 0x1C0);
-    assert(@ptrToInt(&header.reserved7                      ) - base == 0x1C4);
-    assert(@ptrToInt(&header.arm9i_ram_load_address         ) - base == 0x1C8);
-    assert(@ptrToInt(&header.arm9i_size                     ) - base == 0x1CC);
-    assert(@ptrToInt(&header.arm7i_rom_offset               ) - base == 0x1D0);
-    assert(@ptrToInt(&header.device_list_arm7_ram_addr      ) - base == 0x1D4);
-    assert(@ptrToInt(&header.arm7i_ram_load_address         ) - base == 0x1D8);
-    assert(@ptrToInt(&header.arm7i_size                     ) - base == 0x1DC);
-    assert(@ptrToInt(&header.digest_ntr_region_offset       ) - base == 0x1E0);
-    assert(@ptrToInt(&header.digest_ntr_region_length       ) - base == 0x1E4);
-    assert(@ptrToInt(&header.digest_twl_region_offset       ) - base == 0x1E8);
-    assert(@ptrToInt(&header.digest_twl_region_length       ) - base == 0x1EC);
-    assert(@ptrToInt(&header.digest_sector_hashtable_offset ) - base == 0x1F0);
-    assert(@ptrToInt(&header.digest_sector_hashtable_length ) - base == 0x1F4);
-    assert(@ptrToInt(&header.digest_block_hashtable_offset  ) - base == 0x1F8);
-    assert(@ptrToInt(&header.digest_block_hashtable_length  ) - base == 0x1FC);
-    assert(@ptrToInt(&header.digest_sector_size             ) - base == 0x200);
-    assert(@ptrToInt(&header.digest_block_sectorcount       ) - base == 0x204);
-    assert(@ptrToInt(&header.icon_title_size                ) - base == 0x208);
-    assert(@ptrToInt(&header.reserved8                      ) - base == 0x20C);
-
-    assert(@ptrToInt(&header.total_used_rom_size_including_dsi_area) - base == 0x210);
-
-    assert(@ptrToInt(&header.reserved9                      ) - base == 0x214);
-    assert(@ptrToInt(&header.reserved10                     ) - base == 0x218);
-    assert(@ptrToInt(&header.reserved11                     ) - base == 0x21C);
-    assert(@ptrToInt(&header.modcrypt_area_1_offset         ) - base == 0x220);
-    assert(@ptrToInt(&header.modcrypt_area_1_size           ) - base == 0x224);
-    assert(@ptrToInt(&header.modcrypt_area_2_offset         ) - base == 0x228);
-    assert(@ptrToInt(&header.modcrypt_area_2_size           ) - base == 0x22C);
-    assert(@ptrToInt(&header.title_id_emagcode              ) - base == 0x230);
-    assert(@ptrToInt(&header.title_id_filetype              ) - base == 0x234);
-    assert(@ptrToInt(&header.title_id_rest                  ) - base == 0x235);
-    assert(@ptrToInt(&header.public_sav_filesize            ) - base == 0x238);
-    assert(@ptrToInt(&header.private_sav_filesize           ) - base == 0x23C);
-    assert(@ptrToInt(&header.reserved12                     ) - base == 0x240);
-
-    assert(@ptrToInt(&header.cero_japan                     ) - base == 0x2F0);
-    assert(@ptrToInt(&header.esrb_us_canada                 ) - base == 0x2F1);
-    assert(@ptrToInt(&header.reserved13                     ) - base == 0x2F2);
-    assert(@ptrToInt(&header.usk_germany                    ) - base == 0x2F3);
-    assert(@ptrToInt(&header.pegi_pan_europe                ) - base == 0x2F4);
-    assert(@ptrToInt(&header.resereved14                    ) - base == 0x2F5);
-    assert(@ptrToInt(&header.pegi_portugal                  ) - base == 0x2F6);
-    assert(@ptrToInt(&header.pegi_and_bbfc_uk               ) - base == 0x2F7);
-    assert(@ptrToInt(&header.agcb_australia                 ) - base == 0x2F8);
-    assert(@ptrToInt(&header.grb_south_korea                ) - base == 0x2F9);
-    assert(@ptrToInt(&header.reserved15                     ) - base == 0x2FA);
-
-    assert(@ptrToInt(&header.arm9_hash_with_secure_area     ) - base == 0x300);
-    assert(@ptrToInt(&header.arm7_hash                      ) - base == 0x314);
-    assert(@ptrToInt(&header.digest_master_hash             ) - base == 0x328);
-    assert(@ptrToInt(&header.icon_title_hash                ) - base == 0x33C);
-    assert(@ptrToInt(&header.arm9i_hash                     ) - base == 0x350);
-    assert(@ptrToInt(&header.arm7i_hash                     ) - base == 0x364);
-    assert(@ptrToInt(&header.reserved16                     ) - base == 0x378);
-    assert(@ptrToInt(&header.arm9_hash_without_secure_area  ) - base == 0x3A0);
-    assert(@ptrToInt(&header.reserved17                     ) - base == 0x3B4);
-    assert(@ptrToInt(&header.reserved18                     ) - base == 0xE00);
-    assert(@ptrToInt(&header.signature_across_header_entries) - base == 0xF80);
-
-    assert(@sizeOf(Header) == 0x1000);
-}
+error InvalidVersion;
+error InvalidVersionPadding;
+error InvalidHasAnimatedDsiIconPadding;
+error InvalidReserved1;
+error InvalidReserved2;
+error InvalidChinese;
+error InvalidKorean;
+error InvalidIconAnimationBitmap;
+error InvalidIconAnimationPalette;
+error InvalidIconAnimationSequence;
 
 pub const IconTitle = packed struct {
-    pub const Version = enum(u16) {
-        Original                                    = toLittle(u16, 0x0001).get(),
-        WithChineseTitle                            = toLittle(u16, 0x0002).get(),
-        WithChineseAndKoreanTitle                   = toLittle(u16, 0x0003).get(),
-        // TODO: Seems like we can split this enum into Version byte and has_animated_dsi_icon byte
-        WithChineseAndKoreanTitleAndAnimatedDSiIcon = toLittle(u16, 0x0103).get(),
+    pub const Version = enum(u2) {
+        Original                  = 0x01,
+        WithChineseTitle          = 0x02,
+        WithChineseAndKoreanTitle = 0x03,
     };
 
     version: Version,
+    version_padding: u6,
+
+    has_animated_dsi_icon: bool,
+    has_animated_dsi_icon_padding: u7,
 
     crc16_across_0020h_083Fh: Little(u16),
     crc16_across_0020h_093Fh: Little(u16),
@@ -675,45 +564,42 @@ pub const IconTitle = packed struct {
     title_chinese:  [0x100]u8,
     title_korean:   [0x100]u8,
 
-    reserved2: [0x800]u8,
+    // TODO: IconTitle is actually a variable size structure.
+    //       "original Icon/Title structure rounded to 200h-byte sector boundary (ie. A00h bytes for Version 1 or 2)," 
+    //       "however, later DSi carts are having a size entry at CartHdr[208h] (usually 23C0h)."
+    //reserved2: [0x800]u8,
 
-    // animated DSi icons only
-    icon_animation_bitmap: [0x1000]u8,
-    icon_animation_palette: [0x100]u8,
-    icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
+    //// animated DSi icons only
+    //icon_animation_bitmap: [0x1000]u8,
+    //icon_animation_palette: [0x100]u8,
+    //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
+
+    pub fn validate(self: &const IconTitle) -> %void {
+        if (u2(self.version) == 0)
+            return error.InvalidVersion;
+        if (self.version_padding != 0)
+            return error.InvalidVersionPadding;
+        if (self.has_animated_dsi_icon_padding != 0)
+            return error.InvalidHasAnimatedDsiIconPadding;
+
+        if (!utils.all(u8, self.reserved1, ascii.isZero))
+            return error.InvalidReserved1;
+
+        //if (!utils.all(u8, self.reserved2, ascii.isZero))
+        //    return error.InvalidReserved2;
+
+        //if (!self.has_animated_dsi_icon) {
+        //    if (!utils.all(u8, self.icon_animation_bitmap, is0xFF))
+        //        return error.InvalidIconAnimationBitmap;
+        //    if (!utils.all(u8, self.icon_animation_palette, is0xFF))
+        //        return error.InvalidIconAnimationPalette;
+        //    if (!utils.all(u8, self.icon_animation_sequence, is0xFF))
+        //        return error.InvalidIconAnimationSequence;
+        //}
+    }
+
+    fn is0xFF(char: u8) -> bool { return char == 0xFF; }
 };
-
-test "nds.IconTitle: Offsets" {
-    const icontitle : IconTitle = undefined;
-    const base = @ptrToInt(&icontitle);
-
-    assert(@ptrToInt(&icontitle.version                 ) - base == 0x0000);
-
-    assert(@ptrToInt(&icontitle.crc16_across_0020h_083Fh) - base == 0x0002);
-    assert(@ptrToInt(&icontitle.crc16_across_0020h_093Fh) - base == 0x0004);
-    assert(@ptrToInt(&icontitle.crc16_across_0020h_0A3Fh) - base == 0x0006);
-    assert(@ptrToInt(&icontitle.crc16_across_1240h_23BFh) - base == 0x0008);
-    assert(@ptrToInt(&icontitle.reserved1               ) - base == 0x000A);
-
-    assert(@ptrToInt(&icontitle.icon_bitmap             ) - base == 0x0020);
-    assert(@ptrToInt(&icontitle.icon_palette            ) - base == 0x0220);
-
-    assert(@ptrToInt(&icontitle.title_japanese          ) - base == 0x0240);
-    assert(@ptrToInt(&icontitle.title_english           ) - base == 0x0340);
-    assert(@ptrToInt(&icontitle.title_french            ) - base == 0x0440);
-    assert(@ptrToInt(&icontitle.title_german            ) - base == 0x0540);
-    assert(@ptrToInt(&icontitle.title_italian           ) - base == 0x0640);
-    assert(@ptrToInt(&icontitle.title_spanish           ) - base == 0x0740);
-    assert(@ptrToInt(&icontitle.title_chinese           ) - base == 0x0840);
-    assert(@ptrToInt(&icontitle.title_korean            ) - base == 0x0940);
-    assert(@ptrToInt(&icontitle.reserved2               ) - base == 0x0A40);
-
-    assert(@ptrToInt(&icontitle.icon_animation_bitmap   ) - base == 0x1240);
-    assert(@ptrToInt(&icontitle.icon_animation_palette  ) - base == 0x2240);
-    assert(@ptrToInt(&icontitle.icon_animation_sequence ) - base == 0x2340);
-
-    assert(@sizeOf(IconTitle) == 0x23C0);
-}
 
 error AddressesOverlap;
 
@@ -811,12 +697,28 @@ error InvalidSizeInHeader;
 error FailedToWriteNitroToFnt;
 error FailedToWriteNitroToFat;
 
+pub const Overlay = packed struct {
+    overlay_id: Little(u32),
+    ram_address: Little(u32),
+    ram_size: Little(u32),
+    bss_size: Little(u32),
+    static_initialiser_start_address: Little(u32),
+    static_initialiser_end_address: Little(u32),
+    file_id: Little(u32),
+    reserved: [4]u8,
+};
+
 pub const Rom = struct {
     header: &Header,
     arm9: []u8,
     arm7: []u8,
-    arm9_overlay: []u8,
-    arm7_overlay: []u8,
+
+    arm9_overlay_table: []Overlay,
+    arm9_overlay_files: [][]u8,
+
+    arm7_overlay_table: []Overlay,
+    arm7_overlay_files: [][]u8,
+
     icon_title: &IconTitle,
     root: Nitro,
 
@@ -832,15 +734,31 @@ pub const Rom = struct {
         const arm7 = try utils.seekToAllocAndRead(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
         %defer allocator.free(arm7);
 
-        const arm9_overlay = try utils.seekToAllocAndRead(u8, file, allocator, header.arm9_overlay_offset.get(), header.arm9_overlay_size.get());
-        %defer allocator.free(arm9_overlay);
+        var arm9_overlay_table = try utils.seekToAllocAndRead(
+            Overlay,
+            file,
+            allocator,
+            header.arm9_overlay_offset.get(),
+            header.arm9_overlay_size.get() / @sizeOf(Overlay));
+        %defer allocator.free(arm9_overlay_table);
+        const arm9_overlay_files = try readOverlayFiles(file, allocator, arm9_overlay_table, header.fat_offset.get());
+        %defer cleanUpOverlayFiles(arm9_overlay_files, allocator);
 
-        const arm7_overlay = try utils.seekToAllocAndRead(u8, file, allocator, header.arm7_overlay_offset.get(), header.arm7_overlay_size.get());
-        %defer allocator.free(arm7_overlay);
+        var arm7_overlay_table = try utils.seekToAllocAndRead(
+            Overlay,
+            file,
+            allocator,
+            header.arm7_overlay_offset.get(),
+            header.arm7_overlay_size.get() / @sizeOf(Overlay));
+        %defer allocator.free(arm7_overlay_table);
+        const arm7_overlay_files = try readOverlayFiles(file, allocator, arm7_overlay_table, header.fat_offset.get());
+        %defer cleanUpOverlayFiles(arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
         const icon_title = try utils.seekToCreateAndRead(IconTitle, file, allocator, header.icon_title_offset.get());
         %defer allocator.destroy(icon_title);
+
+        try icon_title.validate();
 
         const root = try readFileSystem(
             file,
@@ -855,18 +773,52 @@ pub const Rom = struct {
             .header = header,
             .arm9 = arm9,
             .arm7 = arm7,
-            .arm9_overlay = arm9_overlay,
-            .arm7_overlay = arm7_overlay,
+
+            .arm9_overlay_table = arm9_overlay_table,
+            .arm9_overlay_files = arm9_overlay_files,
+
+            .arm7_overlay_table = arm7_overlay_table,
+            .arm7_overlay_files = arm7_overlay_files,
+
             .icon_title = icon_title,
             .root = root,
         };
+    }
+
+    fn readOverlayFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) -> %[][]u8 {
+        var results = try allocator.alloc([]u8, overlay_table.len);
+        var allocated : usize = 0;
+        %defer cleanUpOverlayFiles(results[0..allocated], allocator);
+
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
+
+        for (results) |*res, i| {
+            const overlay = overlay_table[i];
+            const offset = (overlay.file_id.get() & 0x0FFF) * @sizeOf(FatEntry);
+
+            var fat_entry : FatEntry = undefined;
+            try file.seekTo(fat_offset + offset);
+            try stream.readNoEof(utils.asBytes(FatEntry, &fat_entry));
+
+            *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.size());
+        }
+
+        return results;
+    }
+
+    fn cleanUpOverlayFiles(files: [][]u8, allocator: &mem.Allocator) -> void {
+        for (files) |file|
+            allocator.free(file);
+
+        allocator.free(files);
     }
 
     const FatEntry = packed struct {
         start: Little(u32),
         end: Little(u32),
 
-        pub fn size(self: &const FatEntry) -> usize {
+        fn size(self: &const FatEntry) -> usize {
             return (self.end.get() - self.start.get()) + 1;
         }
     };
@@ -1052,6 +1004,8 @@ pub const Rom = struct {
         }
     };
 
+    const nds_alignment = 0x200;
+
     const NitroWriter = struct {
         file: &io.File,
         fat_offset: usize,
@@ -1080,19 +1034,19 @@ pub const Rom = struct {
 
                     // Writing sub-table
                     for (folder.files) |file| {
-                        if (file.name.len < 1 or 127 < file.name.len) return error.InvalidNameLength;
+                        if (file.name.len < 0x01 or 0x7F < file.name.len) return error.InvalidNameLength;
 
                         switch (file.data) {
-                            Nitro.Kind.Folder => |sub_folder| {
+                            Nitro.Kind.File => |sub_file| {
                                 try self.file.write([]u8 { u8(file.name.len) });
+                                try self.file.write(file.name);
+                            },
+                            Nitro.Kind.Folder => |sub_folder| {
+                                try self.file.write([]u8 { u8(file.name.len + 0x80) });
                                 try self.file.write(file.name);
                                 try self.file.write(utils.asConstBytes(Little(u16), Little(u16).init(self.fnt_sub_table_folder_id)));
                                 self.fnt_sub_table_folder_id += 1;
                             },
-                            Nitro.Kind.File => |sub_file| {
-                                try self.file.write([]u8 { u8(file.name.len + 0x80) });
-                                try self.file.write(file.name);
-                            }
                         }
                     }
 
@@ -1108,7 +1062,7 @@ pub const Rom = struct {
                     }
                 },
                 Nitro.Kind.File => |file| {
-                    const start = self.file_offset;
+                    const start = toAlignment(self.file_offset, nds_alignment);
                     try self.file.seekTo(start);
 
                     switch (file) {
@@ -1126,7 +1080,7 @@ pub const Rom = struct {
                         utils.asConstBytes(
                             FatEntry,
                             FatEntry {
-                                .start = toLittle(u32, start),
+                                .start = toLittle(u32, u32(start)),
                                 .end   = toLittle(u32, end),
                             }
                         )
@@ -1138,46 +1092,43 @@ pub const Rom = struct {
     };
 
     pub fn writeToFile(self: &const Rom, file: &io.File) -> %void {
+        try self.icon_title.validate();
+
         const header = self.header;
         const fs_info = FSInfo.fromNitro(self.root, true);
 
-        if (@maxValue(u32) < self.arm9.len)                           return error.InvalidSizeInHeader;
-        if (@maxValue(u32) < self.arm7.len)                           return error.InvalidSizeInHeader;
-        if (@maxValue(u32) < self.arm9_overlay.len)                   return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
-        if (@maxValue(u16) < fs_info.files * @sizeOf(FatEntry))       return error.InvalidSizeInHeader;
-
-        const alignment = 0x200;
+        if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
 
         try file.seekTo(0x4000);
         header.arm9_rom_offset = toLittle(u32, u32(try file.getPos()));
         header.arm9_size = toLittle(u32, u32(self.arm9.len));
         try file.write(self.arm9);
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.arm9_overlay_offset = toLittle(u32, u32(try file.getPos()));
-        header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay.len));
-        try file.write(self.arm9_overlay);
+        header.arm9_overlay_size = toLittle(u32, u32(self.arm9_overlay_table.len));
+        try file.write(([]u8)(self.arm9_overlay_table));
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.arm7_rom_offset = toLittle(u32, u32(try file.getPos()));
         header.arm7_size = toLittle(u32, u32(self.arm7.len));
         try file.write(self.arm7);
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.arm7_overlay_offset = toLittle(u32, u32(try file.getPos()));
-        header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay.len));
-        try file.write(self.arm7_overlay);
+        header.arm7_overlay_size = toLittle(u32, u32(self.arm7_overlay_table.len));
+        try file.write(([]u8)(self.arm7_overlay_table));
 
-        try file.seekTo(toAlignment(try file.getPos(), alignment));
+        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
         header.icon_title_offset = toLittle(u32, u32(try file.getPos()));
         header.icon_title_size = toLittle(u32, @sizeOf(IconTitle));
         try file.write(utils.asBytes(IconTitle, self.icon_title));
 
-        header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), alignment)));
+        header.fnt_offset = toLittle(u32, u32(toAlignment(try file.getPos(), nds_alignment)));
         header.fnt_size = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
 
-        header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), alignment)));
+        header.fat_offset = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
         header.fat_size = toLittle(u32, u32(fs_info.files * @sizeOf(FatEntry)));
 
         if (header.arm9_overlay_size.get() == 0x00)
@@ -1194,7 +1145,6 @@ pub const Rom = struct {
 
         try header.validate();
 
-        // 00h  4    Offset to Sub-table             (originated at FNT base)
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
 
@@ -1205,7 +1155,7 @@ pub const Rom = struct {
             .fnt_main_offset = header.fnt_offset.get(),
             .fnt_sub_offset = fnt_sub_offset,
             .fnt_first_file_id = 0,
-            .fnt_sub_table_folder_id = 1,
+            .fnt_sub_table_folder_id = 0xF001,
             .folder_id = 0xF000,
             .file_offset = file_offset,
         };
@@ -1218,8 +1168,8 @@ pub const Rom = struct {
     }
 
     fn toAlignment(address: usize, alignment: usize) -> usize {
-        const res = address % alignment;
-        const result = address + (alignment - res);
+        const rem = address % alignment;
+        const result = address + (alignment - rem);
 
         assert(result % alignment == 0);
         assert(address <= result);
@@ -1231,10 +1181,161 @@ pub const Rom = struct {
         allocator.destroy(self.header);
         allocator.free(self.arm9);
         allocator.free(self.arm7);
-        allocator.free(self.arm9_overlay);
-        allocator.free(self.arm7_overlay);
+        allocator.free(self.arm9_overlay_table);
+        allocator.free(self.arm7_overlay_table);
+        cleanUpOverlayFiles(self.arm9_overlay_files, allocator);
+        cleanUpOverlayFiles(self.arm7_overlay_files, allocator);
         self.root.destroy(allocator);
     }
 
 
 };
+
+comptime {
+    assert(@offsetOf(Header, "game_title")                                == 0x000);
+    assert(@offsetOf(Header, "gamecode")                                  == 0x00C);
+    assert(@offsetOf(Header, "makercode")                                 == 0x010);
+    assert(@offsetOf(Header, "unitcode")                                  == 0x012);
+    assert(@offsetOf(Header, "encryption_seed_select")                    == 0x013);
+    assert(@offsetOf(Header, "device_capacity")                           == 0x014);
+    assert(@offsetOf(Header, "reserved1")                                 == 0x015);
+    assert(@offsetOf(Header, "reserved2")                                 == 0x01C);
+    assert(@offsetOf(Header, "nds_region")                                == 0x01D);
+    assert(@offsetOf(Header, "rom_version")                               == 0x01E);
+    assert(@offsetOf(Header, "autostart")                                 == 0x01F);
+    assert(@offsetOf(Header, "arm9_rom_offset")                           == 0x020);
+    assert(@offsetOf(Header, "arm9_entry_address")                        == 0x024);
+    assert(@offsetOf(Header, "arm9_size")                                 == 0x02C);
+    assert(@offsetOf(Header, "arm7_rom_offset")                           == 0x030);
+    assert(@offsetOf(Header, "arm7_entry_address")                        == 0x034);
+    assert(@offsetOf(Header, "arm7_size")                                 == 0x03C);
+    assert(@offsetOf(Header, "fnt_offset")                                == 0x040);
+    assert(@offsetOf(Header, "fnt_size")                                  == 0x044);
+    assert(@offsetOf(Header, "fat_offset")                                == 0x048);
+    assert(@offsetOf(Header, "fat_size")                                  == 0x04C);
+    assert(@offsetOf(Header, "arm9_overlay_offset")                       == 0x050);
+    assert(@offsetOf(Header, "arm9_overlay_size")                         == 0x054);
+    assert(@offsetOf(Header, "arm7_overlay_offset")                       == 0x058);
+    assert(@offsetOf(Header, "arm7_overlay_size")                         == 0x05C);
+    assert(@offsetOf(Header, "port_40001A4h_setting_for_normal_commands") == 0x060);
+    assert(@offsetOf(Header, "port_40001A4h_setting_for_key1_commands")   == 0x064);
+    assert(@offsetOf(Header, "icon_title_offset")                         == 0x068);
+    assert(@offsetOf(Header, "secure_area_checksum")                      == 0x06C);
+    assert(@offsetOf(Header, "secure_area_delay")                         == 0x06E);
+    assert(@offsetOf(Header, "arm9_auto_load_list_ram_address")           == 0x070);
+    assert(@offsetOf(Header, "arm7_auto_load_list_ram_address")           == 0x074);
+    assert(@offsetOf(Header, "secure_area_disable")                       == 0x078);
+    assert(@offsetOf(Header, "total_used_rom_size")                       == 0x080);
+    assert(@offsetOf(Header, "rom_header_size")                           == 0x084);
+    assert(@offsetOf(Header, "reserved3")                                 == 0x088);
+    assert(@offsetOf(Header, "nintendo_logo")                             == 0x0C0);
+    assert(@offsetOf(Header, "nintendo_logo_checksum")                    == 0x15C);
+    assert(@offsetOf(Header, "header_checksum")                           == 0x15E);
+    assert(@offsetOf(Header, "debug_rom_offset")                          == 0x160);
+    assert(@offsetOf(Header, "debug_size")                                == 0x164);
+    assert(@offsetOf(Header, "debug_ram_address")                         == 0x168);
+    assert(@offsetOf(Header, "reserved4")                                 == 0x16C);
+    assert(@offsetOf(Header, "reserved5")                                 == 0x170);
+    assert(@offsetOf(Header, "wram_slots")                                == 0x180);
+    assert(@offsetOf(Header, "arm9_wram_areas")                           == 0x194);
+    assert(@offsetOf(Header, "arm7_wram_areas")                           == 0x1A0);
+    assert(@offsetOf(Header, "wram_slot_master")                          == 0x1AC);
+    assert(@offsetOf(Header, "unknown")                                   == 0x1AF);
+    assert(@offsetOf(Header, "region_flags")                              == 0x1B0);
+    assert(@offsetOf(Header, "access_control")                            == 0x1B4);
+    assert(@offsetOf(Header, "arm7_scfg_ext_setting")                     == 0x1B8);
+    assert(@offsetOf(Header, "reserved6")                                 == 0x1BC);
+    assert(@offsetOf(Header, "unknown_flags")                             == 0x1BF);
+    assert(@offsetOf(Header, "arm9i_rom_offset")                          == 0x1C0);
+    assert(@offsetOf(Header, "reserved7")                                 == 0x1C4);
+    assert(@offsetOf(Header, "arm9i_ram_load_address")                    == 0x1C8);
+    assert(@offsetOf(Header, "arm9i_size")                                == 0x1CC);
+    assert(@offsetOf(Header, "arm7i_rom_offset")                          == 0x1D0);
+    assert(@offsetOf(Header, "device_list_arm7_ram_addr")                 == 0x1D4);
+    assert(@offsetOf(Header, "arm7i_ram_load_address")                    == 0x1D8);
+    assert(@offsetOf(Header, "arm7i_size")                                == 0x1DC);
+    assert(@offsetOf(Header, "digest_ntr_region_offset")                  == 0x1E0);
+    assert(@offsetOf(Header, "digest_ntr_region_length")                  == 0x1E4);
+    assert(@offsetOf(Header, "digest_twl_region_offset")                  == 0x1E8);
+    assert(@offsetOf(Header, "digest_twl_region_length")                  == 0x1EC);
+    assert(@offsetOf(Header, "digest_sector_hashtable_offset")            == 0x1F0);
+    assert(@offsetOf(Header, "digest_sector_hashtable_length")            == 0x1F4);
+    assert(@offsetOf(Header, "digest_block_hashtable_offset")             == 0x1F8);
+    assert(@offsetOf(Header, "digest_block_hashtable_length")             == 0x1FC);
+    assert(@offsetOf(Header, "digest_sector_size")                        == 0x200);
+    assert(@offsetOf(Header, "digest_block_sectorcount")                  == 0x204);
+    assert(@offsetOf(Header, "icon_title_size")                           == 0x208);
+    assert(@offsetOf(Header, "reserved8")                                 == 0x20C);
+
+    assert(@offsetOf(Header, "total_used_rom_size_including_dsi_area")    == 0x210);
+
+    assert(@offsetOf(Header, "reserved9")                                 == 0x214);
+    assert(@offsetOf(Header, "reserved10")                                == 0x218);
+    assert(@offsetOf(Header, "reserved11")                                == 0x21C);
+    assert(@offsetOf(Header, "modcrypt_area_1_offset")                    == 0x220);
+    assert(@offsetOf(Header, "modcrypt_area_1_size")                      == 0x224);
+    assert(@offsetOf(Header, "modcrypt_area_2_offset")                    == 0x228);
+    assert(@offsetOf(Header, "modcrypt_area_2_size")                      == 0x22C);
+    assert(@offsetOf(Header, "title_id_emagcode")                         == 0x230);
+    assert(@offsetOf(Header, "title_id_filetype")                         == 0x234);
+    assert(@offsetOf(Header, "title_id_rest")                             == 0x235);
+    assert(@offsetOf(Header, "public_sav_filesize")                       == 0x238);
+    assert(@offsetOf(Header, "private_sav_filesize")                      == 0x23C);
+    assert(@offsetOf(Header, "reserved12")                                == 0x240);
+
+    assert(@offsetOf(Header, "cero_japan")                                == 0x2F0);
+    assert(@offsetOf(Header, "esrb_us_canada")                            == 0x2F1);
+    assert(@offsetOf(Header, "reserved13")                                == 0x2F2);
+    assert(@offsetOf(Header, "usk_germany")                               == 0x2F3);
+    assert(@offsetOf(Header, "pegi_pan_europe")                           == 0x2F4);
+    assert(@offsetOf(Header, "resereved14")                               == 0x2F5);
+    assert(@offsetOf(Header, "pegi_portugal")                             == 0x2F6);
+    assert(@offsetOf(Header, "pegi_and_bbfc_uk")                          == 0x2F7);
+    assert(@offsetOf(Header, "agcb_australia")                            == 0x2F8);
+    assert(@offsetOf(Header, "grb_south_korea")                           == 0x2F9);
+    assert(@offsetOf(Header, "reserved15")                                == 0x2FA);
+
+    assert(@offsetOf(Header, "arm9_hash_with_secure_area")                == 0x300);
+    assert(@offsetOf(Header, "arm7_hash")                                 == 0x314);
+    assert(@offsetOf(Header, "digest_master_hash")                        == 0x328);
+    assert(@offsetOf(Header, "icon_title_hash")                           == 0x33C);
+    assert(@offsetOf(Header, "arm9i_hash")                                == 0x350);
+    assert(@offsetOf(Header, "arm7i_hash")                                == 0x364);
+    assert(@offsetOf(Header, "reserved16")                                == 0x378);
+    assert(@offsetOf(Header, "arm9_hash_without_secure_area")             == 0x3A0);
+    assert(@offsetOf(Header, "reserved17")                                == 0x3B4);
+    assert(@offsetOf(Header, "reserved18")                                == 0xE00);
+    assert(@offsetOf(Header, "signature_across_header_entries")           == 0xF80);
+
+    assert(@sizeOf(Header) == 0x1000);
+}
+
+comptime {
+    assert(@offsetOf(IconTitle, "version")                  == 0x0000);
+    assert(@offsetOf(IconTitle, "has_animated_dsi_icon")    == 0x0001);
+
+    assert(@offsetOf(IconTitle, "crc16_across_0020h_083Fh") == 0x0002);
+    assert(@offsetOf(IconTitle, "crc16_across_0020h_093Fh") == 0x0004);
+    assert(@offsetOf(IconTitle, "crc16_across_0020h_0A3Fh") == 0x0006);
+    assert(@offsetOf(IconTitle, "crc16_across_1240h_23BFh") == 0x0008);
+    assert(@offsetOf(IconTitle, "reserved1")                == 0x000A);
+
+    assert(@offsetOf(IconTitle, "icon_bitmap")              == 0x0020);
+    assert(@offsetOf(IconTitle, "icon_palette")             == 0x0220);
+
+    assert(@offsetOf(IconTitle, "title_japanese")           == 0x0240);
+    assert(@offsetOf(IconTitle, "title_english")            == 0x0340);
+    assert(@offsetOf(IconTitle, "title_french")             == 0x0440);
+    assert(@offsetOf(IconTitle, "title_german")             == 0x0540);
+    assert(@offsetOf(IconTitle, "title_italian")            == 0x0640);
+    assert(@offsetOf(IconTitle, "title_spanish")            == 0x0740);
+    assert(@offsetOf(IconTitle, "title_chinese")            == 0x0840);
+    assert(@offsetOf(IconTitle, "title_korean")             == 0x0940);
+    //assert(@offsetOf(IconTitle, "reserved2")               == 0x0A40);
+
+    //assert(@offsetOf(IconTitleT, "icon_animation_bitmap")   == 0x1240);
+    //assert(@offsetOf(IconTitleT, "icon_animation_palette")  == 0x2240);
+    //assert(@offsetOf(IconTitle, "icon_animation_sequence") == 0x2340);
+    //
+    //assert(@sizeOf(IconTitle) == 0x23C0);
+}

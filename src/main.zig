@@ -119,16 +119,6 @@ pub fn main() -> %void {
             };
         },
         Rom.Nds => |*nds_rom| {
-            var before = io.File.openWrite("before", null) catch |err| {
-                try stdout_stream.print("Couldn't open {}.\n", out_path);
-                return err;
-            };
-            defer before.close();
-
-            var before_file_stream = io.FileOutStream.init(&before);
-            var before_stream = &before_file_stream.stream;
-            try nds_rom.header.prettyPrint(before_stream);
-
             var out_file = io.File.openWrite(out_path, null) catch |err| {
                 try stdout_stream.print("Couldn't open {}.\n", out_path);
                 return err;
@@ -139,15 +129,6 @@ pub fn main() -> %void {
                 try stdout_stream.print("Unable to write nds to {}: {}\n", out_path, @errorName(err));
                 return err;
             };
-
-            var after = io.File.openWrite("after", null) catch |err| {
-                try stdout_stream.print("Couldn't open {}.\n", out_path);
-                return err;
-            };
-            defer after.close();
-            var after_file_stream = io.FileOutStream.init(&after);
-            var after_stream = &after_file_stream.stream;
-            try nds_rom.header.prettyPrint(after_stream);
         },
         else => {
             try stdout_stream.print("Rom type not supported (yet)\n");
