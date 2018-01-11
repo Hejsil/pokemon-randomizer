@@ -13,6 +13,7 @@ const assert = debug.assert;
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
+error InvalidHeaderChecksum;
 error InvalidGameTitle;
 error InvalidGamecode;
 error InvalidMakercode;
@@ -231,6 +232,10 @@ pub const Header = packed struct {
     }
 
     pub fn validate(self: &const Header) -> %void {
+        debug.warn("{x}\n", self.header_checksum.get());
+        if (self.header_checksum.get() != crc16(utils.asConstBytes(Header, self)[0..0x15E]))
+            return error.InvalidHeaderChecksum;
+
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero))
             return error.InvalidGameTitle;
         if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
@@ -520,6 +525,39 @@ pub const Header = packed struct {
         try stream.write(" }");
     }
 };
+
+//   r0  Initial CRC value (16bit, usually FFFFh)
+//   r1  Start Address   (must be aligned by 2)
+//   r2  Length in bytes (must be aligned by 2)
+// CRC16 checksums can be calculated as such:
+//   val[0..7] = C0C1h,C181h,C301h,C601h,CC01h,D801h,F001h,A001h
+//   for i=start to end
+//     crc=crc xor byte[i]
+//     for j=0 to 7
+//       crc=crc shr 1:if carry then crc=crc xor (val[j] shl (7-j))
+//     next j
+//   next i
+// Return:
+//   r0  Calculated 16bit CRC Value
+fn crc16(bytes: []const u8) -> u16 {
+    const val = []u16 { 0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001 };
+    var crc : u16 = 0xFFFF;
+    for (bytes) |byte| {
+        crc = crc ^ byte;
+        var j : u4 = 0;
+        while (j < 8) : (j += 1) {
+            if (crc & 0x01 > 0) {
+                crc >>= 1;
+                crc ^= val[j] << (7 - j);
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+
+    debug.warn("{x}\n", crc);
+    return crc;
+}
 
 error InvalidVersion;
 error InvalidVersionPadding;
@@ -1124,6 +1162,9 @@ pub const Rom = struct {
 
         const header = self.header;
         const fs_info = FSInfo.fromNitro(self.root, true);
+        debug.warn("{}\n", fs_info.files);
+        debug.warn("{}\n", fs_info.folders);
+        debug.warn("{}\n", self.arm9_overlay_table.len);
 
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
@@ -1179,6 +1220,15 @@ pub const Rom = struct {
 
         // TODO: It seems like we are also missing: Header Checksum and Devicecapacity
         header.total_used_rom_size = toLittle(u32, u32(overlay_writer.overlay_file_offset));
+        header.device_capacity = blk: {
+            // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
+            const size = header.total_used_rom_size.get();
+            var device_cap : u6 = 1;
+            while (@shlExact(usize(128), device_cap) < size) : (device_cap += 1) { }
+
+            break :blk device_cap;
+        };
+        header.header_checksum = toLittle(u16, crc16(utils.asConstBytes(Header, header)[0..0x15E]));
 
         try file.seekTo(0x00);
         try file.write(utils.asBytes(Header, header));
