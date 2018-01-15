@@ -3,6 +3,7 @@ const gba        = @import("gba.zig");
 const nds        = @import("nds.zig");
 const utils      = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
+const clap       = @import("clap.zig");
 const gen3       = @import("pokemon/gen3.zig");
 
 const os    = std.os;
@@ -52,38 +53,66 @@ fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
     return error.NotARom;
 }
 
-error UnsupportedGame;
+const Options = struct {
+    in_file : []const u8,
+    out_file: []const u8,
+
+    fn inFile(op: &Options, str: []const u8) -> %void { op.in_file = str; }
+    fn outFile(op: &Options, str: []const u8) -> %void { op.out_file = str; }
+};
+
+const Arg = clap.Arg(Options);
+const program_arguments = comptime []Arg {
+    Arg.init(Options.inFile)
+        .help("The rom to randomize."),
+    Arg.init(Options.outFile)
+        .help("The place to output the randomized rom.")
+        .short("o")
+        .long("output")
+        .takesValue(true)
+};
+const defaults = Options {
+    .in_file = "pokemon",
+    .out_file = "randomized",
+};
 
 pub fn main() -> %void {
+    const allocator = std.heap.c_allocator;
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
     var stdout_stream = &stdout_file_stream.stream;
-    const allocator = std.heap.c_allocator;
 
-    const argsWithExe = try os.argsAlloc(allocator);
-    defer os.argsFree(allocator, argsWithExe);
+    const args = try os.argsAlloc(allocator);
+    defer os.argsFree(allocator, args);
 
-    const exe_path = try utils.first([]const u8, argsWithExe);
-    const in_path  = try utils.first([]const u8, argsWithExe[1..]);
-    const out_path = try utils.first([]const u8, argsWithExe[2..]);
-    const args = argsWithExe[3..];
+    const options = clap.parse(Options, args, defaults, program_arguments) catch |err| {
+        // TODO: Write useful error message to user
+        return err;
+    };
 
-    var rom = loadRom(in_path, allocator) catch |err| {
+
+    var rom = loadRom(options.in_file, allocator) catch |err| {
         switch (err) {
             error.NotARom => {
-                try stdout_stream.print("{} is not a rom.\n", in_path);
+                try stdout_stream.print("{} is not a rom.\n", options.in_file);
             },
             else => {
                 // TODO: This could also be an allocation error.
                 //       Follow issue https://github.com/zig-lang/zig/issues/632
                 //       and refactor when we can check if error is part of an error set.
-                try stdout_stream.print("Unable to open {}.\n", in_path);
+                try stdout_stream.print("Unable to open {}.\n", options.in_file);
             }
         }
 
         return err;
     };
     defer rom.destroy(allocator);
+
+    var out_file = io.File.openWrite(options.out_file, null) catch |err| {
+        try stdout_stream.print("Couldn't open {}.\n", options.out_file);
+        return err;
+    };
+    defer out_file.close();
 
     switch (rom) {
         Rom.Gba => |*gen3_rom| {
@@ -106,27 +135,15 @@ pub fn main() -> %void {
                 return err;
             };
 
-            var out_file = io.File.openWrite(out_path, null) catch |err| {
-                try stdout_stream.print("Couldn't open {}.\n", out_path);
-                return err;
-            };
-            defer out_file.close();
-
             var file_stream = io.FileOutStream.init(&out_file);
             gen3_rom.writeToStream(&file_stream.stream) catch |err| {
-                try stdout_stream.print("Unable to write gba to {}.\n", out_path);
+                try stdout_stream.print("Unable to write gba to {}.\n", options.out_file);
                 return err;
             };
         },
         Rom.Nds => |*nds_rom| {
-            var out_file = io.File.openWrite(out_path, null) catch |err| {
-                try stdout_stream.print("Couldn't open {}.\n", out_path);
-                return err;
-            };
-            defer out_file.close();
-
             nds_rom.writeToFile(&out_file) catch |err| {
-                try stdout_stream.print("Unable to write nds to {}: {}\n", out_path, @errorName(err));
+                try stdout_stream.print("Unable to write nds to {}: {}\n", options.out_file, @errorName(err));
                 return err;
             };
         },
