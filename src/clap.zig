@@ -18,28 +18,19 @@ const assert = debug.assert;
 pub fn Arg(comptime T: type) -> type { return struct {
     const Self = this;
 
-    pub const Short = struct { name: []const u8, takes_value: bool };
-    pub const Long  = struct { name: []const u8, takes_value: bool };
-    pub const Both  = struct { short: []const u8, long: []const u8, takes_value: bool };
-    pub const FlagKind = enum(u8) { Short, Long, Both, None };
-    pub const Flag = union(FlagKind) {
-        Short: Short,
-        Long:  Long,
-        Both:  Both,
-        None:  void
-    };
-
     help_message: []const u8,
     handler: fn(&T, []const u8) -> %void,
-    flag: Flag,
+    takes_value: bool,
+    short_arg: ?[]const u8,
+    long_arg:  ?[]const u8,
 
     pub fn init(handler: fn(&T, []const u8) -> %void) -> Self {
         return Self {
             .help_message = "",
             .handler = handler,
-            .flag = Flag {
-                .None = void{}
-            }
+            .takes_value = false,
+            .short_arg = null,
+            .long_arg = null,
         };
     }
 
@@ -49,68 +40,17 @@ pub fn Arg(comptime T: type) -> type { return struct {
     }
 
     pub fn short(self: &const Self, str: []const u8) -> Self {
-        var res = *self;
-        switch (res.flag) {
-            Flag.Short => |*shrt| shrt.name  = str,
-            Flag.Both  => |*both| both.short = str,
-            Flag.Long => |lng| {
-                res.flag = Flag {
-                    .Both = Both {
-                        .short = str,
-                        .long  = lng.name,
-                        .takes_value = lng.takes_value,
-                    }
-                };
-            },
-            Flag.None => {
-                res.flag = Flag {
-                    .Short = Short {
-                        .name = str,
-                        .takes_value = false,
-                    }
-                };
-            }
-        }
-
+        var res = *self; res.short_arg = str;
         return res;
     }
 
     pub fn long(self: &const Self, str: []const u8) -> Self {
-        var res = *self;
-        switch (res.flag) {
-            Flag.Long => |*lng|  lng.name   = str,
-            Flag.Both => |*both| both.short = str,
-            Flag.Short => |shrt| {
-                res.flag = Flag {
-                    .Both = Both {
-                        .short = shrt.name,
-                        .long  = str,
-                        .takes_value = shrt.takes_value,
-                    }
-                };
-            },
-            Flag.None => {
-                res.flag = Flag {
-                    .Long = Long {
-                        .name = str,
-                        .takes_value = false,
-                    }
-                };
-            }
-        }
-
+        var res = *self; res.long_arg = str;
         return res;
     }
 
     pub fn takesValue(self: &const Self, b: bool) -> Self {
-        var res = *self;
-        switch (res.flag) {
-            Flag.Long  => |*lng|  lng.takes_value  = b,
-            Flag.Both  => |*both| both.takes_value  = b,
-            Flag.Short => |*shrt| shrt.takes_value = b,
-            Flag.None  => {},
-        }
-
+        var res = *self; res.takes_value = b;
         return res;
     }
 };}
@@ -140,50 +80,28 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
         const kind = pair.kind;
 
         loop: for (options) |option| {
-            const Flag = Arg(T).Flag;
-            switch (option.flag) {
-                Flag.Both => |both| blk: {
-                    switch (kind) {
-                        Kind.None  => continue :loop,
-                        Kind.Short => if (!mem.eql(u8, both.short, arg)) continue :loop,
-                        Kind.Long  => if (!mem.eql(u8, both.long, arg))  continue :loop,
-                    }
+            switch (kind) {
+                Kind.None => {
+                    if (option.short_arg != null) continue :loop;
+                    if (option.long_arg != null) continue :loop;
 
-                    if (both.takes_value) i += 1;
-                    if (args.len <= i) return error.MissingValueToArgument;
-                    const value = args[i];
-                    try option.handler(&result, value);
-
-                    break :loop;
-                },
-                Flag.Short => |short| blk: {
-                    if (kind != Kind.Short)            continue :loop;
-                    if (!mem.eql(u8, short.name, arg)) continue :loop;
-
-                    if (short.takes_value) i += 1;
-                    if (args.len <= i) return error.MissingValueToArgument;
-                    const value = args[i];
-                    try option.handler(&result, value);
-
-                    break :loop;
-                },
-                Flag.Long => |long| blk: {
-                    if (kind != Kind.Long)            continue :loop;
-                    if (!mem.eql(u8, long.name, arg)) continue :loop;
-
-                    if (long.takes_value) i += 1;
-                    if (args.len <= i) return error.MissingValueToArgument;
-                    const value = args[i];
-                    try option.handler(&result, value);
-
-                    break :loop;
-                },
-                Flag.None => blk: {
-                    if (kind != Kind.None) continue :loop;
                     try option.handler(&result, arg);
                     break :loop;
+                },
+                Kind.Short => {
+                    const short = option.short_arg ?? continue :loop;
+                    if (!mem.eql(u8, short, arg))     continue :loop;
+                },
+                Kind.Long => {
+                    const long = option.long_arg ?? continue :loop;
+                    if (!mem.eql(u8, long, arg))    continue :loop;
                 }
             }
+
+            if (option.takes_value) i += 1;
+            if (args.len <= i) return error.MissingValueToArgument;
+            const value = args[i];
+            try option.handler(&result, value);
 
             break :loop;
         } else {
