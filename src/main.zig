@@ -15,7 +15,7 @@ const path  = os.path;
 
 const Rom = union(enum) {
     Gba: gen3.Game,
-    Nds: nds.Rom,
+    Nds: &nds.Rom,
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
         switch (*self) {
@@ -142,11 +142,13 @@ pub fn main() -> %void {
                 return err;
             };
         },
-        Rom.Nds => |*nds_rom| {
+        Rom.Nds => |nds_rom| {
             nds_rom.writeToFile(&out_file) catch |err| {
                 try stdout_stream.print("Unable to write nds to {}: {}\n", options.out_file, @errorName(err));
                 return err;
             };
+
+            try nds_rom.header.prettyPrint(stdout_stream);
         },
         else => {
             try stdout_stream.print("Rom type not supported (yet)\n");
