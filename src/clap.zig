@@ -9,7 +9,6 @@ const assert = debug.assert;
 
 
 // TODO: Missing a few convinient features
-//     * Required arguments. How should these be handled?
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
 //       We will probably change the api, to only allow single ascii chars for
