@@ -1,4 +1,5 @@
-const std = @import("std");
+const std  = @import("std");
+const bits = @import("bits.zig");
 
 const mem   = std.mem;
 const fmt   = std.fmt;
@@ -20,6 +21,7 @@ pub fn Arg(comptime T: type) -> type { return struct {
 
     help_message: []const u8,
     handler: fn(&T, []const u8) -> %void,
+    is_required: bool,
     takes_value: bool,
     short_arg: ?[]const u8,
     long_arg:  ?[]const u8,
@@ -28,6 +30,7 @@ pub fn Arg(comptime T: type) -> type { return struct {
         return Self {
             .help_message = "",
             .handler = handler,
+            .is_required = false,
             .takes_value = false,
             .short_arg = null,
             .long_arg = null,
@@ -53,10 +56,17 @@ pub fn Arg(comptime T: type) -> type { return struct {
         var res = *self; res.takes_value = b;
         return res;
     }
+
+    pub fn required(self: &const Self, b: bool) -> Self {
+        var res = *self; res.is_required = b;
+        return res;
+    }
 };}
 
 error MissingValueToArgument;
 error InvalidArgument;
+error ToManyOptions;
+error RequiredArgumentWasntHandled;
 
 pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, options: []const Arg(T)) -> %T {
     var result = *defaults;
@@ -64,11 +74,22 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
     const Kind    = enum { Long, Short, None };
     const ArgKind = struct { arg: []const u8, kind: Kind };
 
+    // TODO: We avoid allocation here by using a bit field to store the required
+    //       arguments that we need to handle. This does however mean, that we
+    //       can only parse 128 options.
+    var required : u128 = 0;
+    if (args.len >= 128) return error.ToManyOptions;
+
+    for (options) |option, i| {
+        if (option.is_required)
+            required = bits.set(u128, required, u7(i), 1);
+    }
+
     // We assume that the first arg is always the exe path
-    var i = usize(1);
-    while (i < args.len) : (i += 1) {
+    var arg_i = usize(1);
+    while (arg_i < args.len) : (arg_i += 1) {
         const pair = blk: {
-            const tmp = args[i];
+            const tmp = args[arg_i];
             if (mem.startsWith(u8, tmp, "--"))
                 break :blk ArgKind { .arg = tmp[2..], .kind = Kind.Long };
             if (mem.startsWith(u8, tmp, "-"))
@@ -79,13 +100,14 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
         const arg = pair.arg;
         const kind = pair.kind;
 
-        loop: for (options) |option| {
+        loop: for (options) |option, op_i| {
             switch (kind) {
                 Kind.None => {
                     if (option.short_arg != null) continue :loop;
-                    if (option.long_arg != null) continue :loop;
+                    if (option.long_arg != null)  continue :loop;
 
                     try option.handler(&result, arg);
+                    required = bits.set(u128, required, u7(op_i), 0);
                     break :loop;
                 },
                 Kind.Short => {
@@ -98,15 +120,20 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
                 }
             }
 
-            if (option.takes_value) i += 1;
-            if (args.len <= i) return error.MissingValueToArgument;
-            const value = args[i];
+            if (option.takes_value) arg_i += 1;
+            if (args.len <= arg_i) return error.MissingValueToArgument;
+            const value = args[arg_i];
             try option.handler(&result, value);
+            required = bits.set(u128, required, u7(op_i), 0);
 
             break :loop;
         } else {
             return error.InvalidArgument;
         }
+    }
+
+    if (required != 0) {
+        return error.RequiredArgumentWasntHandled;
     }
 
     return result;
@@ -138,7 +165,8 @@ test "args.parse.Example" {
             .help("The amount of red in our color")
             .short("r")
             .long("red")
-            .takesValue(true),
+            .takesValue(true)
+            .required(true),
         CArg.init(Color.gFromStr)
             .help("The amount of green in our color")
             .short("g")
@@ -151,31 +179,53 @@ test "args.parse.Example" {
             .takesValue(true),
     };
 
-    const Case = struct { args: []const []const u8, res: Color };
+    const Case = struct { args: []const []const u8, res: Color, err: ?error };
     const cases = []Case {
         Case {
             .args = [][]const u8 { "color.exe", "-r", "100", "-g", "100", "-b", "100", },
             .res = Color { .r = 100, .g = 100, .b = 100 },
+            .err = null,
         },
         Case {
             .args = [][]const u8 { "color.exe", "--red", "100", "-g", "100", "--blue", "50", },
             .res = Color { .r = 100, .g = 100, .b = 50 },
+            .err = null,
         },
         Case {
             .args = [][]const u8 { "color.exe", "-g", "200", "--blue", "100", "--red", "100", },
             .res = Color { .r = 100, .g = 200, .b = 100 },
+            .err = null,
         },
         Case {
             .args = [][]const u8 { "color.exe", "-r", "200", "-r", "255" },
             .res = Color { .r = 255, .g = 0, .b = 0 },
+            .err = null,
+        },
+        Case {
+            .args = [][]const u8 { "color.exe", "-g", "200", "-b", "255" },
+            .res = Color { .r = 0, .g = 0, .b = 0 },
+            .err = error.RequiredArgumentWasntHandled,
+        },
+        Case {
+            .args = [][]const u8 { "color.exe", "-p" },
+            .res = Color { .r = 0, .g = 0, .b = 0 },
+            .err = error.InvalidArgument,
+        },
+        Case {
+            .args = [][]const u8 { "color.exe", "-g" },
+            .res = Color { .r = 0, .g = 0, .b = 0 },
+            .err = error.MissingValueToArgument,
         },
     };
 
     for (cases) |case| {
         const default = Color { .r = 0, .g = 0, .b = 0 };
-        const res = try parse(Color, case.args, default, options);
-        assert(res.r == case.res.r);
-        assert(res.g == case.res.g);
-        assert(res.b == case.res.b);
+        if (parse(Color, case.args, default, options)) |res| {
+            assert(res.r == case.res.r);
+            assert(res.g == case.res.g);
+            assert(res.b == case.res.b);
+        } else |err| {
+            assert(err == (case.err ?? unreachable));
+        }
     }
 }

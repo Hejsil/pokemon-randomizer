@@ -64,7 +64,8 @@ const Options = struct {
 const Arg = clap.Arg(Options);
 const program_arguments = comptime []Arg {
     Arg.init(Options.inFile)
-        .help("The rom to randomize."),
+        .help("The rom to randomize.")
+        .required(true),
     Arg.init(Options.outFile)
         .help("The place to output the randomized rom.")
         .short("o")
