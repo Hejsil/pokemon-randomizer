@@ -2,6 +2,7 @@ const std    = @import("std");
 const utils  = @import("utils.zig");
 const ascii  = @import("ascii.zig");
 const little = @import("little.zig");
+const crc    = @import("zig-crc/crc.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
@@ -47,6 +48,15 @@ error InvalidReserved17;
 error InvalidReserved18;
 error InvalidDigestNtrRegionOffset;
 error InvalidTitleIdRest;
+
+const crc_modbus = comptime blk: {
+    @setEvalBranchQuota(crc.crcspec_init_backward_cycles);
+    break :blk crc.CrcSpec(u16).init(0x8005, 0xFFFF, 0x0000, true, true);
+};
+
+test "nds.crc_modbus" {
+    assert(crc_modbus.checksum("123456789") == 0x4B37);
+}
 
 // http://problemkaputt.de/gbatek.htm#dscartridgeheader
 pub const Header = packed struct {
@@ -232,8 +242,7 @@ pub const Header = packed struct {
     }
 
     pub fn validate(self: &const Header) -> %void {
-        debug.warn("{x}\n", self.header_checksum.get());
-        if (self.header_checksum.get() != crc16(utils.asConstBytes(Header, self)[0..0x15E]))
+        if (self.header_checksum.get() != crc_modbus.checksum(utils.asConstBytes(Header, self)[0..0x15E]))
             return error.InvalidHeaderChecksum;
 
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero))
@@ -525,39 +534,6 @@ pub const Header = packed struct {
         try stream.write(" }");
     }
 };
-
-//   r0  Initial CRC value (16bit, usually FFFFh)
-//   r1  Start Address   (must be aligned by 2)
-//   r2  Length in bytes (must be aligned by 2)
-// CRC16 checksums can be calculated as such:
-//   val[0..7] = C0C1h,C181h,C301h,C601h,CC01h,D801h,F001h,A001h
-//   for i=start to end
-//     crc=crc xor byte[i]
-//     for j=0 to 7
-//       crc=crc shr 1:if carry then crc=crc xor (val[j] shl (7-j))
-//     next j
-//   next i
-// Return:
-//   r0  Calculated 16bit CRC Value
-fn crc16(bytes: []const u8) -> u16 {
-    const val = []u16 { 0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001 };
-    var crc : u16 = 0xFFFF;
-    for (bytes) |byte| {
-        crc = crc ^ byte;
-        var j : u4 = 0;
-        while (j < 8) : (j += 1) {
-            if (crc & 0x01 > 0) {
-                crc >>= 1;
-                crc ^= val[j] << (7 - j);
-            } else {
-                crc >>= 1;
-            }
-        }
-    }
-
-    debug.warn("{x}\n", crc);
-    return crc;
-}
 
 error InvalidVersion;
 error InvalidVersionPadding;
@@ -1162,9 +1138,6 @@ pub const Rom = struct {
 
         const header = self.header;
         const fs_info = FSInfo.fromNitro(self.root, true);
-        debug.warn("{}\n", fs_info.files);
-        debug.warn("{}\n", fs_info.folders);
-        debug.warn("{}\n", self.arm9_overlay_table.len);
 
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
@@ -1189,8 +1162,6 @@ pub const Rom = struct {
         if (header.fnt_size.get() == 0x00)          header.fnt_offset = toLittle(u32, 0x00);
         if (header.fat_size.get() == 0x00)          header.fat_offset = toLittle(u32, 0x00);
 
-        try header.validate();
-
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
 
@@ -1206,7 +1177,6 @@ pub const Rom = struct {
             .file_offset = file_offset,
         };
 
-        debug.warn("folders: {}\n", fs_info.folders);
         try nitro_writer.writeToFile(self.root, fs_info.folders);
 
         var overlay_writer = OverlayWriter {
@@ -1228,8 +1198,9 @@ pub const Rom = struct {
 
             break :blk device_cap;
         };
-        header.header_checksum = toLittle(u16, crc16(utils.asConstBytes(Header, header)[0..0x15E]));
+        header.header_checksum = toLittle(u16, crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]));
 
+        try header.validate();
         try file.seekTo(0x00);
         try file.write(utils.asBytes(Header, header));
         try file.seekTo(header.arm9_rom_offset.get());

@@ -1,0 +1,3 @@
+[submodule "src/zig-crc"]
+	path = src/zig-crc
+	url = https://github.com/Hejsil/zig-crc.git
