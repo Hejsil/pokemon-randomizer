@@ -575,8 +575,8 @@ pub const IconTitle = packed struct {
     title_german:   [0x100]u8,
     title_italian:  [0x100]u8,
     title_spanish:  [0x100]u8,
-    title_chinese:  [0x100]u8,
-    title_korean:   [0x100]u8,
+    //title_chinese:  [0x100]u8,
+    //title_korean:   [0x100]u8,
 
     // TODO: IconTitle is actually a variable size structure.
     //       "original Icon/Title structure rounded to 200h-byte sector boundary (ie. A00h bytes for Version 1 or 2)," 
@@ -1147,7 +1147,7 @@ pub const Rom = struct {
 
         header.arm7_rom_offset     = toLittle(u32, u32(toAlignment(header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), nds_alignment)));
         header.arm7_size           = toLittle(u32, u32(self.arm7.len));
-        header.arm7_overlay_offset = toLittle(u32, u32(toAlignment(header.arm7_rom_offset.get() + header.arm7_size.get(), nds_alignment)));
+        header.arm7_overlay_offset = toLittle(u32, header.arm7_rom_offset.get() + header.arm7_size.get());
         header.arm7_overlay_size   = toLittle(u32, u32(self.arm7_overlay_table.len * @sizeOf(Overlay)));
         header.icon_title_offset   = toLittle(u32, u32(toAlignment(header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment)));
         header.icon_title_size     = toLittle(u32, @sizeOf(IconTitle));
@@ -1155,11 +1155,6 @@ pub const Rom = struct {
         header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
         header.fat_offset          = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
         header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(FatEntry)));
-
-        if (header.arm9_overlay_size.get() == 0x00) header.arm9_overlay_offset = toLittle(u32, 0x00);
-        if (header.arm7_overlay_size.get() == 0x00) header.arm7_overlay_offset = toLittle(u32, 0x00);
-        if (header.fnt_size.get() == 0x00)          header.fnt_offset = toLittle(u32, 0x00);
-        if (header.fat_size.get() == 0x00)          header.fat_offset = toLittle(u32, 0x00);
 
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
@@ -1187,8 +1182,7 @@ pub const Rom = struct {
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
-        // TODO: It seems like we are also missing: Header Checksum and Devicecapacity
-        header.total_used_rom_size = toLittle(u32, u32(overlay_writer.overlay_file_offset));
+        header.total_used_rom_size = toLittle(u32, u32(toAlignment(overlay_writer.overlay_file_offset, 4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
@@ -1384,8 +1378,8 @@ comptime {
     assert(@offsetOf(IconTitle, "title_german")             == 0x0540);
     assert(@offsetOf(IconTitle, "title_italian")            == 0x0640);
     assert(@offsetOf(IconTitle, "title_spanish")            == 0x0740);
-    assert(@offsetOf(IconTitle, "title_chinese")            == 0x0840);
-    assert(@offsetOf(IconTitle, "title_korean")             == 0x0940);
+    //assert(@offsetOf(IconTitle, "title_chinese")            == 0x0840);
+    //assert(@offsetOf(IconTitle, "title_korean")             == 0x0940);
     //assert(@offsetOf(IconTitle, "reserved2")               == 0x0A40);
 
     //assert(@offsetOf(IconTitleT, "icon_animation_bitmap")   == 0x1240);
