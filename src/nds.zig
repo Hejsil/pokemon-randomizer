@@ -780,7 +780,6 @@ pub const Rom = struct {
 
         // TODO: On dsi, this can be of different sizes
         result.icon_title = try utils.seekToNoAllocRead(IconTitle, file, result.header.icon_title_offset.get());
-        %defer allocator.destroy(result.icon_title);
         try result.icon_title.validate();
 
         result.root = try readFileSystem(
