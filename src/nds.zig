@@ -1205,11 +1205,11 @@ pub const Rom = struct {
 
         try file.seekTo(header.arm9_overlay_offset.get());
         try file.write(([]u8)(self.arm9_overlay_table));
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
+        try file.seekTo(header.arm7_rom_offset.get());
         try file.write(self.arm7);
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
+        try file.seekTo(header.arm7_overlay_offset.get());
         try file.write(([]u8)(self.arm7_overlay_table));
-        try file.seekTo(toAlignment(try file.getPos(), nds_alignment));
+        try file.seekTo(header.icon_title_offset.get());
         try file.write(utils.asBytes(IconTitle, &self.icon_title));
     }
 
