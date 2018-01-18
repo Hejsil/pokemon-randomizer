@@ -835,7 +835,7 @@ pub const Rom = struct {
         }
 
         fn getSize(self: &const FatEntry) -> usize {
-            return (self.end.get() - self.start.get()) + 1;
+            return self.end.get() - self.start.get();
         }
     };
 
@@ -1108,8 +1108,8 @@ pub const Rom = struct {
 
     const OverlayWriter = struct {
         file: &io.File,
-        overlay_file_offset: usize,
-        file_id: usize,
+        overlay_file_offset: u32,
+        file_id: u16,
 
         fn writeOverlayFiles(self: &OverlayWriter, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) -> %void {
             for (overlay_table) |*overlay_entry, i| {
@@ -1121,8 +1121,9 @@ pub const Rom = struct {
                 try self.file.seekTo(fat_entry.start.get());
                 try self.file.write(overlay_file);
 
+                overlay_entry.overlay_id = toLittle(u32, u32(i));
                 overlay_entry.file_id = toLittle(u32, u32(self.file_id));
-                self.overlay_file_offset = try self.file.getPos();
+                self.overlay_file_offset = u32(try self.file.getPos());
                 self.file_id += 1;
             }
         }
@@ -1159,28 +1160,28 @@ pub const Rom = struct {
         const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
         const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
 
+        var overlay_writer = OverlayWriter {
+            .file = file,
+            .overlay_file_offset = file_offset,
+            .file_id = 0,
+        };
+
+        try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
+        try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
+
         var nitro_writer = NitroWriter {
             .file = file,
             .fat_offset = header.fat_offset.get(),
             .fnt_main_start = header.fnt_offset.get(),
             .fnt_main_offset = header.fnt_offset.get(),
             .fnt_sub_offset = fnt_sub_offset,
-            .fnt_first_file_id = 0,
+            .fnt_first_file_id = overlay_writer.file_id,
             .fnt_sub_table_folder_id = 0xF001,
             .folder_id = 0xF000,
-            .file_offset = file_offset,
+            .file_offset = overlay_writer.overlay_file_offset,
         };
 
         try nitro_writer.writeToFile(self.root, fs_info.folders);
-
-        var overlay_writer = OverlayWriter {
-            .file = file,
-            .overlay_file_offset = nitro_writer.file_offset,
-            .file_id = nitro_writer.fnt_first_file_id,
-        };
-
-        try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
-        try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
         header.total_used_rom_size = toLittle(u32, u32(toAlignment(overlay_writer.overlay_file_offset, 4)));
         header.device_capacity = blk: {
