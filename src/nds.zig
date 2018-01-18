@@ -668,8 +668,8 @@ pub const Folder = struct {
     }
 
     const Sizes = struct {
-        files: u32,
-        folders: u32,
+        files: u16,
+        folders: u16,
         fnt_sub_size: u32,
     };
 
@@ -878,7 +878,7 @@ pub const Rom = struct {
 
         // See FNT Sub-Tables:
         // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
-        var file_id = fnt_entry.first_id_in_subtable.get();
+        var file_id = fnt_entry.first_file_id_in_subtable.get();
         while (true) {
             const Kind = enum(u8) { File = 0x00, Folder = 0x80 };
             const type_length = try utils.noAllocRead(u8, file);
@@ -983,11 +983,10 @@ pub const Rom = struct {
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
-        // TODO: Write file system here
+        var fs_writer = FSWriter.init(file, overlay_writer.file_offset, fnt_sub_offset, overlay_writer.file_id);
+        try fs_writer.writeFileSystem(self.root, header.fnt_offset.get(), header.fat_offset.get(), fs_info.folders);
 
-        // TODO: Change this to the real size when we write the file system again:
-        //                                                         VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-        header.total_used_rom_size = toLittle(u32, alignAddr(u32, overlay_writer.file_offset, 4));
+        header.total_used_rom_size = toLittle(u32, alignAddr(u32, fs_writer.file_offset, 4));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
@@ -1033,22 +1032,6 @@ pub const Rom = struct {
     }
 };
 
-const FatEntry = packed struct {
-    start: Little(u32),
-    end: Little(u32),
-
-    fn init(offset: u32, size: u32) -> FatEntry {
-        return FatEntry {
-            .start = toLittle(u32, offset),
-            .end   = toLittle(u32, (offset + size) - 1),
-        };
-    }
-
-    fn getSize(self: &const FatEntry) -> usize {
-        return self.end.get() - self.start.get();
-    }
-};
-
 pub const Overlay = packed struct {
     overlay_id: Little(u32),
     ram_address: Little(u32),
@@ -1069,7 +1052,7 @@ const OverlayWriter = struct {
         return OverlayWriter {
             .file = file,
             .file_offset = file_offset,
-            .file_id = file_id,
+            .file_id = start_file_id,
         };
     }
 
@@ -1104,12 +1087,126 @@ fn alignAddr(comptime T: type, address: T, alignment: T) -> T {
 
 const FntMainEntry = packed struct {
     offset_to_subtable: Little(u32),
-    first_id_in_subtable: Little(u16),
+    first_file_id_in_subtable: Little(u16),
 
     // For the first entry in main-table, the parent id is actually,
     // the total number of directories (See FNT Directory Main-Table):
     // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
     parent_id: Little(u16),
+};
+
+const FatEntry = packed struct {
+    start: Little(u32),
+    end: Little(u32),
+
+    fn init(offset: u32, size: u32) -> FatEntry {
+        return FatEntry {
+            .start = toLittle(u32, offset),
+            .end   = toLittle(u32, offset + size),
+        };
+    }
+
+    fn getSize(self: &const FatEntry) -> usize {
+        return self.end.get() - self.start.get();
+    }
+};
+
+const FSWriter = struct {
+    file: &io.File,
+    file_offset: u32,
+    fnt_sub_offset: u32,
+    file_id: u16,
+    folder_id: u16,
+
+    fn init(file: &io.File, file_offset: u32, fnt_sub_offset: u32, start_file_id: u16) -> FSWriter {
+        return FSWriter {
+            .file = file,
+            .file_offset = file_offset,
+            .fnt_sub_offset = fnt_sub_offset,
+            .file_id = start_file_id,
+            .folder_id = 0xF000,
+        };
+    }
+
+    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, folder_count: u16) -> %void {
+        try writer.file.seekTo(fnt_offset);
+        try writer.file.write(utils.asConstBytes(
+            FntMainEntry,
+            FntMainEntry {
+                .offset_to_subtable        = Little(u32).init(writer.fnt_sub_offset - fnt_offset),
+                .first_file_id_in_subtable = Little(u16).init(writer.file_id),
+                .parent_id                 = Little(u16).init(folder_count),
+            }));
+
+        const id = writer.folder_id;
+        writer.folder_id += 1;
+        try writer.writeFolder(root, fnt_offset, fat_offset, id);
+    }
+
+    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, id: u16) -> %void {
+        for (folder.files) |f| {
+            // Write file to sub fnt
+            try writer.file.seekTo(writer.fnt_sub_offset);
+            try writer.file.write([]u8 { u8(f.name.len) });
+            try writer.file.write(f.name);
+            writer.fnt_sub_offset = u32(try writer.file.getPos());
+
+            // Write file content
+            const start = alignAddr(u32, writer.file_offset, nds_alignment);
+            try writer.file.seekTo(start);
+            try writer.file.write(f.data);
+
+            writer.file_offset = u32(try writer.file.getPos());
+            const size = writer.file_offset - start;
+
+            // Write offsets to fat
+            try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * writer.file_id);
+            try writer.file.write(
+                utils.asConstBytes(
+                    FatEntry,
+                    FatEntry.init(u32(start), u32(size))
+                ));
+            writer.file_id += 1;
+        }
+
+        // Skip writing folders to sub table, but still skip forward all the bytes
+        // so we can start writing sub folders sub tables.
+        var curr_sub_offset = writer.fnt_sub_offset;
+        for (folder.folders) |f, i| {
+            writer.fnt_sub_offset += 1;               // try writer.file.write([]u8 { u8(f.name.len + 0x80) });
+            writer.fnt_sub_offset += u32(f.name.len); // try writer.file.write(f.name);
+            writer.fnt_sub_offset += 2;               // try writer.file.write(utils.asConstBytes(Little(u16), Little(u16).init(writer.folder_id)));
+        }
+        writer.fnt_sub_offset += 1; // '\0'
+
+        const assert_end = writer.fnt_sub_offset;
+
+        for (folder.folders) |f| {
+            try writer.file.seekTo(curr_sub_offset);
+            try writer.file.write([]u8 { u8(f.name.len + 0x80) });
+            try writer.file.write(f.name);
+            try writer.file.write(utils.asConstBytes(Little(u16), Little(u16).init(writer.folder_id)));
+            curr_sub_offset = u32(try writer.file.getPos());
+
+            const main_offset = fnt_offset + @sizeOf(FntMainEntry) * (writer.folder_id & 0x0FFF);
+            try writer.file.seekTo(main_offset);
+            try writer.file.write(utils.asConstBytes(
+                FntMainEntry,
+                FntMainEntry {
+                    .offset_to_subtable        = Little(u32).init(writer.fnt_sub_offset - fnt_offset),
+                    .first_file_id_in_subtable = Little(u16).init(writer.file_id),
+                    .parent_id                 = Little(u16).init(id),
+                }));
+
+            writer.folder_id += 1;
+            try writer.writeFolder(f, fnt_offset, fat_offset, writer.folder_id);
+        }
+
+        try writer.file.seekTo(curr_sub_offset);
+        try writer.file.write([]u8 { 0x00 });
+        curr_sub_offset = u32(try writer.file.getPos());
+        assert(curr_sub_offset == assert_end);
+    }
 };
 
 comptime {
