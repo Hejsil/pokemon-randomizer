@@ -1138,9 +1138,7 @@ const FSWriter = struct {
                 .parent_id                 = Little(u16).init(folder_count),
             }));
 
-        const id = writer.folder_id;
-        writer.folder_id += 1;
-        try writer.writeFolder(root, fnt_offset, fat_offset, id);
+        try writer.writeFolder(root, fnt_offset, fat_offset, writer.folder_id);
     }
 
     fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, id: u16) -> %void {
@@ -1182,6 +1180,7 @@ const FSWriter = struct {
         const assert_end = writer.fnt_sub_offset;
 
         for (folder.folders) |f| {
+            writer.folder_id += 1;
             try writer.file.seekTo(curr_sub_offset);
             try writer.file.write([]u8 { u8(f.name.len + 0x80) });
             try writer.file.write(f.name);
@@ -1198,7 +1197,6 @@ const FSWriter = struct {
                     .parent_id                 = Little(u16).init(id),
                 }));
 
-            writer.folder_id += 1;
             try writer.writeFolder(f, fnt_offset, fat_offset, writer.folder_id);
         }
 
