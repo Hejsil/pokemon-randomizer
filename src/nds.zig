@@ -617,84 +617,53 @@ pub const IconTitle = packed struct {
 
 error AddressesOverlap;
 
-pub const Narc = struct {
-    pub fn destroy(self: &const Narc, allocator: &mem.Allocator) {
+pub const File = struct {
+    name: []u8,
+    data: []u8,
+
+    pub fn destroy(file: &const File, allocator: &mem.Allocator) {
+        allocator.free(file.name);
+        allocator.free(file.data);
     }
 };
 
-pub const Nitro = struct {
-    pub const File = union(enum) {
-        Narc: Narc,
-        Other: []u8,
+pub const Folder = struct {
+    name:    []u8,
+    files:   []File,
+    folders: []Folder,
 
-        pub fn destroy(self: &const File, allocator: &mem.Allocator) {
-            switch (*self) {
-                File.Narc => |narc| narc.destroy(allocator),
-                File.Other => |data| allocator.free(data),
-            }
+    pub fn destroy(folder: &const Folder, allocator: &mem.Allocator) {
+        for (folder.folders) |fold| {
+            fold.destroy(allocator);
         }
-    };
 
-    pub const Folder = struct {
-        files: []Nitro,
-
-        pub fn destroy(self: &const Folder, allocator: &mem.Allocator) {
-            for (self.files) |file| file.destroy(allocator);
-            allocator.free(self.files);
+        for (folder.files) |file| {
+            file.destroy(allocator);
         }
-    };
 
-    pub const Kind = enum(u8) { File = 0, Folder = 0x80 };
-    pub const Data = union(Kind) {
-        Folder: Folder,
-        File: File
-    };
-
-    name: []u8,
-    data: Data,
-
-    pub fn initFile(name: []u8, file: &const File) -> Nitro {
-        return Nitro {
-            .name = name,
-            .data = Data {
-                .File = *file
-            }
-        };
+        allocator.free(folder.name);
+        allocator.free(folder.files);
+        allocator.free(folder.folders);
     }
 
-    pub fn initFolder(name: []u8, folder: &const Folder) -> Nitro {
-        return Nitro {
-            .name = name,
-            .data = Data {
-                .Folder = *folder
-            }
-        };
-    }
-
-    pub fn destroy(self: &const Nitro, allocator: &mem.Allocator) {
-        allocator.free(self.name);
-        switch (self.data) {
-            Data.Folder => |folder| folder.destroy(allocator),
-            Data.File   => |file| file.destroy(allocator)
-        }
-    }
-
-    pub fn tree(self: &const Nitro, stream: &io.OutStream, indent: usize) -> %void {
+    fn printIndent(stream: &io.OutStream, indent: usize) -> %void {
         var i : usize = 0;
         while (i < indent) : (i += 1) {
             try stream.write("    ");
         }
+    }
 
-        switch (self.data) {
-            Data.Folder => |folder| {
-                try stream.print("{}/\n", self.name);
-                for (folder.files) |file| {
-                    try file.tree(stream, indent + 1);
-                }
-            },
-            Data.File => {
-                try stream.print("{}\n", self.name);
-            }
+    pub fn tree(folder: &const Folder, stream: &io.OutStream, indent: usize) -> %void {
+        try printIndent(stream, indent);
+        try stream.print("{}/\n", folder.name);
+
+        for (folder.folders) |f| {
+            try f.tree(stream, indent + 1);
+        }
+
+        for (folder.files) |f| {
+            try printIndent(stream, indent + 1);
+            try stream.print("{}\n", f.name);
         }
     }
 };
@@ -742,7 +711,7 @@ pub const Rom = struct {
     arm7_overlay_files: [][]u8,
 
     icon_title: IconTitle,
-    root: Nitro,
+    root: Folder,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Rom {
         var result = try allocator.create(Rom);
@@ -849,7 +818,7 @@ pub const Rom = struct {
         parent_id: Little(u16),
     };
 
-    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %Nitro {
+    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %Folder {
         if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
         if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
 
@@ -884,36 +853,46 @@ pub const Rom = struct {
         fnt_main_table: []const FntMainEntry,
         fnt_entry: &const FntMainEntry,
         fnt_offset: usize,
-        name: []u8) -> %Nitro {
+        name: []u8) -> %Folder {
 
         try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
-        var nitro_files = std.ArrayList(Nitro).init(allocator);
+        var folders = std.ArrayList(Folder).init(allocator);
         %defer {
-            for (nitro_files.toSlice()) |nitro_file| {
-                nitro_file.destroy(allocator);
+            for (folders.toSlice()) |f| {
+                f.destroy(allocator);
             }
 
-            nitro_files.deinit();
+            folders.deinit();
+        }
+
+        var files = std.ArrayList(File).init(allocator);
+        %defer {
+            for (files.toSlice()) |f| {
+                f.destroy(allocator);
+            }
+
+            files.deinit();
         }
 
         // See FNT Sub-Tables:
         // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
         var file_id = fnt_entry.first_id_in_subtable.get();
         while (true) {
+            const Kind = enum(u8) { File = 0x00, Folder = 0x80 };
             const type_length = try utils.noAllocRead(u8, file);
 
             if (type_length == 0x80) return error.InvalidSubTableTypeLength;
             if (type_length == 0x00) break;
 
             const lenght = type_length & 0x7F;
-            const kind = Nitro.Kind((type_length & 0x80));
-            assert(kind == Nitro.Kind.File or kind == Nitro.Kind.Folder);
+            const kind = Kind((type_length & 0x80));
+            assert(kind == Kind.File or kind == Kind.Folder);
 
             const child_name = try utils.allocAndRead(u8, file, allocator, lenght);
             %defer allocator.free(child_name);
 
             switch (kind) {
-                Nitro.Kind.File => {
+                Kind.File => {
                     if (fat.len <= file_id) return error.InvalidFileId;
                     const entry = fat[file_id];
 
@@ -927,22 +906,22 @@ pub const Rom = struct {
                     %defer allocator.free(file_data);
 
                     try file.seekTo(current_pos);
-                    try nitro_files.append(
-                        Nitro.initFile(
-                            child_name,
-                            Nitro.File { .Other = file_data }
-                        )
+                    try files.append(
+                        File {
+                            .name = child_name,
+                            .data = file_data,
+                        }
                     );
 
                     file_id += 1;
                 },
-                Nitro.Kind.Folder => {
+                Kind.Folder => {
                     const id = try utils.noAllocRead(Little(u16), file);
                     if (!utils.between(u16, id.get(), 0xF001, 0xFFFF)) return error.InvalidSubDirectoryId;
                     if (fnt_main_table.len <= id.get() & 0x0FFF)       return error.InvalidSubDirectoryId;
 
                     const current_pos = try file.getPos();
-                    try nitro_files.append(
+                    try folders.append(
                         try buildFolderFromFntMainEntry(
                             file,
                             allocator,
@@ -960,10 +939,11 @@ pub const Rom = struct {
 
         }
 
-        return Nitro.initFolder(
-            name,
-            Nitro.Folder { .files = nitro_files.toOwnedSlice() }
-        );
+        return Folder {
+            .name    = name,
+            .folders = folders.toOwnedSlice(),
+            .files   = files.toOwnedSlice()
+        };
     }
 
     const FSInfo = struct {
@@ -971,7 +951,7 @@ pub const Rom = struct {
         folders: u16,
         fnt_sub_size: u32,
 
-        fn fromNitro(nitro: &const Nitro, root: bool) -> FSInfo {
+        fn fromFolder(folder: &const Folder, root: bool) -> FSInfo {
             var result = FSInfo {
                 .files = 0,
                 .folders = 0,
@@ -981,31 +961,24 @@ pub const Rom = struct {
             // If we are not root, then we are part of a folder,
             // aka, we have an entry one of the sub fnt
             if (!root) {
-                // TODO: Handle if nitro.name.len is > @maxValue(u16)?
-                result.fnt_sub_size += u16(nitro.name.len) + 1;
+                result.fnt_sub_size += u16(folder.name.len) + 1;
+                result.fnt_sub_size += 2;
             }
 
-            switch (nitro.data) {
-                Nitro.Kind.Folder => |folder| {
-                    // Directories have an id in their sub fnt entry
-                    if (!root) {
-                        result.fnt_sub_size += 2;
-                    }
+            // Each folder have a sub fnt, which is terminated by 0x00
+            result.fnt_sub_size += 1;
+            result.folders      += 1;
 
-                    // Each folder have a sub fnt, which is terminated by 0x00
-                    result.fnt_sub_size += 1;
-                    result.folders      += 1;
+            for (folder.folders) |fold| {
+                const sizes = fromFolder(fold, false);
+                result.files         += sizes.files;
+                result.folders       += sizes.folders;
+                result.fnt_sub_size  += sizes.fnt_sub_size;
+            }
 
-                    for (folder.files) |sub_file| {
-                        const sizes = fromNitro(sub_file, false);
-                        result.files         += sizes.files;
-                        result.folders       += sizes.folders;
-                        result.fnt_sub_size  += sizes.fnt_sub_size;
-                    }
-                },
-                Nitro.Kind.File => {
-                    result.files += 1;
-                }
+            for (folder.files) |file| {
+                result.fnt_sub_size += u16(folder.name.len) + 1;
+                result.files        += 1;
             }
 
             return result;
@@ -1041,7 +1014,7 @@ pub const Rom = struct {
         try self.icon_title.validate();
 
         const header = &self.header;
-        const fs_info = FSInfo.fromNitro(self.root, true);
+        const fs_info = FSInfo.fromFolder(self.root, true);
 
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
