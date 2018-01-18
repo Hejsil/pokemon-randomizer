@@ -1183,12 +1183,12 @@ pub const Rom = struct {
 
         try nitro_writer.writeToFile(self.root, fs_info.folders);
 
-        header.total_used_rom_size = toLittle(u32, u32(toAlignment(overlay_writer.overlay_file_offset, 4)));
+        header.total_used_rom_size = toLittle(u32, u32(toAlignment(nitro_writer.file_offset, 4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
-            var device_cap : u6 = 1;
-            while (@shlExact(usize(128), device_cap) < size) : (device_cap += 1) { }
+            var device_cap : u6 = 0;
+            while (@shlExact(u64(128000), device_cap) < size) : (device_cap += 1) { }
 
             break :blk device_cap;
         };
