@@ -1014,98 +1014,6 @@ pub const Rom = struct {
 
     const nds_alignment = 0x200;
 
-    const NitroWriter = struct {
-        file: &io.File,
-        fat_offset: usize,
-        fnt_main_start: u32,
-        fnt_main_offset: usize,
-        fnt_sub_offset: u32,
-        fnt_first_file_id: u16,
-        fnt_sub_table_folder_id: u16,
-        folder_id: u16,
-        file_offset: u32,
-
-        fn writeToFile(self: &NitroWriter, nitro: &const Nitro, parent_id: u16) -> %void {
-            switch (nitro.data) {
-                Nitro.Kind.Folder => |folder| {
-                    try self.file.seekTo(self.fnt_main_offset);
-                    try self.file.write(utils.asConstBytes(
-                        FntMainEntry,
-                        FntMainEntry {
-                            .offset_to_subtable   = Little(u32).init(self.fnt_sub_offset - self.fnt_main_start),
-                            .first_id_in_subtable = Little(u16).init(self.fnt_first_file_id),
-                            .parent_id            = Little(u16).init(parent_id),
-                        }));
-
-                    self.fnt_main_offset = try self.file.getPos();
-                    try self.file.seekTo(self.fnt_sub_offset);
-
-                    // Writing sub-table
-                    for (folder.files) |file| {
-                        if (file.name.len < 0x01 or 0x7F < file.name.len) return error.InvalidNameLength;
-
-                        switch (file.data) {
-                            Nitro.Kind.File => |sub_file| {
-                                try self.file.write([]u8 { u8(file.name.len) });
-                                try self.file.write(file.name);
-                            },
-                            Nitro.Kind.Folder => |sub_folder| {
-                                try self.file.write([]u8 { u8(file.name.len + 0x80) });
-                                try self.file.write(file.name);
-                                try self.file.write(utils.asConstBytes(Little(u16), Little(u16).init(self.fnt_sub_table_folder_id)));
-                                self.fnt_sub_table_folder_id += 1;
-                            },
-                        }
-                    }
-
-                    // Write sub-table null terminator
-                    try self.file.write([]u8 { 0x00 });
-                    self.fnt_sub_offset = u32(try self.file.getPos());
-
-                    const id = self.folder_id;
-                    self.folder_id += 1;
-
-                    // HACK: With the implementation we have to write files before
-                    //       folders, because this folder has to have its files in
-                    //       order starting at first_id_in_subtable.
-                    for (folder.files) |file| {
-                        if (file.data == Nitro.Kind.File)
-                            try self.writeToFile(file, id);
-                    }
-
-                    for (folder.files) |file| {
-                        if (file.data == Nitro.Kind.Folder)
-                            try self.writeToFile(file, id);
-                    }
-                },
-                Nitro.Kind.File => |file| {
-                    const start = toAlignment(self.file_offset, nds_alignment);
-                    try self.file.seekTo(start);
-
-                    switch (file) {
-                        Nitro.File.Other => |other| {
-                            try self.file.write(other);
-                        },
-                        else => @panic("TODO: Write code for writing other file types"),
-                    }
-
-                    self.file_offset = u32(try self.file.getPos());
-                    const size = self.file_offset - start;
-
-                    try self.file.seekTo(self.fat_offset);
-                    try self.file.write(
-                        utils.asConstBytes(
-                            FatEntry,
-                            FatEntry.init(u32(start), u32(size))
-                        )
-                    );
-                    self.fat_offset = try self.file.getPos();
-                    self.fnt_first_file_id += 1;
-                }
-            }
-        }
-    };
-
     const OverlayWriter = struct {
         file: &io.File,
         overlay_file_offset: u32,
@@ -1169,21 +1077,11 @@ pub const Rom = struct {
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
-        var nitro_writer = NitroWriter {
-            .file = file,
-            .fat_offset = header.fat_offset.get(),
-            .fnt_main_start = header.fnt_offset.get(),
-            .fnt_main_offset = header.fnt_offset.get(),
-            .fnt_sub_offset = fnt_sub_offset,
-            .fnt_first_file_id = overlay_writer.file_id,
-            .fnt_sub_table_folder_id = 0xF001,
-            .folder_id = 0xF000,
-            .file_offset = overlay_writer.overlay_file_offset,
-        };
+        // TODO: Write file system here
 
-        try nitro_writer.writeToFile(self.root, fs_info.folders);
-
-        header.total_used_rom_size = toLittle(u32, u32(toAlignment(nitro_writer.file_offset, 4)));
+        // TODO: Change this to the real size when we write the file system again:
+        //                                                         VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+        header.total_used_rom_size = toLittle(u32, u32(toAlignment(overlay_writer.overlay_file_offset, 4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
