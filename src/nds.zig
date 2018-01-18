@@ -1234,7 +1234,6 @@ pub const Rom = struct {
     }
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
-        allocator.destroy(self.header);
         allocator.free(self.arm9);
         allocator.free(self.arm7);
         allocator.free(self.arm9_overlay_table);
