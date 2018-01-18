@@ -1157,7 +1157,7 @@ pub const Rom = struct {
         header.fat_offset          = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
         header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(FatEntry)));
 
-        const fnt_sub_offset = header.fat_offset.get() + fs_info.folders * @sizeOf(FntMainEntry);
+        const fnt_sub_offset = header.fnt_offset.get() + fs_info.folders * @sizeOf(FntMainEntry);
         const file_offset = header.fat_offset.get() + header.fat_size.get();
 
         var overlay_writer = OverlayWriter {
