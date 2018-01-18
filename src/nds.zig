@@ -1153,12 +1153,12 @@ pub const Rom = struct {
         header.icon_title_offset   = toLittle(u32, u32(toAlignment(header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment)));
         header.icon_title_size     = toLittle(u32, @sizeOf(IconTitle));
         header.fnt_offset          = toLittle(u32, u32(toAlignment(header.icon_title_offset.get() + header.icon_title_size.get(), nds_alignment)));
-        header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry)));
+        header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry) + fs_info.fnt_sub_size));
         header.fat_offset          = toLittle(u32, u32(toAlignment(header.fnt_offset.get() + header.fnt_size.get(), nds_alignment)));
         header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(FatEntry)));
 
-        const fnt_sub_offset = header.fat_offset.get() + header.fat_size.get();
-        const file_offset = fs_info.fnt_sub_size + fnt_sub_offset;
+        const fnt_sub_offset = header.fat_offset.get() + fs_info.folders * @sizeOf(FntMainEntry);
+        const file_offset = header.fat_offset.get() + header.fat_size.get();
 
         var overlay_writer = OverlayWriter {
             .file = file,
