@@ -979,12 +979,7 @@ pub const Rom = struct {
         const fnt_sub_offset = header.fnt_offset.get() + fs_info.folders * @sizeOf(FntMainEntry);
         const file_offset = header.fat_offset.get() + header.fat_size.get();
 
-        var overlay_writer = OverlayWriter {
-            .file = file,
-            .file_offset = file_offset,
-            .file_id = 0,
-        };
-
+        var overlay_writer = OverlayWriter.init(file, file_offset, 0);
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
