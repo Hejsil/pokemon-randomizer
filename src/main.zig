@@ -32,7 +32,11 @@ const program_arguments = comptime []Arg {
 };
 
 pub fn main() -> %void {
-    const allocator = std.heap.c_allocator;
+    // TODO: Use Zig's own general purpose allocator... When it has one.
+    var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
+    defer inc_allocator.deinit();
+    const allocator = &inc_allocator.allocator;
+
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
     var stdout_stream = &stdout_file_stream.stream;
