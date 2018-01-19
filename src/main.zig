@@ -147,8 +147,6 @@ pub fn main() -> %void {
                 try stdout_stream.print("Unable to write nds to {}: {}\n", options.out_file, @errorName(err));
                 return err;
             };
-
-            try nds_rom.header.prettyPrint(stdout_stream);
         },
         else => {
             try stdout_stream.print("Rom type not supported (yet)\n");
