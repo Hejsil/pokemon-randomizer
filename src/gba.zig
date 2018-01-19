@@ -50,20 +50,3 @@ pub const Header = packed struct {
             return error.InvalidReserved2;
     }
 };
-
-comptime {
-    assert(@offsetOf(Header, "rom_entry_point")  == 0x000);
-    assert(@offsetOf(Header, "nintendo_logo")    == 0x004);
-    assert(@offsetOf(Header, "game_title")       == 0x0A0);
-    assert(@offsetOf(Header, "gamecode")         == 0x0AC);
-    assert(@offsetOf(Header, "makercode")        == 0x0B0);
-    assert(@offsetOf(Header, "fixed_value")      == 0x0B2);
-    assert(@offsetOf(Header, "main_unit_code")   == 0x0B3);
-    assert(@offsetOf(Header, "device_type")      == 0x0B4);
-    assert(@offsetOf(Header, "reserved1")        == 0x0B5);
-    assert(@offsetOf(Header, "software_version") == 0x0BC);
-    assert(@offsetOf(Header, "complement_check") == 0x0BD);
-    assert(@offsetOf(Header, "reserved2")        == 0x0BE);
-
-    assert(@sizeOf(Header) == 192);
-}

@@ -88,15 +88,6 @@ const pokemon_count = 440;
 const Offsets = struct {
     base_stats:      usize,
     evolution_table: usize,
-
-    fn assertNoOverlap(self: &const Offsets) -> void {
-        assert(self.base_stats + inBytes(BasePokemon, pokemon_count)       <= self.evolution_table);
-        //assert(self.evolution_table + inBytes([5]Evolution, pokemon_count) <= SOMETHING);
-    }
-
-    fn inBytes(comptime T: type, count: usize) -> usize {
-        return @sizeOf(T) * count;
-    }
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
@@ -105,13 +96,10 @@ const emerald_offsets = Offsets {
     .evolution_table = 0x032531C,
 };
 
-comptime {
-    emerald_offsets.assertNoOverlap();
-}
-
 error InvalidRomSize;
 error InvalidGen3PokemonHeader;
 error NoBulbasaurFound;
+error InvalidGeneration;
 
 const bulbasaur_fingerprint = []u8 {
     0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
@@ -212,154 +200,3 @@ pub const Game = struct {
         allocator.free(game.unknown3);
     }
 };
-
-error InvalidGeneration;
-error OutOfRange;
-
-pub const GameAdapter = struct {
-    game: &Game,
-    base: common.IGame,
-
-    pub fn init(game: &Game) -> GameAdapter {
-        return GameAdapter {
-            .game = game,
-            .base = common.IGame {
-                .getPokemonFn = getPokemon,
-                .setPokemonFn = setPokemon
-            }
-        };
-    }
-
-    fn getGame(base: &common.IGame) -> &Game {
-        return @fieldParentPtr(GameAdapter, "base", base).game;
-    }
-
-    fn getPokemon(base: &common.IGame, index: usize) -> ?common.BasePokemon {
-        const game = getGame(base);
-
-        if (index < game.base_stats.len) {
-            const pokemon = game.base_stats[index];
-
-            return common.BasePokemon {
-                .hp             = pokemon.hp,
-                .attack         = pokemon.attack,
-                .defense        = pokemon.defense,
-                .speed          = pokemon.speed,
-                .sp_attack      = pokemon.sp_attack,
-                .sp_defense     = pokemon.sp_defense,
-                .type1          = pokemon.type1,
-                .type2          = pokemon.type2,
-                .catch_rate     = pokemon.catch_rate,
-                .base_exp_yield = pokemon.base_exp_yield,
-                .growth_rate    = pokemon.growth_rate,
-
-                .extra = common.BasePokemon.Extra {
-                    .III = common.BasePokemon.Gen3Extra {
-                        .item1            = pokemon.item1.get(),
-                        .item2            = pokemon.item2.get(),
-                        .gender_ratio     = pokemon.gender_ratio,
-                        .egg_cycles       = pokemon.egg_cycles,
-                        .egg_group1       = pokemon.egg_group1,
-                        .egg_group2       = pokemon.egg_group2,
-                        .ev_yield         = pokemon.ev_yield,
-                        .base_friendship  = pokemon.base_friendship,
-                        .abillity1        = pokemon.abillity1,
-                        .abillity2        = pokemon.abillity2,
-                        .safari_zone_rate = pokemon.safari_zone_rate,
-                        .color            = pokemon.color,
-                        .flip             = pokemon.flip,
-                    }
-                }
-            };
-        } else {
-            return null;
-        }
-    }
-
-    fn setPokemon(base: &common.IGame, index: usize, pokemon: &const common.BasePokemon) -> %void {
-        var game = getGame(base);
-
-        if (game.base_stats.len <= index)
-            return error.OutOfRange;
-
-        switch (pokemon.extra) {
-            common.Generation.III => |extra| {
-                game.base_stats[index] = BasePokemon {
-                    .hp               = pokemon.hp,
-                    .attack           = pokemon.attack,
-                    .defense          = pokemon.defense,
-                    .speed            = pokemon.speed,
-                    .sp_attack        = pokemon.sp_attack,
-                    .sp_defense       = pokemon.sp_defense,
-                    .type1            = pokemon.type1,
-                    .type2            = pokemon.type2,
-                    .catch_rate       = pokemon.catch_rate,
-                    .base_exp_yield   = pokemon.base_exp_yield,
-                    .ev_yield         = extra.ev_yield,
-                    .item1            = Little(u16).init(extra.item1),
-                    .item2            = Little(u16).init(extra.item2),
-                    .gender_ratio     = extra.gender_ratio,
-                    .egg_cycles       = extra.egg_cycles,
-                    .base_friendship  = extra.base_friendship,
-                    .growth_rate      = pokemon.growth_rate,
-                    .egg_group1       = extra.egg_group1,
-                    .egg_group1_pad   = 0,
-                    .egg_group2       = extra.egg_group2,
-                    .egg_group2_pad   = 0,
-                    .abillity1        = extra.abillity1,
-                    .abillity2        = extra.abillity2,
-                    .safari_zone_rate = extra.safari_zone_rate,
-                    .color            = extra.color,
-                    .flip             = extra.flip,
-                    .padding          = [2]u8 { 0, 0 }
-                };
-            },
-            else => return error.InvalidGeneration,
-        }
-    }
-};
-
-comptime {
-    assert(@offsetOf(BasePokemon, "hp")               == 0x00);
-    assert(@offsetOf(BasePokemon, "attack")           == 0x01);
-    assert(@offsetOf(BasePokemon, "defense")          == 0x02);
-    assert(@offsetOf(BasePokemon, "speed")            == 0x03);
-    assert(@offsetOf(BasePokemon, "sp_attack")        == 0x04);
-    assert(@offsetOf(BasePokemon, "sp_defense")       == 0x05);
-
-    assert(@offsetOf(BasePokemon, "type1")            == 0x06);
-    assert(@offsetOf(BasePokemon, "type2")            == 0x07);
-
-    assert(@offsetOf(BasePokemon, "catch_rate")       == 0x08);
-    assert(@offsetOf(BasePokemon, "base_exp_yield")   == 0x09);
-
-    assert(@offsetOf(BasePokemon, "ev_yield")         == 0x0A);
-    assert(@offsetOf(BasePokemon, "item1")            == 0x0C);
-    assert(@offsetOf(BasePokemon, "item2")            == 0x0E);
-
-    assert(@offsetOf(BasePokemon, "gender_ratio")     == 0x10);
-    assert(@offsetOf(BasePokemon, "egg_cycles")       == 0x11);
-    assert(@offsetOf(BasePokemon, "base_friendship")  == 0x12);
-    assert(@offsetOf(BasePokemon, "growth_rate")      == 0x13);
-
-    assert(@offsetOf(BasePokemon, "egg_group1")       == 0x14);
-    assert(@offsetOf(BasePokemon, "egg_group2")       == 0x15);
-
-    assert(@offsetOf(BasePokemon, "abillity1")        == 0x16);
-    assert(@offsetOf(BasePokemon, "abillity2")        == 0x17);
-
-    assert(@offsetOf(BasePokemon, "safari_zone_rate") == 0x18);
-    assert(@offsetOf(BasePokemon, "color")            == 0x19);
-    assert(@offsetOf(BasePokemon, "padding")          == 0x1A);
-
-    assert(@sizeOf(BasePokemon) == 0x1C);
-}
-
-comptime {
-    assert(@offsetOf(Evolution, "kind")    == 0x00);
-    assert(@offsetOf(Evolution, "param")   == 0x02);
-    assert(@offsetOf(Evolution, "target")  == 0x04);
-    assert(@offsetOf(Evolution, "padding") == 0x06);
-
-    assert(@sizeOf(Evolution) == 0x08);
-}
