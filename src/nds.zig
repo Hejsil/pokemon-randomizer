@@ -673,34 +673,32 @@ pub const Folder = struct {
         fnt_sub_size: u32,
     };
 
-    fn sizes(folder: &const Folder, root: bool) -> Sizes {
+    fn sizes(folder: &const Folder) -> Sizes {
         var result = Sizes {
             .files = 0,
             .folders = 0,
             .fnt_sub_size = 0,
         };
 
-        // If we are not root, then we are part of a folder,
-        // aka, we have an entry one of the sub fnt
-        if (!root) {
-            result.fnt_sub_size += u16(folder.name.len) + 1;
-            result.fnt_sub_size += 2;
-        }
-
         // Each folder have a sub fnt, which is terminated by 0x00
         result.fnt_sub_size += 1;
         result.folders      += 1;
 
         for (folder.folders) |fold| {
-            const s = fold.sizes(false);
-            result.files         += s.files;
-            result.folders       += s.folders;
-            result.fnt_sub_size  += s.fnt_sub_size;
+            const s = fold.sizes();
+            result.files        += s.files;
+            result.folders      += s.folders;
+            result.fnt_sub_size += s.fnt_sub_size;
+
+            result.fnt_sub_size += 1;
+            result.fnt_sub_size += u16(fold.name.len);
+            result.fnt_sub_size += 2;
         }
 
         for (folder.files) |file| {
-            result.fnt_sub_size += u16(folder.name.len) + 1;
             result.files        += 1;
+            result.fnt_sub_size += 1;
+            result.fnt_sub_size += u16(file.name.len);
         }
 
         return result;
@@ -952,7 +950,7 @@ pub const Rom = struct {
         try self.icon_title.validate();
 
         const header = &self.header;
-        const fs_info = self.root.sizes(true);
+        const fs_info = self.root.sizes();
 
         if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
