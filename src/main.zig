@@ -70,7 +70,7 @@ pub fn main() -> %void {
     defer out_file.close();
 
     switch (rom) {
-        Rom.Gba => |*gen3_rom| {
+        Rom.Gba => |gen3_rom| {
             gen3_rom.validateData() catch |err| {
                 try stdout_stream.print("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
 
@@ -102,7 +102,7 @@ pub fn main() -> %void {
 }
 
 const Rom = union(enum) {
-    Gba: gen3.Game,
+    Gba: &gen3.Game,
     Nds: &nds.Rom,
 
     pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
