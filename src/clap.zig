@@ -73,15 +73,20 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
     const Kind    = enum { Long, Short, None };
     const ArgKind = struct { arg: []const u8, kind: Kind };
 
-    // TODO: We avoid allocation here by using a bit field to store the required
-    //       arguments that we need to handle. This does however mean, that we
-    //       can only parse 128 options.
+    // NOTE: We avoid allocation here by using a bit field to store the required
+    //       arguments that we need to handle. I'll only make this more flexible
+    //       if someone finds a usecase for more than 128 required arguments.
     var required : u128 = 0;
     if (args.len >= 128) return error.ToManyOptions;
 
-    for (options) |option, i| {
-        if (option.is_required)
-            required = bits.set(u128, required, u7(i), 1);
+    {
+        var required_index : usize = 0;
+        for (options) |option, i| {
+            if (option.is_required) {
+                required = bits.set(u128, required, u7(required_index), 1);
+                required_index += 1;
+            }
+        }
     }
 
     // We assume that the first arg is always the exe path
@@ -99,14 +104,21 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
         const arg = pair.arg;
         const kind = pair.kind;
 
+        var required_index : usize = 0;
         loop: for (options) |option, op_i| {
+
             switch (kind) {
                 Kind.None => {
                     if (option.short_arg != null) continue :loop;
                     if (option.long_arg != null)  continue :loop;
 
                     try option.handler(&result, arg);
-                    required = bits.set(u128, required, u7(op_i), 0);
+
+                    if (option.is_required) {
+                        required = bits.set(u128, required, u7(required_index), 0);
+                        required_index += 1;
+                    }
+
                     break :loop;
                 },
                 Kind.Short => {
@@ -123,7 +135,11 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
             if (args.len <= arg_i) return error.MissingValueToArgument;
             const value = args[arg_i];
             try option.handler(&result, value);
-            required = bits.set(u128, required, u7(op_i), 0);
+
+            if (option.is_required) {
+                required = bits.set(u128, required, u7(required_index), 0);
+                required_index += 1;
+            }
 
             break :loop;
         } else {
@@ -139,7 +155,7 @@ pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, opt
 }
 
 
-test "args.parse.Example" {
+test "clap.parse.Example" {
     const Color = struct {
         const Self = this;
 
