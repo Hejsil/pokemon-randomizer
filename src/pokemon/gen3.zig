@@ -81,6 +81,60 @@ pub const Evolution = packed struct {
     padding: [2]u8,
 };
 
+pub const PartyType = enum(u8) {
+    Standard  = 0x00,
+    WithMoves = 0x01,
+    WithHeld  = 0x02,
+    WithBoth  = 0x03,
+};
+
+pub const Trainer = packed struct {
+    party_type: PartyType,
+    class: u8,
+    encounter_music: u8,
+    trainer_picture: u8,
+    name: [12]u8,
+    items: [4]Little(u16),
+    is_double: Little(u32),
+    party_size: Little(u32),
+    party_offset: Little(u32),
+};
+
+pub const PartyMember = packed struct {
+    iv: Little(u16),
+    level: u8,
+    species: Little(u16),
+};
+
+pub const PartyMemberWithMoves = packed struct {
+    iv: Little(u16),
+    level: u8,
+    species: Little(u16),
+    moves: [4]Little(u16),
+};
+
+pub const PartyMemberWithHeld = packed struct {
+    iv: Little(u16),
+    level: u8,
+    species: Little(u16),
+    held_item: Little(u16),
+};
+
+pub const PartyMemberWithBoth = packed struct {
+    iv: Little(u16),
+    level: u8,
+    species: Little(u16),
+    held_item: Little(u16),
+    moves: [4]Little(u16),
+};
+
+pub const Party = union(PartyType) {
+    Standard:  []PartyMember,
+    WithMoves: []PartyMemberWithMoves,
+    WithHeld:  []PartyMemberWithHeld,
+    WithBoth:  []PartyMemberWithBoth,
+};
+
 // SOURCE: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
 // TODO: Can we get this data without hardcoding?
 const pokemon_count = 440;
@@ -118,6 +172,7 @@ error InvalidRomSize;
 error InvalidGen3PokemonHeader;
 error NoBulbasaurFound;
 error InvalidGeneration;
+error InvalidTrainerPartyOffset;
 
 const bulbasaur_fingerprint = []u8 {
     0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
@@ -126,12 +181,13 @@ const bulbasaur_fingerprint = []u8 {
 
 pub const Game = struct {
     header: gba.Header,
+    offsets: &const Offsets,
 
     unknown1: []u8,
 
     trainer_parties:     []u8,
     trainer_class_names: []u8,
-    trainers:            []u8,
+    trainers:            []Trainer,
     species_names:       []u8,
     //move_names: []u8,
 
@@ -152,6 +208,7 @@ pub const Game = struct {
         try res.header.validate();
 
         const offsets = try getOffsets(res.header);
+        res.offsets = offsets;
 
         res.unknown1 = try utils.allocAndRead(u8, file, allocator, offsets.trainer_parties - try file.getPos());
         %defer allocator.free(res.unknown1);
@@ -162,7 +219,7 @@ pub const Game = struct {
         res.trainer_class_names = try utils.allocAndRead(u8, file, allocator,  offsets.trainers - offsets.trainer_class_names);
         %defer allocator.free(res.trainer_class_names);
 
-        res.trainers = try utils.allocAndRead(u8, file, allocator, offsets.species_names - offsets.trainers);
+        res.trainers = try utils.allocAndRead(Trainer, file, allocator, (offsets.species_names - offsets.trainers) / @sizeOf(Trainer));
         %defer allocator.free(res.trainers);
 
         res.species_names = try utils.allocAndRead(u8, file, allocator, offsets.move_names - offsets.species_names);
@@ -188,7 +245,7 @@ pub const Game = struct {
 
         if ((try file.getPos()) % 0x1000000 != 0)
             return error.InvalidRomSize;
-
+            
         return res;
     }
 
@@ -210,6 +267,44 @@ pub const Game = struct {
         return error.InvalidGen3PokemonHeader;
     }
 
+    pub fn getTrainerParty(game: &const Game, trainer: &const Trainer) -> %Party {
+        if (trainer.party_offset.get() < 0x8000000) return error.InvalidTrainerPartyOffset;
+        
+        const offset = trainer.party_offset.get() - 0x8000000;
+        const party_table_start = game.offsets.trainer_parties;
+        const party_table_end   = game.offsets.trainer_class_names;
+        if (offset < party_table_start or party_table_end < offset) return error.InvalidTrainerPartyOffset;
+        
+        switch (trainer.party_type) {
+            PartyType.Standard => {
+                return Party {
+                    .Standard = try getSpecificParty(PartyMember, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
+                };
+            },
+            PartyType.WithMoves => {
+                return Party {
+                    .WithMoves = try getSpecificParty(PartyMemberWithMoves, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
+                };
+            },
+            PartyType.WithHeld => {
+                return Party {
+                    .WithHeld = try getSpecificParty(PartyMemberWithHeld, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
+                };
+            },
+            PartyType.WithBoth => {
+                return Party {
+                    .WithBoth = try getSpecificParty(PartyMemberWithBoth, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
+                };
+            },
+        }
+    }
+
+    fn getSpecificParty(comptime TMember: type, trainer_parties: []u8, offset: usize, size: usize, table_end: usize) -> %[]TMember {
+        const party_end = offset + size * @sizeOf(TMember);
+        if (table_end < party_end) return error.InvalidTrainerPartyOffset;
+        return ([]TMember)(trainer_parties[offset..party_end]);
+    }
+
     pub fn validateData(game: &const Game) -> %void {
         if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
             return error.NoBulbasaurFound;
@@ -222,7 +317,7 @@ pub const Game = struct {
         try stream.write(game.unknown1);
         try stream.write(game.trainer_parties);
         try stream.write(game.trainer_class_names);
-        try stream.write(game.trainers);
+        try stream.write(([]u8)(game.trainers));
         try stream.write(game.species_names);
         try stream.write(game.unknown2);
         try stream.write(([]u8)(game.base_stats));
