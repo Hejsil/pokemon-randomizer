@@ -173,6 +173,7 @@ error InvalidGen3PokemonHeader;
 error NoBulbasaurFound;
 error InvalidGeneration;
 error InvalidTrainerPartyOffset;
+error InvalidPartyType;
 
 const bulbasaur_fingerprint = []u8 {
     0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
@@ -245,7 +246,7 @@ pub const Game = struct {
 
         if ((try file.getPos()) % 0x1000000 != 0)
             return error.InvalidRomSize;
-            
+
         return res;
     }
 
@@ -269,33 +270,26 @@ pub const Game = struct {
 
     pub fn getTrainerParty(game: &const Game, trainer: &const Trainer) -> %Party {
         if (trainer.party_offset.get() < 0x8000000) return error.InvalidTrainerPartyOffset;
-        
+
         const offset = trainer.party_offset.get() - 0x8000000;
         const party_table_start = game.offsets.trainer_parties;
         const party_table_end   = game.offsets.trainer_class_names;
         if (offset < party_table_start or party_table_end < offset) return error.InvalidTrainerPartyOffset;
-        
+
         switch (trainer.party_type) {
-            PartyType.Standard => {
-                return Party {
-                    .Standard = try getSpecificParty(PartyMember, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-                };
+            PartyType.Standard => return Party {
+                .Standard = try getSpecificParty(PartyMember, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
             },
-            PartyType.WithMoves => {
-                return Party {
-                    .WithMoves = try getSpecificParty(PartyMemberWithMoves, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-                };
+            PartyType.WithMoves => return Party {
+                .WithMoves = try getSpecificParty(PartyMemberWithMoves, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
             },
-            PartyType.WithHeld => {
-                return Party {
-                    .WithHeld = try getSpecificParty(PartyMemberWithHeld, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-                };
+            PartyType.WithHeld => return Party {
+                .WithHeld = try getSpecificParty(PartyMemberWithHeld, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
             },
-            PartyType.WithBoth => {
-                return Party {
-                    .WithBoth = try getSpecificParty(PartyMemberWithBoth, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-                };
+            PartyType.WithBoth => return Party {
+                .WithBoth = try getSpecificParty(PartyMemberWithBoth, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
             },
+            else => return error.InvalidPartyType,
         }
     }
 
