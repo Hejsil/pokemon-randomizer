@@ -35,15 +35,23 @@ pub fn first(comptime T: type, args: []const T) -> %T {
 }
 
 pub fn itemAt(comptime T: type, slice: []const T, index: usize) -> ?T {
-    const ptr = ptrAt(T, slice, index) ?? return null;
+    const ptr = constPtrAt(T, slice, index) ?? return null;
     return *ptr;
 }
 
-pub fn ptrAt(comptime T: type, slice: []const T, index: usize) -> ?&T {
+pub fn ptrAt(comptime T: type, slice: []T, index: usize) -> ?&T {
     if (slice.len <= index) {
-        return null
+        return null;
     } else {
-        return slice[index];
+        return &slice[index];
+    }
+}
+
+pub fn constPtrAt(comptime T: type, slice: []const T, index: usize) -> ?&const T {
+    if (slice.len <= index) {
+        return null;
+    } else {
+        return &slice[index];
     }
 }
 

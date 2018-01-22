@@ -107,32 +107,19 @@ pub const PartyMember = packed struct {
 };
 
 pub const PartyMemberWithMoves = packed struct {
-    iv: Little(u16),
-    level: u8,
-    species: Little(u16),
+    base: PartyMember,
     moves: [4]Little(u16),
 };
 
 pub const PartyMemberWithHeld = packed struct {
-    iv: Little(u16),
-    level: u8,
-    species: Little(u16),
+    base: PartyMember,
     held_item: Little(u16),
 };
 
 pub const PartyMemberWithBoth = packed struct {
-    iv: Little(u16),
-    level: u8,
-    species: Little(u16),
+    base: PartyMember,
     held_item: Little(u16),
     moves: [4]Little(u16),
-};
-
-pub const Party = union(PartyType) {
-    Standard:  []PartyMember,
-    WithMoves: []PartyMemberWithMoves,
-    WithHeld:  []PartyMemberWithHeld,
-    WithBoth:  []PartyMemberWithBoth,
 };
 
 // SOURCE: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
@@ -266,37 +253,6 @@ pub const Game = struct {
         //}
 
         return error.InvalidGen3PokemonHeader;
-    }
-
-    pub fn getTrainerParty(game: &const Game, trainer: &const Trainer) -> %Party {
-        if (trainer.party_offset.get() < 0x8000000) return error.InvalidTrainerPartyOffset;
-
-        const offset = trainer.party_offset.get() - 0x8000000;
-        const party_table_start = game.offsets.trainer_parties;
-        const party_table_end   = game.offsets.trainer_class_names;
-        if (offset < party_table_start or party_table_end < offset) return error.InvalidTrainerPartyOffset;
-
-        switch (trainer.party_type) {
-            PartyType.Standard => return Party {
-                .Standard = try getSpecificParty(PartyMember, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            PartyType.WithMoves => return Party {
-                .WithMoves = try getSpecificParty(PartyMemberWithMoves, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            PartyType.WithHeld => return Party {
-                .WithHeld = try getSpecificParty(PartyMemberWithHeld, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            PartyType.WithBoth => return Party {
-                .WithBoth = try getSpecificParty(PartyMemberWithBoth, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            else => return error.InvalidPartyType,
-        }
-    }
-
-    fn getSpecificParty(comptime TMember: type, trainer_parties: []u8, offset: usize, size: usize, table_end: usize) -> %[]TMember {
-        const party_end = offset + size * @sizeOf(TMember);
-        if (table_end < party_end) return error.InvalidTrainerPartyOffset;
-        return ([]TMember)(trainer_parties[offset..party_end]);
     }
 
     pub fn validateData(game: &const Game) -> %void {
