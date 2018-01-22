@@ -34,6 +34,19 @@ pub fn first(comptime T: type, args: []const T) -> %T {
     }
 }
 
+pub fn itemAt(comptime T: type, slice: []const T, index: usize) -> ?T {
+    const ptr = ptrAt(T, slice, index) ?? return null;
+    return *ptr;
+}
+
+pub fn ptrAt(comptime T: type, slice: []const T, index: usize) -> ?&T {
+    if (slice.len <= index) {
+        return null
+    } else {
+        return slice[index];
+    }
+}
+
 pub fn noAllocRead(comptime T: type, file: &io.File) -> %T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
