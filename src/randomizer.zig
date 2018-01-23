@@ -74,10 +74,6 @@ pub const Options = struct {
 };
 
 pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) -> %void {
-    // HACK: This is the easiest way of getting the type of the Pokémons
-    //       in the game we are randomizing.
-    const Pokemon = @typeOf(*(game.getBasePokemon(0) ?? unreachable));
-
     // TODO: When we can get the max value of enums, fix this code:
     //                     VVVVVVVVVVVVVVVVVVVVV
     var pokemons_by_type = [u8(common.Type.Fairy) + 1]std.ArrayList(u16) {
@@ -107,20 +103,20 @@ pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocat
         }
     }
 
-    var i : u16 = 0;
-    while (game.getBasePokemon(i)) |pokemon| : (i += 1) {
-        try pokemons_by_type[u8(pokemon.type1)].append(i);
-        try pokemons_by_type[u8(pokemon.type2)].append(i);
+    var pokemon_count : u16 = 0;
+    while (game.getBasePokemon(pokemon_count)) |pokemon| : (pokemon_count += 1) {
+        try pokemons_by_type[u8(pokemon.type1)].append(pokemon_count);
+        try pokemons_by_type[u8(pokemon.type2)].append(pokemon_count);
     }
 
-    try randomizeTrainers(game, pokemons_by_type, options.trainer, random, allocator);
+    try randomizeTrainers(game, pokemons_by_type[0..], options.trainer, random, allocator);
 }
 
-fn randomizeTrainers(game: var, pokemons_by_type: var, options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) -> %void {
+fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) -> %void {
     var trainer_id : usize = 0;
     while (game.getTrainer(trainer_id)) |trainer| : (trainer_id += 1) {
         const trainer_theme = switch (options.pokemon) {
-            Options.Trainer.Pokemon.TypeThemed => randomType(game, random),
+            Options.Trainer.Pokemon.TypeThemed => randomType(@typeOf(game), random),
             else => common.Type.Unknown,
         };
 
@@ -132,59 +128,123 @@ fn randomizeTrainers(game: var, pokemons_by_type: var, options: &const Options.T
             switch (options.pokemon) {
                 Options.Trainer.Pokemon.Same => {},
                 Options.Trainer.Pokemon.Random => {
-
+                    // TODO: Types probably shouldn't be weighted equally, as
+                    //       there is a different number of Pokémons per type.
+                    // TODO: If a Pokémon is dual type, it has a higher chance of
+                    //       being chosen. I think?
+                    const pokemon_type = randomType(@typeOf(game), random);
+                    const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
+                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_strength, pokemons, random);
+                    trainer_pokemon.species.set(new_pokemon);
                 },
                 Options.Trainer.Pokemon.SameType => {
+                    const pokemon_type = blk: {
+                        if (curr_pokemon.type1 == common.Type.Unknown) {
+                            if (curr_pokemon.type2 == common.Type.Unknown) {
+                                break :blk randomType(@typeOf(game), random);
+                            } else {
+                                break :blk curr_pokemon.type2;
+                            }
+                        }
+                        if (curr_pokemon.type2 == common.Type.Unknown)
+                            break :blk randomType(@typeOf(game), random);
 
+                        const roll = random.float(f32);
+                        break :blk if (roll < 0.80) curr_pokemon.type1 else curr_pokemon.type2;
+                    };
+
+                    const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
+                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_strength, pokemons, random);
+                    trainer_pokemon.species.set(new_pokemon);
                 },
                 Options.Trainer.Pokemon.TypeThemed => {
                     debug.assert(trainer_theme != common.Type.Unknown);
-                    const pokemons = (*pokemons_by_type)[u8(trainer_theme)];
-
-                    if (options.same_strength) {
-                        var min_total = totalStats(curr_pokemon);
-                        var max_total = min_total;
-                        var tries : usize = 0;
-
-                        while (tries < 100) : (tries += 1) loop: {
-                            min_total = math.sub(u16, min_total, 10) catch min_total;
-                            max_total = math.add(u16, max_total, 10) catch max_total;
-
-                            var pokemons_with_stats : usize = 0;
-                            for (pokemons.toSliceConst()) |pokemon_id| {
-                                const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable;
-                                const total = totalStats(pokemon);
-                                if (min_total <= total and total <= max_total)
-                                    pokemons_with_stats += 1;
-                            }
-
-                            if (pokemons_with_stats < 10) continue;
-
-                            const final = random.range(usize, 0, pokemons_with_stats);
-                            var index : usize = 0;
-                            for (pokemons.toSliceConst()) |pokemon_id| {
-                                const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable;
-                                const total = totalStats(pokemon);
-
-                                if (min_total <= total and total <= max_total) {
-                                    if (index == final) {
-                                        trainer_pokemon.species.set(pokemon_id);
-                                        break :loop;
-                                    } else {
-                                        index += 1;
-                                    }
-                                }
-                            } else {
-                                unreachable;
-                            }
-                        }
-                    } else {
-                        trainer_pokemon.species.set(pokemons.items[random.range(usize, 0, pokemons.len)]);
-                    }
+                    const pokemons = pokemons_by_type[u8(trainer_theme)].toSliceConst();
+                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_strength, pokemons, random);
+                    trainer_pokemon.species.set(new_pokemon);
                 },
+            }
+
+            switch (options.held_items) {
+                None => {
+                    // TODO:
+                },
+                Same => {},
+                Random => {
+                    // TODO:
+                },
+                RandomUseful => {
+                    // TODO:
+                },
+                RandomBest => {
+                    // TODO:
+                },
+            }
+
+            trainer_pokemon.level = blk: {
+                var res = trainer_pokemon.level.get() * options.level_modifier;
+                res = math.min(res, 100);
+                res = math.max(res, 1);
+                break :blk u8(math.round(res));
+            };
+
+            if (options.max_iv)
+                trainer_pokemon.iv = @maxValue(u8);
+            if (options.max_ev) {
+                // TODO:
+            }
+            if (options.hard_ai) {
+                // TODO:
+            }
+            if (options.best_learned_moves) {
+                // TODO:
             }
         }
     }
+}
+
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_strength: bool, pokemons: []const u16, random: &rand.Rand, ) -> u16 {
+    if (same_strength) {
+        var min_total = totalStats(curr_pokemom);
+        var max_total = min_total;
+        var tries : usize = 0;
+
+        while (tries < 100) : (tries += 1) loop: {
+            min_total = math.sub(u16, min_total, 10) catch min_total;
+            max_total = math.add(u16, max_total, 10) catch max_total;
+
+            var pokemons_with_stats : usize = 0;
+            for (pokemons) |pokemon_id| {
+                const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable; // TODO: FIX
+                const total = totalStats(pokemon);
+                if (min_total <= total and total <= max_total)
+                    pokemons_with_stats += 1;
+            }
+
+            if (pokemons_with_stats < 10) continue;
+
+            const final = random.range(usize, 0, pokemons_with_stats);
+            var index : usize = 0;
+            for (pokemons) |pokemon_id| {
+                const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable; // TODO: FIX
+                const total = totalStats(pokemon);
+
+                if (min_total <= total and total <= max_total) {
+                    if (index == final) {
+                        return pokemon_id;
+                    } else {
+                        index += 1;
+                    }
+                }
+            } else {
+                unreachable; // TODO: FIX
+            }
+        }
+    } else {
+        return pokemons[random.range(usize, 0, pokemons.len)];
+    }
+
+    unreachable; // TODO: FIX
 }
 
 fn totalStats(pokemon: var) -> u16 {
@@ -218,8 +278,8 @@ const random_type_table = []common.Type {
     common.Type.Fairy,
 };
 
-fn randomType(game: var, random: &rand.Rand) -> common.Type {
-    const type_count = switch (@typeOf(game)) {
+fn randomType(comptime TGame: type, random: &rand.Rand) -> common.Type {
+    const type_count = switch (TGame) {
         wrapper.Gen3 => 17,
         else => unreachable,
     };
