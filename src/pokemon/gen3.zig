@@ -144,7 +144,7 @@ const Offsets = struct {
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
 const emerald_offsets = Offsets {
     .trainer_parties            = 0x030B62C,
-    .trainer_class_names        = 0x030B62C,
+    .trainer_class_names        = 0x030FCD4,
     .trainers                   = 0x0310030,
     .species_names              = 0x03185C8,
     .move_names                 = 0x031977C,
