@@ -54,7 +54,7 @@ pub const Options = struct {
         held_items: HeldItems,
 
         /// Trainer Pokémons will have their level increased by x%.
-        level_modifier: f32,
+        level_modifier: f64,
 
         /// When possible, trainer Pokémons will be given max IV.
         max_iv: bool,

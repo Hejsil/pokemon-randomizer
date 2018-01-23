@@ -12,6 +12,7 @@ const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
 const rand  = std.rand;
+const fmt   = std.fmt;
 const path  = os.path;
 
 var input_file  : []const u8 = undefined;
@@ -53,7 +54,7 @@ fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) -> %void {
 }
 
 fn setLevelModifier(op: &randomizer.Options, str: []const u8) -> %void {
-    const precent = try parseInt(u16, str, 10);
+    const precent = try fmt.parseInt(i16, str, 10);
     op.trainer.level_modifier = (f64(precent) / 100) + 1;
 }
 
@@ -80,11 +81,11 @@ const program_arguments = comptime []Arg {
         .help("How trainer Pokémon held items should be randomized. Options: [none, same, random, random-useful, random-best].")
         .long("trainer-held-items")
         .takesValue(true),
-    Arg.init(setTrainerHeldItems)
+    Arg.init(setLevelModifier)
         .help("A percent level modifier to trainers Pokémon.")
         .long("trainer-level-modifier")
         .takesValue(true),
-    Arg.init(setTrainerHeldItems)
+    Arg.init(setMaxIv)
         .help("Give trainer Pokémons max IV is possible.")
         .long("trainer-max-iv"),
 };
