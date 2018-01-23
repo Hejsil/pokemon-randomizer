@@ -146,7 +146,7 @@ const emerald_offsets = Offsets {
     .trainer_parties            = 0x030B62C,
     .trainer_class_names        = 0x030B62C,
     .trainers                   = 0x0310030,
-    .species_names              = 0x0310030,
+    .species_names              = 0x03185C8,
     .move_names                 = 0x031977C,
 
     .base_stats                 = 0x03203CC,
