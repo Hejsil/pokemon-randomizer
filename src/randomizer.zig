@@ -48,7 +48,7 @@ pub const Options = struct {
 
         /// Trainer Pokémons will be replaced by once of simular strength (base on
         /// Pokémon's base stats).
-        same_strength: bool,
+        same_total_stats: bool,
 
         /// Which held items each trainer Pokémon will be given.
         held_items: HeldItems,
@@ -68,9 +68,28 @@ pub const Options = struct {
         /// When possible, give trainers Pokémon the strongest moves they are
         /// able to learn at their level.
         best_learned_moves: bool,
+
+        pub fn default() -> Trainer {
+            return Trainer {
+                .pokemon = Pokemon.Same,
+                .same_total_stats = false,
+                .held_items = HeldItems.Same,
+                .level_modifier = 1.0,
+                .max_iv = false,
+                .max_ev = false,
+                .hard_ai = false,
+                .best_learned_moves = false,
+            };
+        }
     };
 
     trainer: Trainer,
+
+    pub fn default() -> Options {
+        return Options {
+            .trainer = Trainer.default(),
+        };
+    }
 };
 
 pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) -> %void {
@@ -134,7 +153,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     //       being chosen. I think?
                     const pokemon_type = randomType(@typeOf(game), random);
                     const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
-                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_strength, pokemons, random);
+                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
                     trainer_pokemon.species.set(new_pokemon);
                 },
                 Options.Trainer.Pokemon.SameType => {
@@ -154,42 +173,42 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     };
 
                     const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
-                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_strength, pokemons, random);
+                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
                     trainer_pokemon.species.set(new_pokemon);
                 },
                 Options.Trainer.Pokemon.TypeThemed => {
                     debug.assert(trainer_theme != common.Type.Unknown);
                     const pokemons = pokemons_by_type[u8(trainer_theme)].toSliceConst();
-                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_strength, pokemons, random);
+                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
                     trainer_pokemon.species.set(new_pokemon);
                 },
             }
 
             switch (options.held_items) {
-                None => {
+                Options.Trainer.HeldItems.None => {
                     // TODO:
                 },
-                Same => {},
-                Random => {
+                Options.Trainer.HeldItems.Same => {},
+                Options.Trainer.HeldItems.Random => {
                     // TODO:
                 },
-                RandomUseful => {
+                Options.Trainer.HeldItems.RandomUseful => {
                     // TODO:
                 },
-                RandomBest => {
+                Options.Trainer.HeldItems.RandomBest => {
                     // TODO:
                 },
             }
 
             trainer_pokemon.level = blk: {
-                var res = trainer_pokemon.level.get() * options.level_modifier;
-                res = math.min(res, 100);
-                res = math.max(res, 1);
+                var res = f64(trainer_pokemon.level) * options.level_modifier;
+                res = math.min(res, f64(100));
+                res = math.max(res, f64(1));
                 break :blk u8(math.round(res));
             };
 
             if (options.max_iv)
-                trainer_pokemon.iv = @maxValue(u8);
+                trainer_pokemon.iv.set(@maxValue(u16));
             if (options.max_ev) {
                 // TODO:
             }
@@ -203,8 +222,8 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     }
 }
 
-fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_strength: bool, pokemons: []const u16, random: &rand.Rand, ) -> u16 {
-    if (same_strength) {
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, ) -> u16 {
+    if (same_total_stats) {
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
         var tries : usize = 0;

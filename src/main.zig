@@ -17,10 +17,49 @@ const path  = os.path;
 var input_file  : []const u8 = undefined;
 var output_file : []const u8 = "randomized";
 
-fn setInFile(op: &void, str: []const u8) -> %void { input_file = str; }
-fn setOutFile(op: &void, str: []const u8) -> %void { output_file = str; }
+error InvalidOptions;
 
-const Arg = clap.Arg(void);
+fn setInFile(op: &randomizer.Options, str: []const u8) -> %void { input_file = str; }
+fn setOutFile(op: &randomizer.Options, str: []const u8) -> %void { output_file = str; }
+fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) -> %void {
+    if (mem.eql(u8, str, "same")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Random;
+    } else if (mem.eql(u8, str, "same-type")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.SameType;
+    } else if (mem.eql(u8, str, "type-themed")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.TypeThemed;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.same_total_stats = true; }
+fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) -> %void {
+    if (mem.eql(u8, str, "none")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
+    } else if (mem.eql(u8, str, "same")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Random;
+    } else if (mem.eql(u8, str, "random-useful")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomUseful;
+    } else if (mem.eql(u8, str, "random-best")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomBest;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setLevelModifier(op: &randomizer.Options, str: []const u8) -> %void {
+    const precent = try parseInt(u16, str, 10);
+    op.trainer.level_modifier = (f64(precent) / 100) + 1;
+}
+
+fn setMaxIv(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.same_total_stats = false; }
+
+const Arg = clap.Arg(randomizer.Options);
 const program_arguments = comptime []Arg {
     Arg.init(setInFile)
         .help("The rom to randomize.")
@@ -29,7 +68,25 @@ const program_arguments = comptime []Arg {
         .help("The place to output the randomized rom.")
         .short("o")
         .long("output")
-        .takesValue(true)
+        .takesValue(true),
+    Arg.init(setTrainerPokemon)
+        .help("How trainer Pokémons should be randomized. Options: [same, random, same-type, type-themed].")
+        .long("trainer-pokemon")
+        .takesValue(true),
+    Arg.init(setTrainerSameStrength)
+        .help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.")
+        .long("trainer-same-total-stats"),
+    Arg.init(setTrainerHeldItems)
+        .help("How trainer Pokémon held items should be randomized. Options: [none, same, random, random-useful, random-best].")
+        .long("trainer-held-items")
+        .takesValue(true),
+    Arg.init(setTrainerHeldItems)
+        .help("A percent level modifier to trainers Pokémon.")
+        .long("trainer-level-modifier")
+        .takesValue(true),
+    Arg.init(setTrainerHeldItems)
+        .help("Give trainer Pokémons max IV is possible.")
+        .long("trainer-max-iv"),
 };
 
 pub fn main() -> %void {
@@ -45,7 +102,7 @@ pub fn main() -> %void {
     const args = try os.argsAlloc(allocator);
     defer os.argsFree(allocator, args);
 
-    clap.parse(void, args, void{}, program_arguments) catch |err| {
+    const options = clap.parse(randomizer.Options, args, randomizer.Options.default(), program_arguments) catch |err| {
         // TODO: Write useful error message to user
         return err;
     };
@@ -89,7 +146,7 @@ pub fn main() -> %void {
             };
 
             var random = rand.Rand.init(0);
-            try randomizer.randomize(wrapper.Gen3.init(gen3_rom), undefined, &random, allocator);
+            try randomizer.randomize(wrapper.Gen3.init(gen3_rom), options, &random, allocator);
 
             var file_stream = io.FileOutStream.init(&out_file);
             gen3_rom.writeToStream(&file_stream.stream) catch |err| {
