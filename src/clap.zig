@@ -11,8 +11,6 @@ const assert = debug.assert;
 // TODO: Missing a few convinient features
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
-//       We will probably change the api, to only allow single ascii chars for
-//       short args by then.
 //     * Have a function that can output a help message from an array of Args
 
 pub fn Arg(comptime T: type) -> type { return struct {
@@ -22,7 +20,7 @@ pub fn Arg(comptime T: type) -> type { return struct {
     handler: fn(&T, []const u8) -> %void,
     is_required: bool,
     takes_value: bool,
-    short_arg: ?[]const u8,
+    short_arg: ?u8,
     long_arg:  ?[]const u8,
 
     pub fn init(handler: fn(&T, []const u8) -> %void) -> Self {
@@ -41,8 +39,8 @@ pub fn Arg(comptime T: type) -> type { return struct {
         return res;
     }
 
-    pub fn short(self: &const Self, str: []const u8) -> Self {
-        var res = *self; res.short_arg = str;
+    pub fn short(self: &const Self, char: u8) -> Self {
+        var res = *self; res.short_arg = char;
         return res;
     }
 
@@ -122,8 +120,8 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
                     break :loop;
                 },
                 Kind.Short => {
-                    const short = option.short_arg ?? continue :loop;
-                    if (!mem.eql(u8, short, arg))     continue :loop;
+                    const short = option.short_arg ??    continue :loop;
+                    if (arg.len != 1 or arg[0] != short) continue :loop;
                 },
                 Kind.Long => {
                     const long = option.long_arg ?? continue :loop;

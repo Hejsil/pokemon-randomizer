@@ -94,7 +94,7 @@ const Arg = clap.Arg(randomizer.Options);
 const program_arguments = comptime []Arg {
     Arg.init(setHelp)
         .help("Display this help and exit.")
-        .short("h")
+        .short('h')
         .long("help")
         .required(true),
     Arg.init(setInFile)
@@ -102,7 +102,7 @@ const program_arguments = comptime []Arg {
         .required(true),
     Arg.init(setOutFile)
         .help("The place to output the randomized rom.")
-        .short("o")
+        .short('o')
         .long("output")
         .takesValue(true),
     Arg.init(setTrainerPokemon)
