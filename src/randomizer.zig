@@ -135,7 +135,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     var trainer_id : usize = 0;
     while (game.getTrainer(trainer_id)) |trainer| : (trainer_id += 1) {
         const trainer_theme = switch (options.pokemon) {
-            Options.Trainer.Pokemon.TypeThemed => randomType(@typeOf(game), random),
+            Options.Trainer.Pokemon.TypeThemed => randomType(@typeOf(*game), random),
             else => common.Type.Unknown,
         };
 
@@ -151,7 +151,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     //       there is a different number of Pokémons per type.
                     // TODO: If a Pokémon is dual type, it has a higher chance of
                     //       being chosen. I think?
-                    const pokemon_type = randomType(@typeOf(game), random);
+                    const pokemon_type = randomType(@typeOf(*game), random);
                     const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
                     const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
                     trainer_pokemon.species.set(new_pokemon);
@@ -160,13 +160,13 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     const pokemon_type = blk: {
                         if (curr_pokemon.type1 == common.Type.Unknown) {
                             if (curr_pokemon.type2 == common.Type.Unknown) {
-                                break :blk randomType(@typeOf(game), random);
+                                break :blk randomType(@typeOf(*game), random);
                             } else {
                                 break :blk curr_pokemon.type2;
                             }
                         }
                         if (curr_pokemon.type2 == common.Type.Unknown)
-                            break :blk randomType(@typeOf(game), random);
+                            break :blk randomType(@typeOf(*game), random);
 
                         const roll = random.float(f32);
                         break :blk if (roll < 0.80) curr_pokemon.type1 else curr_pokemon.type2;
@@ -200,12 +200,13 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 },
             }
 
-            trainer_pokemon.level = blk: {
-                var res = f64(trainer_pokemon.level) * options.level_modifier;
+            const new_level = blk: {
+                var res = f64(trainer_pokemon.level.get()) * options.level_modifier;
                 res = math.min(res, f64(100));
                 res = math.max(res, f64(1));
                 break :blk u8(math.round(res));
             };
+            trainer_pokemon.level.set(new_level);
 
             if (options.max_iv)
                 trainer_pokemon.iv.set(@maxValue(u16));

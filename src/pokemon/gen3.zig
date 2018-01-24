@@ -101,24 +101,30 @@ pub const Trainer = packed struct {
     party_offset: Little(u32),
 };
 
-pub const PartyMember = packed struct {
+pub const PartyMemberBase = packed struct {
     iv: Little(u16),
-    level: u8,
+    level: Little(u16),
     species: Little(u16),
 };
 
+pub const PartyMember = packed struct {
+    base: PartyMemberBase,
+    padding: Little(u16),
+};
+
 pub const PartyMemberWithMoves = packed struct {
-    base: PartyMember,
+    base: PartyMemberBase,
     moves: [4]Little(u16),
+    padding: Little(u16),
 };
 
 pub const PartyMemberWithHeld = packed struct {
-    base: PartyMember,
+    base: PartyMemberBase,
     held_item: Little(u16),
 };
 
 pub const PartyMemberWithBoth = packed struct {
-    base: PartyMember,
+    base: PartyMemberBase,
     held_item: Little(u16),
     moves: [4]Little(u16),
 };
