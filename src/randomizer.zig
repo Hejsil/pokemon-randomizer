@@ -250,7 +250,6 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
 
 fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) -> %u16 {
     if (same_total_stats) {
-        // TODO: We get Pokémon of stats 100 above what the Pokémon actually is
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
         var matches = std.ArrayList(u16).init(allocator);
