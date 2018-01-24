@@ -8,6 +8,13 @@ const mem   = std.mem;
 const rand  = std.rand;
 const debug = std.debug;
 
+/// A generic enum for different randomization options.
+pub const GenericOption = enum {
+    Same,
+    Random,
+    Best
+};
+
 pub const Options = struct {
     pub const Trainer = struct {
         pub const Pokemon = enum {
@@ -44,6 +51,22 @@ pub const Options = struct {
             RandomBest,
         };
 
+        pub const Moves = enum {
+            /// Trainer Pokémon moves will not change.
+            Same,
+
+            /// If possible, Trainer Pokémon will have random moves.
+            Random,
+
+            /// If possible, Trainer Pokémon will have random moves selected from
+            /// the pool of moves the Pokémon can already learn.
+            RandomWithinLearnset,
+
+            /// If possible, Trainer Pokémon will be given the most powerful moves
+            /// they can learn.
+            Best,
+        };
+
         /// The the way trainers Pokémons should be randomized.
         pokemon: Pokemon,
 
@@ -54,32 +77,31 @@ pub const Options = struct {
         /// Which held items each trainer Pokémon will be given.
         held_items: HeldItems,
 
+        /// Which moves each trainer Pokémon will be given.
+        moves: Moves,
+
+        /// How the trainer AI should be randomized.
+        ai: GenericOption,
+
+        /// How the trainer Pokémon ivs should be randomized.
+        iv: GenericOption,
+
+        /// How the trainer Pokémon evs should be randomized.
+        ev: GenericOption,
+
         /// Trainer Pokémons will have their level increased by x%.
         level_modifier: f64,
-
-        /// When possible, trainer Pokémons will be given max IV.
-        max_iv: bool,
-
-        /// When possible, trainer Pokémons will be given max EV.
-        max_ev: bool,
-
-        /// When possible, trainers will be given the best AI.
-        hard_ai: bool,
-
-        /// When possible, give trainers Pokémon the strongest moves they are
-        /// able to learn at their level.
-        best_learned_moves: bool,
 
         pub fn default() -> Trainer {
             return Trainer {
                 .pokemon = Pokemon.Same,
                 .same_total_stats = false,
                 .held_items = HeldItems.Same,
+                .moves = Moves.Same,
+                .ai = GenericOption.Same,
+                .iv = GenericOption.Same,
+                .ev = GenericOption.Same,
                 .level_modifier = 1.0,
-                .max_iv = false,
-                .max_ev = false,
-                .hard_ai = false,
-                .best_learned_moves = false,
             };
         }
     };
@@ -189,24 +211,29 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 wrapper.Gen3 => {
                     switch (trainer.party_type) {
                         gen3.PartyType.WithHeld => {
-                            randomizeTrainerPokemonHeldItem(
-                                game,
-                                @fieldParentPtr(gen3.PartyMemberWithHeld, "base", trainer_pokemon),
-                                options.held_items,
-                                random);
+                            const member = @fieldParentPtr(gen3.PartyMemberWithHeld, "base", trainer_pokemon);
+                            randomizeTrainerPokemonHeldItem(game, member, options.held_items, random);
+                        },
+                        gen3.PartyType.WithMoves => {
+                            const member = @fieldParentPtr(gen3.PartyMemberWithMoves, "base", trainer_pokemon);
+                            randomizeTrainerPokemonMoves(game, member, options.moves, random);
                         },
                         gen3.PartyType.WithBoth => {
-                            randomizeTrainerPokemonHeldItem(
-                                game,
-                                @fieldParentPtr(gen3.PartyMemberWithBoth, "base", trainer_pokemon),
-                                options.held_items,
-                                random);
+                            const member = @fieldParentPtr(gen3.PartyMemberWithBoth, "base", trainer_pokemon);
+                            randomizeTrainerPokemonHeldItem(game, member, options.held_items, random);
+                            randomizeTrainerPokemonMoves(game, member, options.moves, random);
                         },
                         else => {}
                     }
                 },
                 else => unreachable,
             }
+
+            // TODO: 
+            //moves: MoveSet,
+            //ai: GenericOption,
+            //iv: GenericOption,
+            //ev: GenericOption,
 
             const new_level = blk: {
                 var res = f64(trainer_pokemon.level.get()) * options.level_modifier;
@@ -215,19 +242,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 break :blk u8(math.round(res));
             };
             trainer_pokemon.level.set(new_level);
-
-            if (options.max_iv)
-                trainer_pokemon.iv.set(@maxValue(u16));
-            if (options.max_ev) {
-                // TODO:
-            }
-            if (options.best_learned_moves) {
-                // TODO:
-            }
         }
-
-        if (options.hard_ai)
-            trainer.ai.set(@maxValue(u32));
     }
 }
 
@@ -288,6 +303,21 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
             // TODO:
         },
         Options.Trainer.HeldItems.RandomBest => {
+            // TODO:
+        },
+    }
+}
+
+fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: Options.Trainer.Moves, random: &rand.Rand) -> void {
+    switch (option) {
+        Options.Trainer.Moves.Same => {},
+        Options.Trainer.Moves.Random => {
+            // TODO:
+        },
+        Options.Trainer.Moves.RandomWithinLearnset => {
+            // TODO:
+        },
+        Options.Trainer.Moves.Best => {
             // TODO:
         },
     }

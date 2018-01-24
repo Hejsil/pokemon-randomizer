@@ -53,12 +53,40 @@ fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) -> %void {
     }
 }
 
+fn setTrainerMoves(op: &randomizer.Options, str: []const u8) -> %void {
+    if (mem.eql(u8, str, "same")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.Random;
+    } else if (mem.eql(u8, str, "random-within-learnset")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.RandomWithinLearnset;
+    } else if (mem.eql(u8, str, "best")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.Best;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setTrainerAi(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.ai = try parseGenericOption(str); }
+fn setTrainerIv(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.iv = try parseGenericOption(str); }
+fn setTrainerEv(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.ev = try parseGenericOption(str); }
+
+fn parseGenericOption(str: []const u8) -> %randomizer.GenericOption {
+    if (mem.eql(u8, str, "same")) {
+        return randomizer.GenericOption.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        return randomizer.GenericOption.Random;
+    } else if (mem.eql(u8, str, "best")) {
+        return randomizer.GenericOption.Best;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
 fn setLevelModifier(op: &randomizer.Options, str: []const u8) -> %void {
     const precent = try fmt.parseInt(i16, str, 10);
     op.trainer.level_modifier = (f64(precent) / 100) + 1;
 }
-
-fn setMaxIv(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.same_total_stats = false; }
 
 const Arg = clap.Arg(randomizer.Options);
 const program_arguments = comptime []Arg {
@@ -81,13 +109,26 @@ const program_arguments = comptime []Arg {
         .help("How trainer Pokémon held items should be randomized. Options: [none, same, random, random-useful, random-best].")
         .long("trainer-held-items")
         .takesValue(true),
+    Arg.init(setTrainerMoves)
+        .help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].")
+        .long("trainer-moves")
+        .takesValue(true),
+    Arg.init(setTrainerAi)
+        .help("How trainer ai should be randomized. Options: [same, random, best].")
+        .long("trainer-ai")
+        .takesValue(true),
+    Arg.init(setTrainerIv)
+        .help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].")
+        .long("trainer-iv")
+        .takesValue(true),
+    Arg.init(setTrainerEv)
+        .help("How trainer Pokémon evs should be randomized. Options: [same, random, best].")
+        .long("trainer-ev")
+        .takesValue(true),
     Arg.init(setLevelModifier)
         .help("A percent level modifier to trainers Pokémon.")
         .long("trainer-level-modifier")
         .takesValue(true),
-    Arg.init(setMaxIv)
-        .help("Give trainer Pokémons max IV is possible.")
-        .long("trainer-max-iv"),
 };
 
 pub fn main() -> %void {
