@@ -208,22 +208,6 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 else => unreachable,
             }
 
-            switch (options.held_items) {
-                Options.Trainer.HeldItems.None => {
-                    // TODO:
-                },
-                Options.Trainer.HeldItems.Same => {},
-                Options.Trainer.HeldItems.Random => {
-                    // TODO:
-                },
-                Options.Trainer.HeldItems.RandomUseful => {
-                    // TODO:
-                },
-                Options.Trainer.HeldItems.RandomBest => {
-                    // TODO:
-                },
-            }
-
             const new_level = blk: {
                 var res = f64(trainer_pokemon.level.get()) * options.level_modifier;
                 res = math.min(res, f64(100));
