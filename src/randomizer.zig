@@ -213,13 +213,13 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
             if (options.max_ev) {
                 // TODO:
             }
-            if (options.hard_ai) {
-                // TODO:
-            }
             if (options.best_learned_moves) {
                 // TODO:
             }
         }
+
+        if (options.hard_ai)
+            trainer.ai.set(@maxValue(u32));
     }
 }
 
