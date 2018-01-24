@@ -96,6 +96,7 @@ pub const Trainer = packed struct {
     name: [12]u8,
     items: [4]Little(u16),
     is_double: Little(u32),
+    ai: Little(u32),
     party_size: Little(u32),
     party_offset: Little(u32),
 };
