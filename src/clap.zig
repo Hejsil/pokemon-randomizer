@@ -233,18 +233,18 @@ test "clap.parse.Example" {
     const options = []CArg {
         CArg.init(Color.rFromStr)
             .help("The amount of red in our color")
-            .short("r")
+            .short('r')
             .long("red")
             .takesValue(true)
             .required(true),
         CArg.init(Color.gFromStr)
             .help("The amount of green in our color")
-            .short("g")
+            .short('g')
             .long("green")
             .takesValue(true),
         CArg.init(Color.bFromStr)
             .help("The amount of blue in our color")
-            .short("b")
+            .short('b')
             .long("blue")
             .takesValue(true),
     };
@@ -290,7 +290,7 @@ test "clap.parse.Example" {
 
     for (cases) |case| {
         const default = Color { .r = 0, .g = 0, .b = 0 };
-        if (parse(Color, case.args, default, options)) |res| {
+        if (parse(Color, options, default, case.args)) |res| {
             assert(res.r == case.res.r);
             assert(res.g == case.res.g);
             assert(res.b == case.res.b);
