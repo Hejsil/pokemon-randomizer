@@ -741,17 +741,17 @@ pub const Rom = struct {
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Rom {
         var result = try allocator.create(Rom);
-        %defer allocator.destroy(result);
+        errdefer allocator.destroy(result);
 
         result.header = try utils.noAllocRead(Header, file);
         try result.header.validate();
 
         result.arm9 = try utils.seekToAllocAndRead(u8, file, allocator, result.header.arm9_rom_offset.get(), result.header.arm9_size.get());
-        %defer allocator.free(result.arm9);
+        errdefer allocator.free(result.arm9);
         result.nitro_footer = try utils.noAllocRead([3]Little(u32), file);
 
         result.arm7 = try utils.seekToAllocAndRead(u8, file, allocator, result.header.arm7_rom_offset.get(), result.header.arm7_size.get());
-        %defer allocator.free(result.arm7);
+        errdefer allocator.free(result.arm7);
 
         result.arm9_overlay_table = try utils.seekToAllocAndRead(
             Overlay,
@@ -759,9 +759,9 @@ pub const Rom = struct {
             allocator,
             result.header.arm9_overlay_offset.get(),
             result.header.arm9_overlay_size.get() / @sizeOf(Overlay));
-        %defer allocator.free(result.arm9_overlay_table);
+        errdefer allocator.free(result.arm9_overlay_table);
         result.arm9_overlay_files = try readOverlayFiles(file, allocator, result.arm9_overlay_table, result.header.fat_offset.get());
-        %defer cleanUpOverlayFiles(result.arm9_overlay_files, allocator);
+        errdefer cleanUpOverlayFiles(result.arm9_overlay_files, allocator);
 
         result.arm7_overlay_table = try utils.seekToAllocAndRead(
             Overlay,
@@ -769,9 +769,9 @@ pub const Rom = struct {
             allocator,
             result.header.arm7_overlay_offset.get(),
             result.header.arm7_overlay_size.get() / @sizeOf(Overlay));
-        %defer allocator.free(result.arm7_overlay_table);
+        errdefer allocator.free(result.arm7_overlay_table);
         result.arm7_overlay_files = try readOverlayFiles(file, allocator, result.arm7_overlay_table, result.header.fat_offset.get());
-        %defer cleanUpOverlayFiles(result.arm7_overlay_files, allocator);
+        errdefer cleanUpOverlayFiles(result.arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
         result.icon_title = try utils.seekToNoAllocRead(IconTitle, file, result.header.icon_title_offset.get());
@@ -784,7 +784,7 @@ pub const Rom = struct {
             result.header.fnt_size.get(),
             result.header.fat_offset.get(),
             result.header.fat_size.get());
-        %defer result.root.destroy(allocator);
+        errdefer result.root.destroy(allocator);
 
         return result;
     }
@@ -792,7 +792,7 @@ pub const Rom = struct {
     fn readOverlayFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) -> %[][]u8 {
         var results = try allocator.alloc([]u8, overlay_table.len);
         var allocated : usize = 0;
-        %defer cleanUpOverlayFiles(results[0..allocated], allocator);
+        errdefer cleanUpOverlayFiles(results[0..allocated], allocator);
 
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
@@ -833,7 +833,7 @@ pub const Rom = struct {
         defer allocator.free(fat);
 
         const root_name = try allocator.alloc(u8, 0);
-        %defer allocator.free(root_name);
+        errdefer allocator.free(root_name);
 
         return buildFolderFromFntMainEntry(
             file,
@@ -857,7 +857,7 @@ pub const Rom = struct {
 
         try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
         var folders = std.ArrayList(Folder).init(allocator);
-        %defer {
+        errdefer {
             for (folders.toSlice()) |f| {
                 f.destroy(allocator);
             }
@@ -866,7 +866,7 @@ pub const Rom = struct {
         }
 
         var files = std.ArrayList(File).init(allocator);
-        %defer {
+        errdefer {
             for (files.toSlice()) |f| {
                 f.destroy(allocator);
             }
@@ -889,7 +889,7 @@ pub const Rom = struct {
             assert(kind == Kind.File or kind == Kind.Folder);
 
             const child_name = try utils.allocAndRead(u8, file, allocator, lenght);
-            %defer allocator.free(child_name);
+            errdefer allocator.free(child_name);
 
             switch (kind) {
                 Kind.File => {
@@ -903,7 +903,7 @@ pub const Rom = struct {
 
                     const current_pos = try file.getPos();
                     const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get(), entry.getSize());
-                    %defer allocator.free(file_data);
+                    errdefer allocator.free(file_data);
 
                     try file.seekTo(current_pos);
                     try files.append(

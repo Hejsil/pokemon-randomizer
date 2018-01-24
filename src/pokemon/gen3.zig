@@ -190,7 +190,7 @@ pub const Game = struct {
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Game {
         var res = try allocator.create(Game);
-        %defer allocator.destroy(res);
+        errdefer allocator.destroy(res);
 
         res.header = try utils.noAllocRead(gba.Header, file);
         try res.header.validate();
@@ -199,37 +199,37 @@ pub const Game = struct {
         res.offsets = offsets;
 
         res.unknown1 = try utils.allocAndRead(u8, file, allocator, offsets.trainer_parties - try file.getPos());
-        %defer allocator.free(res.unknown1);
+        errdefer allocator.free(res.unknown1);
 
         res.trainer_parties = try utils.allocAndRead(u8, file, allocator, offsets.trainer_class_names - offsets.trainer_parties);
-        %defer allocator.free(res.trainer_parties);
+        errdefer allocator.free(res.trainer_parties);
 
         res.trainer_class_names = try utils.allocAndRead(u8, file, allocator,  offsets.trainers - offsets.trainer_class_names);
-        %defer allocator.free(res.trainer_class_names);
+        errdefer allocator.free(res.trainer_class_names);
 
         res.trainers = try utils.allocAndRead(Trainer, file, allocator, (offsets.species_names - offsets.trainers) / @sizeOf(Trainer));
-        %defer allocator.free(res.trainers);
+        errdefer allocator.free(res.trainers);
 
         res.species_names = try utils.allocAndRead(u8, file, allocator, offsets.move_names - offsets.species_names);
-        %defer allocator.free(res.species_names);
+        errdefer allocator.free(res.species_names);
 
         res.unknown2 = try utils.allocAndRead(u8, file, allocator, offsets.base_stats - (offsets.species_names + res.species_names.len));
-        %defer allocator.free(res.unknown2);
+        errdefer allocator.free(res.unknown2);
 
         res.base_stats = try utils.allocAndRead(BasePokemon, file, allocator, (offsets.level_up_learnsets - offsets.base_stats) / @sizeOf(BasePokemon));
-        %defer allocator.free(res.base_stats);
+        errdefer allocator.free(res.base_stats);
 
         res.level_up_learnsets = try utils.allocAndRead(u8, file, allocator, offsets.evolution_table - offsets.level_up_learnsets);
-        %defer allocator.free(res.level_up_learnsets);
+        errdefer allocator.free(res.level_up_learnsets);
 
         res.evolution_table = try utils.allocAndRead([5]Evolution, file, allocator, (offsets.level_up_learnset_pointers - offsets.evolution_table) / @sizeOf([5]Evolution));
-        %defer allocator.free(res.evolution_table);
+        errdefer allocator.free(res.evolution_table);
 
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
         res.unknown3 = try stream.readAllAlloc(allocator, @maxValue(usize));
-        %defer allocator.free(res.unknown3);
+        errdefer allocator.free(res.unknown3);
 
         if ((try file.getPos()) % 0x1000000 != 0)
             return error.InvalidRomSize;
