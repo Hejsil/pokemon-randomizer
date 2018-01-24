@@ -16,7 +16,7 @@ const fmt   = std.fmt;
 const path  = os.path;
 
 var help = false;
-var input_file  : []const u8 = undefined;
+var input_file  : []const u8 = "input";
 var output_file : []const u8 = "randomized";
 
 error InvalidOptions;

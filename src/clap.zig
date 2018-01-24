@@ -13,6 +13,7 @@ const assert = debug.assert;
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
 //     * Handle "--something=VALUE"
+//     * Special arguments, like "help", should be able to ignore required arguments.
 
 pub fn Arg(comptime T: type) -> type { return struct {
     const Self = this;
