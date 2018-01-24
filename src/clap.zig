@@ -67,7 +67,7 @@ error InvalidArgument;
 error ToManyOptions;
 error RequiredArgumentWasntHandled;
 
-pub fn parse(comptime T: type, args: []const []const u8, defaults: &const T, options: []const Arg(T)) -> %T {
+pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) -> %T {
     var result = *defaults;
 
     const Kind    = enum { Long, Short, None };

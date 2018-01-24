@@ -151,7 +151,7 @@ pub fn main() -> %void {
     const args = try os.argsAlloc(allocator);
     defer os.argsFree(allocator, args);
 
-    const options = clap.parse(randomizer.Options, args, randomizer.Options.default(), program_arguments) catch |err| {
+    const options = clap.parse(randomizer.Options, program_arguments, randomizer.Options.default(), args) catch |err| {
         // TODO: Write useful error message to user
         return err;
     };
