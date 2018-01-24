@@ -15,11 +15,13 @@ const rand  = std.rand;
 const fmt   = std.fmt;
 const path  = os.path;
 
+var help = false;
 var input_file  : []const u8 = undefined;
 var output_file : []const u8 = "randomized";
 
 error InvalidOptions;
 
+fn setHelp(op: &randomizer.Options, str: []const u8) -> %void { help = true; }
 fn setInFile(op: &randomizer.Options, str: []const u8) -> %void { input_file = str; }
 fn setOutFile(op: &randomizer.Options, str: []const u8) -> %void { output_file = str; }
 fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) -> %void {
@@ -90,6 +92,11 @@ fn setLevelModifier(op: &randomizer.Options, str: []const u8) -> %void {
 
 const Arg = clap.Arg(randomizer.Options);
 const program_arguments = comptime []Arg {
+    Arg.init(setHelp)
+        .help("Display this help and exit.")
+        .short("h")
+        .long("help")
+        .required(true),
     Arg.init(setInFile)
         .help("The rom to randomize.")
         .required(true),
@@ -149,6 +156,10 @@ pub fn main() -> %void {
         return err;
     };
 
+    if (help) {
+        // TODO: Output help
+        return;
+    }
 
     var rom = loadRom(input_file, allocator) catch |err| {
         switch (err) {
