@@ -4,6 +4,7 @@ const bits = @import("bits.zig");
 const mem   = std.mem;
 const fmt   = std.fmt;
 const debug = std.debug;
+const io    = std.io;
 
 const assert = debug.assert;
 
@@ -11,7 +12,7 @@ const assert = debug.assert;
 // TODO: Missing a few convinient features
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
-//     * Have a function that can output a help message from an array of Args
+//     * Handle "--something=VALUE"
 
 pub fn Arg(comptime T: type) -> type { return struct {
     const Self = this;
@@ -152,6 +153,61 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
     return result;
 }
 
+// TODO:
+//    * Usage
+//    * Description
+
+pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream) -> %void {
+    const equal_value : []const u8 = "=OPTION";
+    var longest_long : usize = 0;
+    for (options) |option| {
+        const long = option.long_arg ?? continue;
+        var len = long.len;
+
+        if (option.takes_value)
+            len += equal_value.len;
+
+        if (longest_long < len)
+            longest_long = len;
+    }
+
+    for (options) |option| {
+        if (option.short_arg == null and option.long_arg == null) continue;
+
+        try stream.print("    ");
+        if (option.short_arg) |short| {
+            try stream.print("-{c}", short);
+        } else {
+            try stream.print("  ");
+        }
+
+        if (option.short_arg != null and option.long_arg != null) {
+            try stream.print(", ");
+        } else {
+            try stream.print("  ");
+        }
+
+        // We need to ident by:
+        // "--<longest_long> ".len
+        var missing_spaces = longest_long + 3;
+        if (option.long_arg) |long| {
+            try stream.print("--{}", long);
+            missing_spaces -= 2 + long.len;
+
+            if (option.takes_value) {
+                try stream.print("{}", equal_value);
+                missing_spaces -= equal_value.len;
+            }
+        }
+
+        var i : usize = 0;
+        while (i < (missing_spaces + 1)) : (i += 1) {
+            try stream.print(" ");
+        }
+
+        try stream.print("{}\n", option.help_message);
+    }
+}
 
 test "clap.parse.Example" {
     const Color = struct {

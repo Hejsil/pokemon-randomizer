@@ -95,8 +95,7 @@ const program_arguments = comptime []Arg {
     Arg.init(setHelp)
         .help("Display this help and exit.")
         .short('h')
-        .long("help")
-        .required(true),
+        .long("help"),
     Arg.init(setInFile)
         .help("The rom to randomize.")
         .required(true),
@@ -157,7 +156,7 @@ pub fn main() -> %void {
     };
 
     if (help) {
-        // TODO: Output help
+        try clap.help(randomizer.Options, program_arguments, stdout_stream);
         return;
     }
 
