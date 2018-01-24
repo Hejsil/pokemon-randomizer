@@ -59,7 +59,7 @@ pub fn allocAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator,
     var stream = &file_stream.stream;
 
     const data = try allocator.alloc(T, size);
-    %defer allocator.free(data);
+    errdefer allocator.free(data);
 
     try stream.readNoEof(([]u8)(data));
 
