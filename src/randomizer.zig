@@ -176,7 +176,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     //       being chosen. I think?
                     const pokemon_type = randomType(@typeOf(*game), random);
                     const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
-                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
+                    const new_pokemon = try getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random, allocator);
                     trainer_pokemon.species.set(new_pokemon);
                 },
                 Options.Trainer.Pokemon.SameType => {
@@ -196,13 +196,13 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     };
 
                     const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
-                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
+                    const new_pokemon = try getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random, allocator);
                     trainer_pokemon.species.set(new_pokemon);
                 },
                 Options.Trainer.Pokemon.TypeThemed => {
                     debug.assert(trainer_theme != common.Type.Unknown);
                     const pokemons = pokemons_by_type[u8(trainer_theme)].toSliceConst();
-                    const new_pokemon = getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random);
+                    const new_pokemon = try getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random, allocator);
                     trainer_pokemon.species.set(new_pokemon);
                 },
             }
@@ -248,49 +248,33 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     }
 }
 
-fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand) -> u16 {
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) -> %u16 {
     if (same_total_stats) {
         // TODO: We get Pokémon of stats 100 above what the Pokémon actually is
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
-        var tries : usize = 0;
+        var matches = std.ArrayList(u16).init(allocator);
+        defer matches.deinit();
 
-        while (tries < 100) : (tries += 1) loop: {
-            min_total = math.sub(u16, min_total, 10) catch min_total;
-            max_total = math.add(u16, max_total, 10) catch max_total;
+        // If we dont get 25 matches on the first try, we just loop again. This means matches
+        // will end up collecting some duplicates. This is fine, as this makes it soo that
+        // Pokémon that are a better match, have a higher chance of being picked.
+        while (matches.len < 25) {
+            min_total = math.sub(u16, min_total, 5) catch min_total;
+            max_total = math.add(u16, max_total, 5) catch max_total;
 
-            var pokemons_with_stats : usize = 0;
             for (pokemons) |pokemon_id| {
                 const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable; // TODO: FIX
                 const total = totalStats(pokemon);
                 if (min_total <= total and total <= max_total)
-                    pokemons_with_stats += 1;
-            }
-
-            if (pokemons_with_stats < 10) continue;
-
-            const final = random.range(usize, 0, pokemons_with_stats);
-            var index : usize = 0;
-            for (pokemons) |pokemon_id| {
-                const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable; // TODO: FIX
-                const total = totalStats(pokemon);
-
-                if (min_total <= total and total <= max_total) {
-                    if (index == final) {
-                        return pokemon_id;
-                    } else {
-                        index += 1;
-                    }
-                }
-            } else {
-                unreachable; // TODO: FIX
+                    try matches.append(pokemon_id);
             }
         }
+
+        return matches.toSlice()[random.range(usize, 0, matches.len)];
     } else {
         return pokemons[random.range(usize, 0, pokemons.len)];
     }
-
-    unreachable; // TODO: FIX
 }
 
 fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trainer.HeldItems, random: &rand.Rand) -> void {
