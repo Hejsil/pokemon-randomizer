@@ -269,12 +269,12 @@ fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool,
 
 fn totalStats(pokemon: var) -> u16 {
     return
-        pokemon.hp +
-        pokemon.attack +
-        pokemon.defense +
-        pokemon.speed +
-        pokemon.sp_attack +
-        pokemon.sp_defense;
+        u16(pokemon.hp)        +
+        u16(pokemon.attack)    +
+        u16(pokemon.defense)   +
+        u16(pokemon.speed)     +
+        u16(pokemon.sp_attack) +
+        u16(pokemon.sp_defense);
 }
 
 const random_type_table = []common.Type {
