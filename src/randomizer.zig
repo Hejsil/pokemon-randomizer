@@ -1,6 +1,7 @@
 const std     = @import("std");
 const common  = @import("pokemon/common.zig");
 const wrapper = @import("pokemon/wrapper.zig");
+const gen3    = @import("pokemon/gen3.zig");
 
 const math  = std.math;
 const mem   = std.mem;
@@ -184,6 +185,29 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 },
             }
 
+            switch (@typeOf(*game)) {
+                wrapper.Gen3 => {
+                    switch (trainer.party_type) {
+                        gen3.PartyType.WithHeld => {
+                            randomizeTrainerPokemonHeldItem(
+                                game,
+                                @fieldParentPtr(gen3.PartyMemberWithHeld, "base", trainer_pokemon),
+                                options.held_items,
+                                random);
+                        },
+                        gen3.PartyType.WithBoth => {
+                            randomizeTrainerPokemonHeldItem(
+                                game,
+                                @fieldParentPtr(gen3.PartyMemberWithBoth, "base", trainer_pokemon),
+                                options.held_items,
+                                random);
+                        },
+                        else => {}
+                    }
+                },
+                else => unreachable,
+            }
+
             switch (options.held_items) {
                 Options.Trainer.HeldItems.None => {
                     // TODO:
@@ -223,7 +247,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     }
 }
 
-fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, ) -> u16 {
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand) -> u16 {
     if (same_total_stats) {
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
@@ -265,6 +289,24 @@ fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool,
     }
 
     unreachable; // TODO: FIX
+}
+
+fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trainer.HeldItems, random: &rand.Rand) -> void {
+    switch (option) {
+        Options.Trainer.HeldItems.None => {
+            pokemon.held_item.set(0);
+        },
+        Options.Trainer.HeldItems.Same => {},
+        Options.Trainer.HeldItems.Random => {
+            // TODO:
+        },
+        Options.Trainer.HeldItems.RandomUseful => {
+            // TODO:
+        },
+        Options.Trainer.HeldItems.RandomBest => {
+            // TODO:
+        },
+    }
 }
 
 fn totalStats(pokemon: var) -> u16 {
