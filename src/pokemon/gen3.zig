@@ -150,7 +150,7 @@ const Offset = struct {
     start: usize,
     end: usize,
 
-    fn slice(offset: &const Offset, comptime T: type, data: []u8) -> []T {
+    fn slice(offset: &const Offset, comptime T: type, data: []u8) []T {
         return ([]T)(data[offset.start..offset.end]);
     }
 };
@@ -196,7 +196,7 @@ pub const Game = struct {
     evolution_table: [][5]Evolution,
     level_up_learnset_pointers: []Little(u32),
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Game {
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Game {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
@@ -225,7 +225,7 @@ pub const Game = struct {
         return res;
     }
 
-    fn getOffsets(header: &const gba.Header) -> %&const Offsets {
+    fn getOffsets(header: &const gba.Header) %&const Offsets {
         if (mem.eql(u8, header.game_title, "POKEMON EMER")) {
             return &emerald_offsets;
         }
@@ -243,30 +243,30 @@ pub const Game = struct {
         return error.InvalidGen3PokemonHeader;
     }
 
-    pub fn validateData(game: &const Game) -> %void {
+    pub fn validateData(game: &const Game) %void {
         if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
             return error.NoBulbasaurFound;
     }
 
-    pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
+    pub fn writeToStream(game: &const Game, stream: &io.OutStream) %void {
         try game.header.validate();
         try stream.write(game.data);
     }
 
-    pub fn destroy(game: &const Game, allocator: &mem.Allocator) {
+    pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
         allocator.free(game.data);
         allocator.destroy(game);
     }
 
-    pub fn getBasePokemon(game: &const Game, index: usize) -> ?&BasePokemon {
+    pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
         return utils.ptrAt(BasePokemon, game.base_stats, index);
     }
 
-    pub fn getTrainer(game: &const Game, index: usize) -> ?&Trainer {
+    pub fn getTrainer(game: &const Game, index: usize) ?&Trainer {
         return utils.ptrAt(Trainer, game.trainers, index);
     }
 
-    pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) -> ?&PartyMemberBase {
+    pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) ?&PartyMemberBase {
         if (trainer.party_offset.get() < 0x8000000) return null;
 
         const offset = trainer.party_offset.get() - 0x8000000;
@@ -288,7 +288,7 @@ pub const Game = struct {
         }
     }
 
-    fn getBasePartyMember(comptime TMember: type, data: []u8, index: usize, offset: usize, size: usize) -> ?&PartyMemberBase {
+    fn getBasePartyMember(comptime TMember: type, data: []u8, index: usize, offset: usize, size: usize) ?&PartyMemberBase {
         const party_end = offset + size * @sizeOf(TMember);
         if (data.len < party_end) return null;
 
@@ -297,15 +297,15 @@ pub const Game = struct {
         return &pokemon.base;
     }
 
-    pub fn getMove(game: &const Game, index: usize) -> ?&Move {
+    pub fn getMove(game: &const Game, index: usize) ?&Move {
         return utils.ptrAt(Move, game.moves, index);
     }
 
-    pub fn getMoveCount(game: &const Game) -> usize {
+    pub fn getMoveCount(game: &const Game) usize {
         return game.moves.len;
     }
 
-    pub fn getLevelupMoves(game: &const Game, pokemon_id: usize) -> ?[]LevelUpMove {
+    pub fn getLevelupMoves(game: &const Game, pokemon_id: usize) ?[]LevelUpMove {
         const offset = utils.itemAt(Little(u32), game.level_up_learnset_pointers, pokemon_id) ?? return null;
         if (game.data.len < offset.get()) return null;
 

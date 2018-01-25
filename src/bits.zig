@@ -7,7 +7,7 @@ const assert = debug.assert;
 
 pub const u1 = @IntType(false, 1);
 
-pub fn set(comptime T: type, num: T, bit: math.Log2Int(T), value: u1) -> T {
+pub fn set(comptime T: type, num: T, bit: math.Log2Int(T), value: u1) T {
     return (num & ~(T(1) << bit)) | (T(value) << bit);
 }
 
@@ -19,7 +19,7 @@ test "bits.set" {
     assert(set(u8, v, 1, 0) == 0b00);
 }
 
-pub fn get(comptime T: type, num: T, bit: math.Log2Int(T)) -> u1 {
+pub fn get(comptime T: type, num: T, bit: math.Log2Int(T)) u1 {
     return u1((num >> bit) & 1);
 }
 
@@ -29,7 +29,7 @@ test "bits.get" {
     assert(get(u8, v, 1) == 1);
 }
 
-pub fn toggle(comptime T: type, num: T, bit: math.Log2Int(T)) -> T {
+pub fn toggle(comptime T: type, num: T, bit: math.Log2Int(T)) T {
     return num ^ (T(1) << bit);
 }
 

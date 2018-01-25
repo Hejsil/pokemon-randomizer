@@ -15,17 +15,17 @@ const assert = debug.assert;
 //     * Handle "--something=VALUE"
 //     * Special arguments, like "help", should be able to ignore required arguments.
 
-pub fn Arg(comptime T: type) -> type { return struct {
+pub fn Arg(comptime T: type) type { return struct {
     const Self = this;
 
     help_message: []const u8,
-    handler: fn(&T, []const u8) -> %void,
+    handler: fn(&T, []const u8) %void,
     is_required: bool,
     takes_value: bool,
     short_arg: ?u8,
     long_arg:  ?[]const u8,
 
-    pub fn init(handler: fn(&T, []const u8) -> %void) -> Self {
+    pub fn init(handler: fn(&T, []const u8) %void) Self {
         return Self {
             .help_message = "",
             .handler = handler,
@@ -36,27 +36,27 @@ pub fn Arg(comptime T: type) -> type { return struct {
         };
     }
 
-    pub fn help(self: &const Self, str: []const u8) -> Self {
+    pub fn help(self: &const Self, str: []const u8) Self {
         var res = *self; res.help_message = str;
         return res;
     }
 
-    pub fn short(self: &const Self, char: u8) -> Self {
+    pub fn short(self: &const Self, char: u8) Self {
         var res = *self; res.short_arg = char;
         return res;
     }
 
-    pub fn long(self: &const Self, str: []const u8) -> Self {
+    pub fn long(self: &const Self, str: []const u8) Self {
         var res = *self; res.long_arg = str;
         return res;
     }
 
-    pub fn takesValue(self: &const Self, b: bool) -> Self {
+    pub fn takesValue(self: &const Self, b: bool) Self {
         var res = *self; res.takes_value = b;
         return res;
     }
 
-    pub fn required(self: &const Self, b: bool) -> Self {
+    pub fn required(self: &const Self, b: bool) Self {
         var res = *self; res.is_required = b;
         return res;
     }
@@ -67,7 +67,7 @@ error InvalidArgument;
 error ToManyOptions;
 error RequiredArgumentWasntHandled;
 
-pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) -> %T {
+pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) %T {
     var result = *defaults;
 
     const Kind    = enum { Long, Short, None };
@@ -158,7 +158,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
 //    * Usage
 //    * Description
 
-pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream) -> %void {
+pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream) %void {
     const equal_value : []const u8 = "=OPTION";
     var longest_long : usize = 0;
     for (options) |option| {
@@ -216,15 +216,15 @@ test "clap.parse.Example" {
 
         r: u8, g: u8, b: u8,
 
-        fn rFromStr(self: &Self, str: []const u8) -> %void {
+        fn rFromStr(self: &Self, str: []const u8) %void {
             self.r = try fmt.parseInt(u8, str, 10);
         }
 
-        fn gFromStr(self: &Self, str: []const u8) -> %void {
+        fn gFromStr(self: &Self, str: []const u8) %void {
             self.g = try fmt.parseInt(u8, str, 10);
         }
 
-        fn bFromStr(self: &Self, str: []const u8) -> %void {
+        fn bFromStr(self: &Self, str: []const u8) %void {
             self.b = try fmt.parseInt(u8, str, 10);
         }
     };

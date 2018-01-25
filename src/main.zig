@@ -21,10 +21,10 @@ var output_file : []const u8 = "randomized";
 error InvalidOptions;
 error NotARom;
 
-fn setHelp(op: &randomizer.Options, str: []const u8) -> %void { help = true; }
-fn setInFile(op: &randomizer.Options, str: []const u8) -> %void { input_file = str; }
-fn setOutFile(op: &randomizer.Options, str: []const u8) -> %void { output_file = str; }
-fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) -> %void {
+fn setHelp(op: &randomizer.Options, str: []const u8) %void { help = true; }
+fn setInFile(op: &randomizer.Options, str: []const u8) %void { input_file = str; }
+fn setOutFile(op: &randomizer.Options, str: []const u8) %void { output_file = str; }
+fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) %void {
     if (mem.eql(u8, str, "same")) {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -38,8 +38,8 @@ fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) -> %void {
     }
 }
 
-fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.same_total_stats = true; }
-fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) -> %void {
+fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) %void { op.trainer.same_total_stats = true; }
+fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) %void {
     if (mem.eql(u8, str, "none")) {
         op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
     } else if (mem.eql(u8, str, "same")) {
@@ -55,7 +55,7 @@ fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) -> %void {
     }
 }
 
-fn setTrainerMoves(op: &randomizer.Options, str: []const u8) -> %void {
+fn setTrainerMoves(op: &randomizer.Options, str: []const u8) %void {
     if (mem.eql(u8, str, "same")) {
         op.trainer.moves = randomizer.Options.Trainer.Moves.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -69,11 +69,11 @@ fn setTrainerMoves(op: &randomizer.Options, str: []const u8) -> %void {
     }
 }
 
-fn setTrainerAi(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.ai = try parseGenericOption(str); }
-fn setTrainerIv(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.iv = try parseGenericOption(str); }
-fn setTrainerEv(op: &randomizer.Options, str: []const u8) -> %void { op.trainer.ev = try parseGenericOption(str); }
+fn setTrainerAi(op: &randomizer.Options, str: []const u8) %void { op.trainer.ai = try parseGenericOption(str); }
+fn setTrainerIv(op: &randomizer.Options, str: []const u8) %void { op.trainer.iv = try parseGenericOption(str); }
+fn setTrainerEv(op: &randomizer.Options, str: []const u8) %void { op.trainer.ev = try parseGenericOption(str); }
 
-fn parseGenericOption(str: []const u8) -> %randomizer.GenericOption {
+fn parseGenericOption(str: []const u8) %randomizer.GenericOption {
     if (mem.eql(u8, str, "same")) {
         return randomizer.GenericOption.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -85,7 +85,7 @@ fn parseGenericOption(str: []const u8) -> %randomizer.GenericOption {
     }
 }
 
-fn setLevelModifier(op: &randomizer.Options, str: []const u8) -> %void {
+fn setLevelModifier(op: &randomizer.Options, str: []const u8) %void {
     const precent = try fmt.parseInt(i16, str, 10);
     op.trainer.level_modifier = (f64(precent) / 100) + 1;
 }
@@ -137,7 +137,7 @@ const program_arguments = comptime []Arg {
         .takesValue(true),
 };
 
-pub fn main() -> %void {
+pub fn main() %void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
     var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
     defer inc_allocator.deinit();

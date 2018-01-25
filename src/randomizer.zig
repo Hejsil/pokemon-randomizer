@@ -93,7 +93,7 @@ pub const Options = struct {
         /// Trainer Pokémons will have their level increased by x%.
         level_modifier: f64,
 
-        pub fn default() -> Trainer {
+        pub fn default() Trainer {
             return Trainer {
                 .pokemon = Pokemon.Same,
                 .same_total_stats = false,
@@ -109,14 +109,14 @@ pub const Options = struct {
 
     trainer: Trainer,
 
-    pub fn default() -> Options {
+    pub fn default() Options {
         return Options {
             .trainer = Trainer.default(),
         };
     }
 };
 
-pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) -> %void {
+pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) %void {
     // TODO: When we can get the max value of enums, fix this code:
     //                     VVVVVVVVVVVVVVVVVVVVV
     var pokemons_by_type = [u8(common.Type.Fairy) + 1]std.ArrayList(u16) {
@@ -155,7 +155,7 @@ pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocat
     try randomizeTrainers(game, pokemons_by_type[0..], options.trainer, random, allocator);
 }
 
-fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) -> %void {
+fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) %void {
     var trainer_id : usize = 0;
     while (game.getTrainer(trainer_id)) |trainer| : (trainer_id += 1) {
         const trainer_theme = switch (options.pokemon) {
@@ -249,7 +249,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     }
 }
 
-fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) -> %u16 {
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) %u16 {
     if (same_total_stats) {
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
@@ -277,7 +277,7 @@ fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool,
     }
 }
 
-fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trainer.HeldItems, random: &rand.Rand) -> void {
+fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trainer.HeldItems, random: &rand.Rand) void {
     switch (option) {
         Options.Trainer.HeldItems.None => {
             pokemon.held_item.set(0);
@@ -295,7 +295,7 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.Trainer, random: &rand.Rand) -> void {
+fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.Trainer, random: &rand.Rand) void {
     switch (option.moves) {
         Options.Trainer.Moves.Same => {
             // If trainer Pokémons where randomized, then keeping the same moves
@@ -340,7 +340,7 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
     }
 }
 
-fn totalStats(pokemon: var) -> u16 {
+fn totalStats(pokemon: var) u16 {
     return
         u16(pokemon.hp)        +
         u16(pokemon.attack)    +
@@ -350,7 +350,7 @@ fn totalStats(pokemon: var) -> u16 {
         u16(pokemon.sp_defense);
 }
 
-fn randomType(comptime TGame: type, random: &rand.Rand) -> common.Type {
+fn randomType(comptime TGame: type, random: &rand.Rand) common.Type {
     const random_type_table = []common.Type {
         common.Type.Normal,
         common.Type.Fighting,
@@ -381,7 +381,7 @@ fn randomType(comptime TGame: type, random: &rand.Rand) -> common.Type {
     return table[random.range(u8, 0, type_count)];
 }
 
-fn randomMoveId(game: var, random: &rand.Rand) -> u16 {
+fn randomMoveId(game: var, random: &rand.Rand) u16 {
     while (true) {
         const move_id = random.range(u16, 0, u16(game.getMoveCount()));
 
