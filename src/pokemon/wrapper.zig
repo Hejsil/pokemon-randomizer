@@ -19,34 +19,32 @@ pub const Gen3 = struct {
     }
 
     pub fn getTrainerPokemon(wrapper: &const Gen3, trainer: &const gen3.Trainer, index: usize) -> ?&gen3.PartyMemberBase {
-        const party_table_start = (0x8000000 + wrapper.game.offsets.trainer_parties);
-        if (trainer.party_offset.get() < party_table_start) return null;
+        if (trainer.party_offset.get() < 0x8000000) return null;
 
-        const offset = trainer.party_offset.get() - party_table_start;
-        const trainer_parties   = wrapper.game.trainer_parties;
+        const offset = trainer.party_offset.get() - 0x8000000;
 
         switch (trainer.party_type) {
             gen3.PartyType.Standard => {
-                return getBasePartyMember(gen3.PartyMember, trainer_parties, index, offset, trainer.party_size.get());
+                return getBasePartyMember(gen3.PartyMember, wrapper.game.data, index, offset, trainer.party_size.get());
             },
             gen3.PartyType.WithMoves => {
-                return getBasePartyMember(gen3.PartyMemberWithMoves, trainer_parties, index, offset, trainer.party_size.get());
+                return getBasePartyMember(gen3.PartyMemberWithMoves, wrapper.game.data, index, offset, trainer.party_size.get());
             },
             gen3.PartyType.WithHeld => {
-                return getBasePartyMember(gen3.PartyMemberWithHeld, trainer_parties, index, offset, trainer.party_size.get());
+                return getBasePartyMember(gen3.PartyMemberWithHeld, wrapper.game.data, index, offset, trainer.party_size.get());
             },
             gen3.PartyType.WithBoth => {
-                return getBasePartyMember(gen3.PartyMemberWithBoth, trainer_parties, index, offset, trainer.party_size.get());
+                return getBasePartyMember(gen3.PartyMemberWithBoth, wrapper.game.data, index, offset, trainer.party_size.get());
             },
             else => return null,
         }
     }
 
-    fn getBasePartyMember(comptime TMember: type, trainer_parties: []u8, index: usize, offset: usize, size: usize) -> ?&gen3.PartyMemberBase {
+    fn getBasePartyMember(comptime TMember: type, data: []u8, index: usize, offset: usize, size: usize) -> ?&gen3.PartyMemberBase {
         const party_end = offset + size * @sizeOf(TMember);
-        if (trainer_parties.len < party_end) return null;
+        if (data.len < party_end) return null;
 
-        const party = ([]TMember)(trainer_parties[offset..party_end]);
+        const party = ([]TMember)(data[offset..party_end]);
         const pokemon = utils.ptrAt(TMember, party, index) ?? return null;
         return &pokemon.base;
     }

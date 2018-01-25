@@ -129,28 +129,19 @@ pub const PartyMemberWithBoth = packed struct {
     moves: [4]Little(u16),
 };
 
-// SOURCE: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
-// TODO: Can we get this data without hardcoding?
-const pokemon_count = 440;
-
 const Offsets = struct {
-    // Some bytes here
-    trainer_parties:            usize,
     trainer_class_names:        usize,
     trainers:                   usize,
     species_names:              usize,
     move_names:                 usize,
-    // Some bytes here
     base_stats:                 usize,
     level_up_learnsets:         usize,
     evolution_table:            usize,
     level_up_learnset_pointers: usize,
-    // Some bytes here
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
 const emerald_offsets = Offsets {
-    .trainer_parties            = 0x030B62C,
     .trainer_class_names        = 0x030FCD4,
     .trainers                   = 0x0310030,
     .species_names              = 0x03185C8,
@@ -175,71 +166,40 @@ const bulbasaur_fingerprint = []u8 {
 };
 
 pub const Game = struct {
-    header: gba.Header,
     offsets: &const Offsets,
+    data: []u8,
 
-    unknown1: []u8,
-
-    trainer_parties:     []u8,
-    trainer_class_names: []u8,
-    trainers:            []Trainer,
-    species_names:       []u8,
-    //move_names: []u8,
-
-    unknown2: []u8,
-
+    // All these fields point into data
+    header: &gba.Header,
+    trainers: []Trainer,
     base_stats: []BasePokemon,
-    level_up_learnsets: []u8,
     evolution_table: [][5]Evolution,
-    //level_up_learnset_pointers: []u8,
-
-    unknown3: []u8,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Game {
-        var res = try allocator.create(Game);
-        errdefer allocator.destroy(res);
-
-        res.header = try utils.noAllocRead(gba.Header, file);
-        try res.header.validate();
-
-        const offsets = try getOffsets(res.header);
-        res.offsets = offsets;
-
-        res.unknown1 = try utils.allocAndRead(u8, file, allocator, offsets.trainer_parties - try file.getPos());
-        errdefer allocator.free(res.unknown1);
-
-        res.trainer_parties = try utils.allocAndRead(u8, file, allocator, offsets.trainer_class_names - offsets.trainer_parties);
-        errdefer allocator.free(res.trainer_parties);
-
-        res.trainer_class_names = try utils.allocAndRead(u8, file, allocator,  offsets.trainers - offsets.trainer_class_names);
-        errdefer allocator.free(res.trainer_class_names);
-
-        res.trainers = try utils.allocAndRead(Trainer, file, allocator, (offsets.species_names - offsets.trainers) / @sizeOf(Trainer));
-        errdefer allocator.free(res.trainers);
-
-        res.species_names = try utils.allocAndRead(u8, file, allocator, offsets.move_names - offsets.species_names);
-        errdefer allocator.free(res.species_names);
-
-        res.unknown2 = try utils.allocAndRead(u8, file, allocator, offsets.base_stats - (offsets.species_names + res.species_names.len));
-        errdefer allocator.free(res.unknown2);
-
-        res.base_stats = try utils.allocAndRead(BasePokemon, file, allocator, (offsets.level_up_learnsets - offsets.base_stats) / @sizeOf(BasePokemon));
-        errdefer allocator.free(res.base_stats);
-
-        res.level_up_learnsets = try utils.allocAndRead(u8, file, allocator, offsets.evolution_table - offsets.level_up_learnsets);
-        errdefer allocator.free(res.level_up_learnsets);
-
-        res.evolution_table = try utils.allocAndRead([5]Evolution, file, allocator, (offsets.level_up_learnset_pointers - offsets.evolution_table) / @sizeOf([5]Evolution));
-        errdefer allocator.free(res.evolution_table);
-
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
-        res.unknown3 = try stream.readAllAlloc(allocator, @maxValue(usize));
-        errdefer allocator.free(res.unknown3);
+        const header = try utils.noAllocRead(gba.Header, file);
+        try header.validate();
+        try file.seekTo(0);
 
-        if ((try file.getPos()) % 0x1000000 != 0)
-            return error.InvalidRomSize;
+        const offsets = try getOffsets(header);
+        const rom = try stream.readAllAlloc(allocator, @maxValue(usize));
+        errdefer allocator.free(rom);
+
+        if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
+
+        var res = try allocator.create(Game);
+        errdefer allocator.destroy(res);
+
+        *res = Game {
+            .offsets         = offsets,
+            .data            = rom,
+            .header          = @ptrCast(&gba.Header, &rom[0]),
+            .trainers        = ([]Trainer)(rom[offsets.trainers..offsets.species_names]),
+            .base_stats      = ([]BasePokemon)(rom[offsets.base_stats..offsets.level_up_learnsets]),
+            .evolution_table = ([][5]Evolution)(rom[offsets.evolution_table..offsets.level_up_learnset_pointers]),
+        };
 
         return res;
     }
@@ -269,32 +229,11 @@ pub const Game = struct {
 
     pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
         try game.header.validate();
-
-        try stream.write(utils.asConstBytes(gba.Header, game.header));
-        try stream.write(game.unknown1);
-        try stream.write(game.trainer_parties);
-        try stream.write(game.trainer_class_names);
-        try stream.write(([]u8)(game.trainers));
-        try stream.write(game.species_names);
-        try stream.write(game.unknown2);
-        try stream.write(([]u8)(game.base_stats));
-        try stream.write(game.level_up_learnsets);
-        try stream.write(([]u8)(game.evolution_table));
-        try stream.write(game.unknown3);
+        try stream.write(game.data);
     }
 
     pub fn destroy(game: &const Game, allocator: &mem.Allocator) {
-        allocator.free(game.unknown1);
-        allocator.free(game.trainer_parties);
-        allocator.free(game.trainer_class_names);
-        allocator.free(game.trainers);
-        allocator.free(game.species_names);
-        allocator.free(game.unknown2);
-        allocator.free(game.base_stats);
-        allocator.free(game.level_up_learnsets);
-        allocator.free(game.evolution_table);
-        allocator.free(game.unknown3);
-
+        allocator.free(game.data);
         allocator.destroy(game);
     }
 };
