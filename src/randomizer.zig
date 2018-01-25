@@ -215,12 +215,12 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                         },
                         gen3.PartyType.WithMoves => {
                             const member = @fieldParentPtr(gen3.PartyMemberWithMoves, "base", trainer_pokemon);
-                            randomizeTrainerPokemonMoves(game, member, options.moves, random);
+                            randomizeTrainerPokemonMoves(game, member, options, random);
                         },
                         gen3.PartyType.WithBoth => {
                             const member = @fieldParentPtr(gen3.PartyMemberWithBoth, "base", trainer_pokemon);
                             randomizeTrainerPokemonHeldItem(game, member, options.held_items, random);
-                            randomizeTrainerPokemonMoves(game, member, options.moves, random);
+                            randomizeTrainerPokemonMoves(game, member, options, random);
                         },
                         else => {}
                     }
@@ -293,9 +293,15 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: Options.Trainer.Moves, random: &rand.Rand) -> void {
+fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: Options.Trainer, random: &rand.Rand) -> void {
     switch (option) {
-        Options.Trainer.Moves.Same => {},
+        Options.Trainer.Moves.Same => {
+            // If trainer Pokémons where randomized, then keeping the same moves
+            // makes no sense. We therefor reset them to something sensible.
+            if (option.pokemon != Options.Trainer.Pokemon.Same) {
+                // TODO:
+            }
+        },
         Options.Trainer.Moves.Random => {
             // TODO:
         },
