@@ -293,8 +293,8 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: Options.Trainer, random: &rand.Rand) -> void {
-    switch (option) {
+fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.Trainer, random: &rand.Rand) -> void {
+    switch (option.moves) {
         Options.Trainer.Moves.Same => {
             // If trainer Pokémons where randomized, then keeping the same moves
             // makes no sense. We therefor reset them to something sensible.
