@@ -318,28 +318,28 @@ fn totalStats(pokemon: var) -> u16 {
         u16(pokemon.sp_defense);
 }
 
-const random_type_table = []common.Type {
-    common.Type.Normal,
-    common.Type.Fighting,
-    common.Type.Flying,
-    common.Type.Poison,
-    common.Type.Ground,
-    common.Type.Rock,
-    common.Type.Bug,
-    common.Type.Ghost,
-    common.Type.Fire,
-    common.Type.Water,
-    common.Type.Grass,
-    common.Type.Electric,
-    common.Type.Psychic,
-    common.Type.Ice,
-    common.Type.Dragon,
-    common.Type.Steel,
-    common.Type.Dark,
-    common.Type.Fairy,
-};
-
 fn randomType(comptime TGame: type, random: &rand.Rand) -> common.Type {
+    const random_type_table = []common.Type {
+        common.Type.Normal,
+        common.Type.Fighting,
+        common.Type.Flying,
+        common.Type.Poison,
+        common.Type.Ground,
+        common.Type.Rock,
+        common.Type.Bug,
+        common.Type.Ghost,
+        common.Type.Fire,
+        common.Type.Water,
+        common.Type.Grass,
+        common.Type.Electric,
+        common.Type.Psychic,
+        common.Type.Ice,
+        common.Type.Dragon,
+        common.Type.Steel,
+        common.Type.Dark,
+        common.Type.Fairy,
+    };
+
     const type_count = switch (TGame) {
         gen3.Game => 17,
         else => unreachable,
