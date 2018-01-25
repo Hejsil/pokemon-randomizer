@@ -9,7 +9,7 @@ const debug = std.debug;
 const io    = std.io;
 
 const assert = debug.assert;
-const u1     = @IntType(false, 1);
+const u9     = @IntType(false, 9);
 
 const toLittle = little.toLittle;
 const Little   = little.Little;
@@ -50,7 +50,7 @@ pub const BasePokemon = packed struct {
     safari_zone_rate: u8,
 
     color: common.Color,
-    flip: u1,
+    flip: bool,
 
     padding: [2]u8
 };
@@ -141,6 +141,11 @@ pub const Move = packed struct {
     flags: Little(u32),
 };
 
+pub const LevelUpMove = packed struct {
+    level: u7,
+    move_id: u9,
+};
+
 const Offset = struct {
     start: usize,
     end: usize,
@@ -151,18 +156,20 @@ const Offset = struct {
 };
 
 const Offsets = struct {
-    trainers:        Offset,
-    moves:           Offset,
-    base_stats:      Offset,
-    evolution_table: Offset,
+    trainers:                   Offset,
+    moves:                      Offset,
+    base_stats:                 Offset,
+    evolution_table:            Offset,
+    level_up_learnset_pointers: Offset,
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
 const emerald_offsets = Offsets {
-    .trainers        = Offset { .start = 0x0310030, .end = 0x03185C8 },
-    .moves           = Offset { .start = 0x031C898, .end = 0x031D93C },
-    .base_stats      = Offset { .start = 0x03203CC, .end = 0x03230DC },
-    .evolution_table = Offset { .start = 0x032531C, .end = 0x032937C },
+    .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8 },
+    .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C },
+    .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC },
+    .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C },
+    .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
 };
 
 error InvalidRomSize;
@@ -187,6 +194,7 @@ pub const Game = struct {
     moves: []Move,
     base_stats: []BasePokemon,
     evolution_table: [][5]Evolution,
+    level_up_learnset_pointers: []Little(u32),
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Game {
         var file_stream = io.FileInStream.init(file);
@@ -203,16 +211,15 @@ pub const Game = struct {
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
         var res = try allocator.create(Game);
-        errdefer allocator.destroy(res);
-
         *res = Game {
-            .offsets         = offsets,
-            .data            = rom,
-            .header          = @ptrCast(&gba.Header, &rom[0]),
-            .trainers        = offsets.trainers.slice(Trainer, rom),
-            .moves           = offsets.moves.slice(Move, rom),
-            .base_stats      = offsets.base_stats.slice(BasePokemon, rom),
-            .evolution_table = offsets.evolution_table.slice([5]Evolution, rom),
+            .offsets                    = offsets,
+            .data                       = rom,
+            .header                     = @ptrCast(&gba.Header, &rom[0]),
+            .trainers                   = offsets.trainers.slice(Trainer, rom),
+            .moves                      = offsets.moves.slice(Move, rom),
+            .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
+            .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
+            .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
         };
 
         return res;
@@ -296,5 +303,23 @@ pub const Game = struct {
 
     pub fn getMoveCount(game: &const Game) -> usize {
         return game.moves.len;
+    }
+
+    pub fn getLevelupMoves(game: &const Game, pokemon_id: usize) -> ?[]LevelUpMove {
+        const offset = utils.itemAt(Little(u32), game.level_up_learnset_pointers, pokemon_id) ?? return null;
+        if (game.data.len < offset.get()) return null;
+
+        const end = blk: {
+            var i : usize = offset.get();
+            while (true) : (i += @sizeOf(LevelUpMove)) {
+                if (game.data.len < i)     return null;
+                if (game.data.len < i + 1) return null;
+                if (game.data[i] == 0xFF and game.data[i+1] == 0xFF) break;
+            }
+
+            break :blk i;
+        };
+
+        return ([]LevelUpMove)(game.data[offset.get()..end]);
     }
 };

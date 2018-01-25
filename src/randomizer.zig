@@ -7,6 +7,8 @@ const mem   = std.mem;
 const rand  = std.rand;
 const debug = std.debug;
 
+const assert = debug.assert;
+
 /// A generic enum for different randomization options.
 pub const GenericOption = enum {
     Same,
@@ -299,7 +301,29 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
             // If trainer Pokémons where randomized, then keeping the same moves
             // makes no sense. We therefor reset them to something sensible.
             if (option.pokemon != Options.Trainer.Pokemon.Same) {
-                // TODO:
+                const MoveLevelPair = struct { level: u8, move_id: u16 };
+                const new_moves = blk: {
+                    // TODO: Handle not getting any level up moves.
+                    const level_up_moves = game.getLevelupMoves(pokemon.base.species.get()) ?? return;
+                    var moves = []MoveLevelPair { MoveLevelPair { .level = 0, .move_id = 0, } } ** 4;
+
+                    for (level_up_moves) |level_up_move| {
+                        for (moves) |*move| {
+                            if (move.level < level_up_move.level and level_up_move.level < pokemon.base.level.get()) {
+                                move.level = level_up_move.level;
+                                move.move_id = level_up_move.move_id;
+                                break;
+                            }
+                        }
+                    }
+
+                    break :blk moves;
+                };
+
+                assert(new_moves.len == pokemon.moves.len);
+                for (pokemon.moves) |_, i| {
+                    pokemon.moves[i].set(new_moves[i].move_id);
+                }
             }
         },
         Options.Trainer.Moves.Random => {
