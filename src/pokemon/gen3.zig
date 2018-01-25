@@ -141,31 +141,28 @@ pub const Move = packed struct {
     flags: Little(u32),
 };
 
+const Offset = struct {
+    start: usize,
+    end: usize,
+
+    fn slice(offset: &const Offset, comptime T: type, data: []u8) -> []T {
+        return ([]T)(data[offset.start..offset.end]);
+    }
+};
+
 const Offsets = struct {
-    trainer_class_names:        usize,
-    trainers:                   usize,
-    species_names:              usize,
-    move_names:                 usize,
-    moves:                      usize,
-    moves_end:                  usize,
-    base_stats:                 usize,
-    level_up_learnsets:         usize,
-    evolution_table:            usize,
-    level_up_learnset_pointers: usize,
+    trainers:        Offset,
+    moves:           Offset,
+    base_stats:      Offset,
+    evolution_table: Offset,
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
 const emerald_offsets = Offsets {
-    .trainer_class_names        = 0x030FCD4,
-    .trainers                   = 0x0310030,
-    .species_names              = 0x03185C8,
-    .move_names                 = 0x031977C,
-    .moves                      = 0x031C898,
-    .moves_end                  = 0x031D93C,
-    .base_stats                 = 0x03203CC,
-    .level_up_learnsets         = 0x03230DC,
-    .evolution_table            = 0x032531C,
-    .level_up_learnset_pointers = 0x032937C,
+    .trainers        = Offset { .start = 0x0310030, .end = 0x03185C8 },
+    .moves           = Offset { .start = 0x031C898, .end = 0x031D93C },
+    .base_stats      = Offset { .start = 0x03203CC, .end = 0x03230DC },
+    .evolution_table = Offset { .start = 0x032531C, .end = 0x032937C },
 };
 
 error InvalidRomSize;
@@ -212,10 +209,10 @@ pub const Game = struct {
             .offsets         = offsets,
             .data            = rom,
             .header          = @ptrCast(&gba.Header, &rom[0]),
-            .trainers        = ([]Trainer)(rom[offsets.trainers..offsets.species_names]),
-            .moves           = ([]Move)(rom[offsets.moves..offsets.species_names]),
-            .base_stats      = ([]BasePokemon)(rom[offsets.base_stats..offsets.level_up_learnsets]),
-            .evolution_table = ([][5]Evolution)(rom[offsets.evolution_table..offsets.level_up_learnset_pointers]),
+            .trainers        = offsets.trainers.slice(Trainer, rom),
+            .moves           = offsets.moves.slice(Move, rom),
+            .base_stats      = offsets.base_stats.slice(BasePokemon, rom),
+            .evolution_table = offsets.evolution_table.slice([5]Evolution, rom),
         };
 
         return res;
