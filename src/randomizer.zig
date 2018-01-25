@@ -303,7 +303,9 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
             }
         },
         Options.Trainer.Moves.Random => {
-            // TODO:
+            for (pokemon.moves) |*move| {
+                move.set(randomMoveId(game, random));
+            }
         },
         Options.Trainer.Moves.RandomWithinLearnset => {
             // TODO:
@@ -353,4 +355,17 @@ fn randomType(comptime TGame: type, random: &rand.Rand) -> common.Type {
 
     const table = random_type_table[0..type_count];
     return table[random.range(u8, 0, type_count)];
+}
+
+fn randomMoveId(game: var, random: &rand.Rand) -> u16 {
+    while (true) {
+        const move_id = random.range(u16, 0, u16(game.getMoveCount()));
+
+        // TODO: We assume, that if the id is between 0..len, then we'll never get null from this function.
+        const move = game.getMove(move_id) ?? unreachable;
+
+        // A move with 0 pp is useless, so we will assume it's a dummy move.
+        if (move.pp == 0) continue;
+        return move_id;
+    }
 }

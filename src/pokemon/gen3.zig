@@ -289,4 +289,12 @@ pub const Game = struct {
         const pokemon = utils.ptrAt(TMember, party, index) ?? return null;
         return &pokemon.base;
     }
+
+    pub fn getMove(game: &const Game, index: usize) -> ?&Move {
+        return utils.ptrAt(Move, game.moves, index);
+    }
+
+    pub fn getMoveCount(game: &const Game) -> usize {
+        return game.moves.len;
+    }
 };
