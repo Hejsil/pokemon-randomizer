@@ -1,13 +1,3 @@
-const std = @import("std");
-
-const debug = std.debug;
-
-const assert = debug.assert;
-const u1     = @IntType(false, 1);
-
-// TODO: Figure out if the this have the same id in all games.
-//       They probably have, so let's assume that for now and if a bug
-//       is ever encountered related to this, we figure it out.
 pub const Type = enum(u8) {
     Normal   = 0x00,
     Fighting = 0x01,
@@ -97,7 +87,7 @@ pub const Generation = enum(u8) {
     }
 };
 
-pub const Version = enum {
+pub const Version = enum(u8) {
     Red,
     Blue,
     Yellow,
