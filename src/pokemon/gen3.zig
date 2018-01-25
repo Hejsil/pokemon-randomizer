@@ -236,4 +236,43 @@ pub const Game = struct {
         allocator.free(game.data);
         allocator.destroy(game);
     }
+
+    pub fn getBasePokemon(game: &const Game, index: usize) -> ?&BasePokemon {
+        return utils.ptrAt(BasePokemon, game.base_stats, index);
+    }
+
+    pub fn getTrainer(game: &const Game, index: usize) -> ?&Trainer {
+        return utils.ptrAt(Trainer, game.trainers, index);
+    }
+
+    pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) -> ?&PartyMemberBase {
+        if (trainer.party_offset.get() < 0x8000000) return null;
+
+        const offset = trainer.party_offset.get() - 0x8000000;
+
+        switch (trainer.party_type) {
+            PartyType.Standard => {
+                return getBasePartyMember(PartyMember, game.data, index, offset, trainer.party_size.get());
+            },
+            PartyType.WithMoves => {
+                return getBasePartyMember(PartyMemberWithMoves, game.data, index, offset, trainer.party_size.get());
+            },
+            PartyType.WithHeld => {
+                return getBasePartyMember(PartyMemberWithHeld, game.data, index, offset, trainer.party_size.get());
+            },
+            PartyType.WithBoth => {
+                return getBasePartyMember(PartyMemberWithBoth, game.data, index, offset, trainer.party_size.get());
+            },
+            else => return null,
+        }
+    }
+
+    fn getBasePartyMember(comptime TMember: type, data: []u8, index: usize, offset: usize, size: usize) -> ?&PartyMemberBase {
+        const party_end = offset + size * @sizeOf(TMember);
+        if (data.len < party_end) return null;
+
+        const party = ([]TMember)(data[offset..party_end]);
+        const pokemon = utils.ptrAt(TMember, party, index) ?? return null;
+        return &pokemon.base;
+    }
 };

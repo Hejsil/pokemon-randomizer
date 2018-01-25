@@ -5,7 +5,6 @@ const utils      = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
 const clap       = @import("clap.zig");
 const gen3       = @import("pokemon/gen3.zig");
-const wrapper    = @import("pokemon/wrapper.zig");
 
 const os    = std.os;
 const debug = std.debug;
@@ -198,7 +197,7 @@ pub fn main() -> %void {
             };
 
             var random = rand.Rand.init(0);
-            try randomizer.randomize(wrapper.Gen3.init(gen3_rom), options, &random, allocator);
+            try randomizer.randomize(gen3_rom, options, &random, allocator);
 
             var file_stream = io.FileOutStream.init(&out_file);
             gen3_rom.writeToStream(&file_stream.stream) catch |err| {

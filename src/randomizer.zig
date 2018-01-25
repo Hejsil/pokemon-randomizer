@@ -1,6 +1,5 @@
 const std     = @import("std");
 const common  = @import("pokemon/common.zig");
-const wrapper = @import("pokemon/wrapper.zig");
 const gen3    = @import("pokemon/gen3.zig");
 
 const math  = std.math;
@@ -208,7 +207,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
             }
 
             switch (@typeOf(*game)) {
-                wrapper.Gen3 => {
+                gen3.Game => {
                     switch (trainer.party_type) {
                         gen3.PartyType.WithHeld => {
                             const member = @fieldParentPtr(gen3.PartyMemberWithHeld, "base", trainer_pokemon);
@@ -342,7 +341,7 @@ const random_type_table = []common.Type {
 
 fn randomType(comptime TGame: type, random: &rand.Rand) -> common.Type {
     const type_count = switch (TGame) {
-        wrapper.Gen3 => 17,
+        gen3.Game => 17,
         else => unreachable,
     };
 
