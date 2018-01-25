@@ -129,11 +129,25 @@ pub const PartyMemberWithBoth = packed struct {
     moves: [4]Little(u16),
 };
 
+pub const Move = packed struct {
+    effect: u8,
+    power: u8,
+    kind: common.Type,
+    accuracy: u8,
+    pp: u8,
+    side_effect_chance: u8,
+    target: u8,
+    priority: u8,
+    flags: Little(u32),
+};
+
 const Offsets = struct {
     trainer_class_names:        usize,
     trainers:                   usize,
     species_names:              usize,
     move_names:                 usize,
+    moves:                      usize,
+    moves_end:                  usize,
     base_stats:                 usize,
     level_up_learnsets:         usize,
     evolution_table:            usize,
@@ -146,7 +160,8 @@ const emerald_offsets = Offsets {
     .trainers                   = 0x0310030,
     .species_names              = 0x03185C8,
     .move_names                 = 0x031977C,
-
+    .moves                      = 0x031C898,
+    .moves_end                  = 0x031D93C,
     .base_stats                 = 0x03203CC,
     .level_up_learnsets         = 0x03230DC,
     .evolution_table            = 0x032531C,
@@ -172,6 +187,7 @@ pub const Game = struct {
     // All these fields point into data
     header: &gba.Header,
     trainers: []Trainer,
+    moves: []Move,
     base_stats: []BasePokemon,
     evolution_table: [][5]Evolution,
 
@@ -197,6 +213,7 @@ pub const Game = struct {
             .data            = rom,
             .header          = @ptrCast(&gba.Header, &rom[0]),
             .trainers        = ([]Trainer)(rom[offsets.trainers..offsets.species_names]),
+            .moves           = ([]Move)(rom[offsets.moves..offsets.species_names]),
             .base_stats      = ([]BasePokemon)(rom[offsets.base_stats..offsets.level_up_learnsets]),
             .evolution_table = ([][5]Evolution)(rom[offsets.evolution_table..offsets.level_up_learnset_pointers]),
         };
