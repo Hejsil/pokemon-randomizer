@@ -146,6 +146,21 @@ pub const LevelUpMove = packed struct {
     move_id: u9,
 };
 
+pub const Item = packed struct {
+    name: [14]u8,
+    id: Little(u16),
+    price: Little(u16),
+    unknown1: [2]u8,
+    description_offset: Little(u32),
+    unknown2: [2]u8,
+    pocked: u8,
+    unknown3: u8,
+    out_battle_effect_offset: Little(u32),
+    unknown5: Little(u32),
+    in_battle_effect_offset: Little(u32),
+    unknown6: Little(u32),
+};
+
 const Offset = struct {
     start: usize,
     end: usize,
@@ -161,6 +176,7 @@ const Offsets = struct {
     base_stats:                 Offset,
     evolution_table:            Offset,
     level_up_learnset_pointers: Offset,
+    items:                      Offset,
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
@@ -170,6 +186,7 @@ const emerald_offsets = Offsets {
     .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC },
     .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C },
     .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
+    .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C },
 };
 
 error InvalidRomSize;
@@ -195,6 +212,7 @@ pub const Game = struct {
     base_stats: []BasePokemon,
     evolution_table: [][5]Evolution,
     level_up_learnset_pointers: []Little(u32),
+    items: []Item,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Game {
         var file_stream = io.FileInStream.init(file);
@@ -220,6 +238,7 @@ pub const Game = struct {
             .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
             .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
             .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
+            .items                      = offsets.items.slice(Item, rom),
         };
 
         return res;
