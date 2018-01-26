@@ -1,8 +1,8 @@
 const std    = @import("std");
+const crc    = @import("crc");
 const utils  = @import("utils.zig");
 const ascii  = @import("ascii.zig");
 const little = @import("little.zig");
-const crc    = @import("zig-crc/crc.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
