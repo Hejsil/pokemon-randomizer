@@ -24,14 +24,8 @@ pub fn between(comptime T: type, v: T, min: T, max: T) bool {
     return min <= v and v <= max;
 }
 
-error EmptySlice;
-
-pub fn first(comptime T: type, args: []const T) %T {
-    if (args.len > 0) {
-        return args[0];
-    } else {
-        return error.EmptySlice;
-    }
+pub fn first(comptime T: type, slice: []const T) ?T {
+    return itemAt(T, slice, 0);
 }
 
 pub fn itemAt(comptime T: type, slice: []const T, index: usize) ?T {
