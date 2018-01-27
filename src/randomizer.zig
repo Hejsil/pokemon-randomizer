@@ -218,12 +218,12 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                         },
                         gen3.PartyType.WithMoves => {
                             const member = @fieldParentPtr(gen3.PartyMemberWithMoves, "base", trainer_pokemon);
-                            randomizeTrainerPokemonMoves(game, member, options, random);
+                            try randomizeTrainerPokemonMoves(game, member, options, random, allocator);
                         },
                         gen3.PartyType.WithBoth => {
                             const member = @fieldParentPtr(gen3.PartyMemberWithBoth, "base", trainer_pokemon);
                             randomizeTrainerPokemonHeldItem(game, member, options.held_items, random);
-                            randomizeTrainerPokemonMoves(game, member, options, random);
+                            try randomizeTrainerPokemonMoves(game, member, options, random, allocator);
                         },
                         else => {}
                     }
@@ -296,7 +296,7 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.Trainer, random: &rand.Rand) void {
+fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) %void {
     switch (option.moves) {
         Options.Trainer.Moves.Same => {
             // If trainer Pokémons where randomized, then keeping the same moves
@@ -333,47 +333,17 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
             }
         },
         Options.Trainer.Moves.RandomWithinLearnset => {
-            const tms = game.getTms();
-            const hms = game.getHms();
-            const tm_hm_learnset = game.getTmHmLearnset(pokemon.base.species.get()) ?? return;
-            const levelup_learnset = game.getLevelupMoves(pokemon.base.species.get()) ?? return;
-            const tm_hm_moves_learnt = bits.count(u64, tm_hm_learnset.get());
-            const moves_learnt = tm_hm_moves_learnt + levelup_learnset.len;
-            if (moves_learnt == 0) return;
-
-            // TODO: We don't handle move tutors
-            const tm_hm_chance = f32(tm_hm_moves_learnt) / f32(moves_learnt);
-            const levelup_chance = f32(levelup_learnset.len) / f32(moves_learnt);
+            const learned_moves = try getMovesLearned(game, pokemon.base.species.get(), allocator);
+            defer allocator.free(learned_moves);
 
             for (pokemon.moves) |*move| {
-                const choice = random.float(f32);
-
-                if (choice < tm_hm_chance) {
-                    const pick = random.range(usize, 0, tm_hm_moves_learnt);
-
-                    // TODO: I don't really like this piece of code.
-                    var index : u6 = 0;
-                    var curr : usize = 0;
-                    while (curr <= pick) : (index += 1) {
-                        if (bits.get(u64, tm_hm_learnset.get(), index))
-                            curr += 1;
-                    }
-
-                    if (index < tms.len) {
-                        move.set(tms[index].get());
-                    } else {
-                        // TODO: tm_hm_learnset has more bits, that there is
-                        //       tms + hms
-                        move.set(hms[index - tms.len].get());
-                    }
-                } else {
-                    const pick = levelup_learnset[random.range(usize, 0, levelup_learnset.len)];
-                    move.set(pick.move_id);
-                }
+                const pick = learned_moves[random.range(usize, 0, learned_moves.len)];
+                move.set(pick);
             }
         },
         Options.Trainer.Moves.Best => {
-            // TODO:
+            const learned_moves = try getMovesLearned(game, pokemon.base.species.get(), allocator);
+            defer allocator.free(learned_moves);
         },
     }
 }
@@ -430,4 +400,33 @@ fn randomMoveId(game: var, random: &rand.Rand) u16 {
         if (move.pp == 0) continue;
         return move_id;
     }
+}
+
+/// Caller owns memory returned
+fn getMovesLearned(game: var, species: usize, allocator: &mem.Allocator) %[]u16 {
+    const tms = game.getTms();
+    const hms = game.getHms();
+    const levelup_learnset = game.getLevelupMoves(species) ?? unreachable; // TODO: Handle
+    const tm_hm_learnset = game.getTmHmLearnset(species) ?? unreachable;
+
+    const moves_learnt = bits.count(u64, tm_hm_learnset.get()) + levelup_learnset.len;
+    var res = std.ArrayList(u16).init(allocator);
+    try res.ensureCapacity(moves_learnt);
+
+    for (levelup_learnset) |level_up_move| {
+        try res.append(u16(level_up_move.move_id));
+    }
+
+    var i : usize = 0;
+    while (i < @sizeOf(@typeOf(tm_hm_learnset.get())) * 8) : (i += 1) {
+        if (bits.get(@typeOf(tm_hm_learnset.get()), tm_hm_learnset.get(), u6(i))) {
+            if (i < tms.len) {
+                try res.append(tms[i].get());
+            } else if ((i - tms.len) < hms.len) {
+                try res.append(hms[i - tms.len].get());
+            }
+        }
+    }
+
+    return res.toOwnedSlice();
 }
