@@ -231,8 +231,6 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 else => unreachable,
             }
 
-            // TODO: Figure out how we avoid the randomized Pokémons having moves they can't learn (Roxanne's Pokémons had
-            //       rock tomb, after they where randomized)
             // TODO: 
             //moves: MoveSet,
             //ai: GenericOption,
