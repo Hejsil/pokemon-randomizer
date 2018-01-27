@@ -215,7 +215,7 @@ pub const Game = struct {
     header: &gba.Header,
     trainers: []Trainer,
     moves: []Move,
-    tm_hm_learnset: [][8]u8,
+    tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
     evolution_table: [][5]Evolution,
     level_up_learnset_pointers: []Little(u32),
@@ -244,7 +244,7 @@ pub const Game = struct {
             .header                     = @ptrCast(&gba.Header, &rom[0]),
             .trainers                   = offsets.trainers.slice(Trainer, rom),
             .moves                      = offsets.moves.slice(Move, rom),
-            .tm_hm_learnset             = offsets.tm_hm_learnset.slice([8]u8, rom),
+            .tm_hm_learnset             = offsets.tm_hm_learnset.slice(Little(u64), rom),
             .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
             .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
             .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
@@ -352,5 +352,17 @@ pub const Game = struct {
         };
 
         return ([]LevelUpMove)(game.data[offset.get()..end]);
+    }
+
+    pub fn getTms(game: &const Game) []Little(u16) {
+        return game.tms;
+    }
+
+    pub fn getHms(game: &const Game) []Little(u16) {
+        return game.hms;
+    }
+
+    pub fn getTmHmLearnset(game: &const Game, species: usize) ?&Little(u64) {
+        return utils.ptrAt(Little(u64), game.tm_hm_learnset, species);
     }
 };

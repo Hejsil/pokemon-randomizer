@@ -1,6 +1,7 @@
 const std     = @import("std");
 const common  = @import("pokemon/common.zig");
 const gen3    = @import("pokemon/gen3.zig");
+const bits    = @import("bits.zig");
 
 const math  = std.math;
 const mem   = std.mem;
@@ -332,7 +333,44 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
             }
         },
         Options.Trainer.Moves.RandomWithinLearnset => {
-            // TODO:
+            const tms = game.getTms();
+            const hms = game.getHms();
+            const tm_hm_learnset = game.getTmHmLearnset(pokemon.base.species.get()) ?? return;
+            const levelup_learnset = game.getLevelupMoves(pokemon.base.species.get()) ?? return;
+            const tm_hm_moves_learnt = bits.count(u64, tm_hm_learnset.get());
+            const moves_learnt = tm_hm_moves_learnt + levelup_learnset.len;
+            if (moves_learnt == 0) return;
+
+            // TODO: We don't handle move tutors
+            const tm_hm_chance = f32(tm_hm_moves_learnt) / f32(moves_learnt);
+            const levelup_chance = f32(levelup_learnset.len) / f32(moves_learnt);
+
+            for (pokemon.moves) |*move| {
+                const choice = random.float(f32);
+
+                if (choice < tm_hm_chance) {
+                    const pick = random.range(usize, 0, tm_hm_moves_learnt);
+
+                    // TODO: I don't really like this piece of code.
+                    var index : u6 = 0;
+                    var curr : usize = 0;
+                    while (curr <= pick) : (index += 1) {
+                        if (bits.get(u64, tm_hm_learnset.get(), index))
+                            curr += 1;
+                    }
+
+                    if (index < tms.len) {
+                        move.set(tms[index].get());
+                    } else {
+                        // TODO: tm_hm_learnset has more bits, that there is
+                        //       tms + hms
+                        move.set(hms[index - tms.len].get());
+                    }
+                } else {
+                    const pick = levelup_learnset[random.range(usize, 0, levelup_learnset.len)];
+                    move.set(pick.move_id);
+                }
+            }
         },
         Options.Trainer.Moves.Best => {
             // TODO:
