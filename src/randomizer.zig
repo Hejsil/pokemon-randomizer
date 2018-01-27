@@ -263,11 +263,11 @@ fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool,
             min_total = math.sub(u16, min_total, 5) catch min_total;
             max_total = math.add(u16, max_total, 5) catch max_total;
 
-            for (pokemons) |pokemon_id| {
-                const pokemon = game.getBasePokemon(pokemon_id) ?? unreachable; // TODO: FIX
+            for (pokemons) |species| {
+                const pokemon = game.getBasePokemon(species) ?? unreachable; // TODO: FIX
                 const total = totalStats(pokemon);
                 if (min_total <= total and total <= max_total)
-                    try matches.append(pokemon_id);
+                    try matches.append(species);
             }
         }
 

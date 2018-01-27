@@ -332,8 +332,8 @@ pub const Game = struct {
         return game.moves.len;
     }
 
-    pub fn getLevelupMoves(game: &const Game, pokemon_id: usize) ?[]LevelUpMove {
-        const offset = utils.itemAt(Little(u32), game.level_up_learnset_pointers, pokemon_id) ?? return null;
+    pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
+        const offset = utils.itemAt(Little(u32), game.level_up_learnset_pointers, species) ?? return null;
         if (game.data.len < offset.get()) return null;
 
         const end = blk: {
