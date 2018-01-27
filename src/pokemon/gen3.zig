@@ -173,6 +173,7 @@ const Offset = struct {
 const Offsets = struct {
     trainers:                   Offset,
     moves:                      Offset,
+    tm_hm_learnset:             Offset,
     base_stats:                 Offset,
     evolution_table:            Offset,
     level_up_learnset_pointers: Offset,
@@ -185,6 +186,7 @@ const Offsets = struct {
 const emerald_offsets = Offsets {
     .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8 },
     .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C },
+    .tm_hm_learnset             = Offset { .start = 0x031E898, .end = 0x031F578 },
     .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC },
     .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C },
     .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
@@ -213,6 +215,7 @@ pub const Game = struct {
     header: &gba.Header,
     trainers: []Trainer,
     moves: []Move,
+    tm_hm_learnset: [][8]u8,
     base_stats: []BasePokemon,
     evolution_table: [][5]Evolution,
     level_up_learnset_pointers: []Little(u32),
@@ -241,6 +244,7 @@ pub const Game = struct {
             .header                     = @ptrCast(&gba.Header, &rom[0]),
             .trainers                   = offsets.trainers.slice(Trainer, rom),
             .moves                      = offsets.moves.slice(Move, rom),
+            .tm_hm_learnset             = offsets.tm_hm_learnset.slice([8]u8, rom),
             .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
             .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
             .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
