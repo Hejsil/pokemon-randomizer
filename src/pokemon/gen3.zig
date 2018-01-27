@@ -176,7 +176,9 @@ const Offsets = struct {
     base_stats:                 Offset,
     evolution_table:            Offset,
     level_up_learnset_pointers: Offset,
+    hms:                        Offset,
     items:                      Offset,
+    tms:                        Offset,
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
@@ -186,7 +188,9 @@ const emerald_offsets = Offsets {
     .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC },
     .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C },
     .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
+    .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC },
     .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C },
+    .tms                        = Offset { .start = 0x0616040, .end = 0x06160B4 },
 };
 
 error InvalidRomSize;
@@ -212,7 +216,9 @@ pub const Game = struct {
     base_stats: []BasePokemon,
     evolution_table: [][5]Evolution,
     level_up_learnset_pointers: []Little(u32),
+    hms: []Little(u16),
     items: []Item,
+    tms: []Little(u16),
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Game {
         var file_stream = io.FileInStream.init(file);
@@ -238,7 +244,9 @@ pub const Game = struct {
             .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
             .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
             .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
+            .hms                        = offsets.hms.slice(Little(u16), rom),
             .items                      = offsets.items.slice(Item, rom),
+            .tms                        = offsets.tms.slice(Little(u16), rom),
         };
 
         return res;
