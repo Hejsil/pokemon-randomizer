@@ -83,7 +83,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
         var required_index : usize = 0;
         for (options) |option, i| {
             if (option.is_required) {
-                required = bits.set(u128, required, u7(required_index), 1);
+                required = bits.set(u128, required, u7(required_index), true);
                 required_index += 1;
             }
         }
@@ -115,7 +115,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
                     try option.handler(&result, arg);
 
                     if (option.is_required) {
-                        required = bits.set(u128, required, u7(required_index), 0);
+                        required = bits.set(u128, required, u7(required_index), false);
                         required_index += 1;
                     }
 
@@ -137,7 +137,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
             try option.handler(&result, value);
 
             if (option.is_required) {
-                required = bits.set(u128, required, u7(required_index), 0);
+                required = bits.set(u128, required, u7(required_index), false);
                 required_index += 1;
             }
 
