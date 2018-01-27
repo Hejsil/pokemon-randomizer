@@ -55,7 +55,7 @@ pub const BasePokemon = packed struct {
     padding: [2]u8
 };
 
-pub const EvolutionKind = enum(u16) {
+pub const EvolutionType = enum(u16) {
     Unused                 = toLittle(u16, 0x00).get(),
     FriendShip             = toLittle(u16, 0x01).get(),
     FriendShipDuringDay    = toLittle(u16, 0x02).get(),
@@ -75,7 +75,7 @@ pub const EvolutionKind = enum(u16) {
 };
 
 pub const Evolution = packed struct {
-    kind: EvolutionKind,
+    @"type": EvolutionType,
     param: Little(u16),
     target: Little(u16),
     padding: [2]u8,
@@ -132,7 +132,7 @@ pub const PartyMemberWithBoth = packed struct {
 pub const Move = packed struct {
     effect: u8,
     power: u8,
-    kind: common.Type,
+    @"type": common.Type,
     accuracy: u8,
     pp: u8,
     side_effect_chance: u8,
@@ -337,11 +337,15 @@ pub const Game = struct {
     }
 
     pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
-        const offset = utils.itemAt(Little(u32), game.level_up_learnset_pointers, species) ?? return null;
-        if (game.data.len < offset.get()) return null;
+        const offset = blk: {
+            const res = utils.itemAt(Little(u32), game.level_up_learnset_pointers, species) ?? return null;
+            if (res.get() < 0x8000000) return null;
+            break :blk res.get() - 0x8000000;
+        };
+        if (game.data.len < offset) return null;
 
         const end = blk: {
-            var i : usize = offset.get();
+            var i : usize = offset;
             while (true) : (i += @sizeOf(LevelUpMove)) {
                 if (game.data.len < i)     return null;
                 if (game.data.len < i + 1) return null;
@@ -351,7 +355,7 @@ pub const Game = struct {
             break :blk i;
         };
 
-        return ([]LevelUpMove)(game.data[offset.get()..end]);
+        return ([]LevelUpMove)(game.data[offset..end]);
     }
 
     pub fn getTms(game: &const Game) []Little(u16) {

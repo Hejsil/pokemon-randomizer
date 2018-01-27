@@ -296,7 +296,7 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) %void {
+fn randomizeTrainerPokemonMoves(game: var, trainer_pokemon: var, option: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) %void {
     switch (option.moves) {
         Options.Trainer.Moves.Same => {
             // If trainer Pokémons where randomized, then keeping the same moves
@@ -305,12 +305,12 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
                 const MoveLevelPair = struct { level: u8, move_id: u16 };
                 const new_moves = blk: {
                     // TODO: Handle not getting any level up moves.
-                    const level_up_moves = game.getLevelupMoves(pokemon.base.species.get()) ?? return;
+                    const level_up_moves = game.getLevelupMoves(trainer_pokemon.base.species.get()) ?? return;
                     var moves = []MoveLevelPair { MoveLevelPair { .level = 0, .move_id = 0, } } ** 4;
 
                     for (level_up_moves) |level_up_move| {
                         for (moves) |*move| {
-                            if (move.level < level_up_move.level and level_up_move.level < pokemon.base.level.get()) {
+                            if (move.level < level_up_move.level and level_up_move.level < trainer_pokemon.base.level.get()) {
                                 move.level = level_up_move.level;
                                 move.move_id = level_up_move.move_id;
                                 break;
@@ -321,29 +321,63 @@ fn randomizeTrainerPokemonMoves(game: var, pokemon: var, option: &const Options.
                     break :blk moves;
                 };
 
-                assert(new_moves.len == pokemon.moves.len);
-                for (pokemon.moves) |_, i| {
-                    pokemon.moves[i].set(new_moves[i].move_id);
+                assert(new_moves.len == trainer_pokemon.moves.len);
+                for (trainer_pokemon.moves) |_, i| {
+                    trainer_pokemon.moves[i].set(new_moves[i].move_id);
                 }
             }
         },
         Options.Trainer.Moves.Random => {
-            for (pokemon.moves) |*move| {
+            for (trainer_pokemon.moves) |*move| {
                 move.set(randomMoveId(game, random));
             }
         },
         Options.Trainer.Moves.RandomWithinLearnset => {
-            const learned_moves = try getMovesLearned(game, pokemon.base.species.get(), allocator);
+            const learned_moves = try getMovesLearned(game, trainer_pokemon.base.species.get(), allocator);
             defer allocator.free(learned_moves);
 
-            for (pokemon.moves) |*move| {
+            for (trainer_pokemon.moves) |*move| {
                 const pick = learned_moves[random.range(usize, 0, learned_moves.len)];
                 move.set(pick);
             }
         },
         Options.Trainer.Moves.Best => {
-            const learned_moves = try getMovesLearned(game, pokemon.base.species.get(), allocator);
+            // TODO: How do we handle, if trainer Pokémon does not have a valid species?
+            const pokemon = game.getBasePokemon(trainer_pokemon.base.species.get()) ?? return;
+            const learned_moves = try getMovesLearned(game, trainer_pokemon.base.species.get(), allocator);
             defer allocator.free(learned_moves);
+
+            for (trainer_pokemon.moves) |*move|
+                move.set(0);
+
+            for (learned_moves) |learned| {
+                const learned_move = game.getMove(learned) ?? continue;
+
+                pokemon_moves_loop:
+                for (trainer_pokemon.moves) |*move_id| {
+                    // If, for some reason, the Pokémon has a move we can't get
+                    // the information for, then we replace that move, with the
+                    // learned move.
+                    const move = game.getMove(move_id.get()) ?? {
+                        move_id.set(learned);
+                        break :pokemon_moves_loop;
+                    };
+
+                    const move_stab    = if (move.@"type"         == pokemon.type1 or move.@"type"         == pokemon.type2) f32(1.5) else f32(1.0);
+                    const learned_stab = if (learned_move.@"type" == pokemon.type1 or learned_move.@"type" == pokemon.type2) f32(1.5) else f32(1.0);
+                    const move_power    = f32(move.power) * move_stab;
+                    const learned_power = f32(learned_move.power) * learned_stab;
+
+                    // TODO: We probably also want Pokémons to have varied types
+                    //       of moves, so it has good coverage.
+                    // TODO: We probably want to pick attack vs sp_attack moves
+                    //       depending on the Pokémons stats.
+                    if (move_power < learned_power) {
+                        move_id.set(learned);
+                        break :pokemon_moves_loop;
+                    }
+                }
+            }
         },
     }
 }
