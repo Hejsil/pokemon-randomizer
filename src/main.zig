@@ -71,7 +71,6 @@ fn setTrainerMoves(op: &randomizer.Options, str: []const u8) %void {
 
 fn setTrainerAi(op: &randomizer.Options, str: []const u8) %void { op.trainer.ai = try parseGenericOption(str); }
 fn setTrainerIv(op: &randomizer.Options, str: []const u8) %void { op.trainer.iv = try parseGenericOption(str); }
-fn setTrainerEv(op: &randomizer.Options, str: []const u8) %void { op.trainer.ev = try parseGenericOption(str); }
 
 fn parseGenericOption(str: []const u8) %randomizer.GenericOption {
     if (mem.eql(u8, str, "same")) {
@@ -126,10 +125,6 @@ const program_arguments = comptime []Arg {
     Arg.init(setTrainerIv)
         .help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].")
         .long("trainer-iv")
-        .takesValue(true),
-    Arg.init(setTrainerEv)
-        .help("How trainer Pokémon evs should be randomized. Options: [same, random, best].")
-        .long("trainer-ev")
         .takesValue(true),
     Arg.init(setLevelModifier)
         .help("A percent level modifier to trainers Pokémon.")

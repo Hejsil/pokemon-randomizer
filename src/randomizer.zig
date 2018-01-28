@@ -88,9 +88,6 @@ pub const Options = struct {
         /// How the trainer Pokémon ivs should be randomized.
         iv: GenericOption,
 
-        /// How the trainer Pokémon evs should be randomized.
-        ev: GenericOption,
-
         /// Trainer Pokémons will have their level increased by x%.
         level_modifier: f64,
 
@@ -102,7 +99,6 @@ pub const Options = struct {
                 .moves = Moves.Same,
                 .ai = GenericOption.Same,
                 .iv = GenericOption.Same,
-                .ev = GenericOption.Same,
                 .level_modifier = 1.0,
             };
         }
@@ -232,7 +228,6 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
             }
             // TODO: 
             //iv: GenericOption,
-            //ev: GenericOption,
 
             const new_level = blk: {
                 var res = f64(trainer_pokemon.level.get()) * options.level_modifier;
