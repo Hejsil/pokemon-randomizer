@@ -33,7 +33,7 @@ pub const Header = packed struct {
 
     reserved2: [2]u8,
 
-    pub fn validate(self: &const Header) -> %void {
+    pub fn validate(self: &const Header) %void {
         if (!utils.all(u8, self.game_title, ascii.isUpperAscii))
             return error.InvalidGameTitle;
         if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))

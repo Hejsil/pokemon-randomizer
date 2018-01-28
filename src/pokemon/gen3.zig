@@ -9,7 +9,7 @@ const debug = std.debug;
 const io    = std.io;
 
 const assert = debug.assert;
-const u1     = @IntType(false, 1);
+const u9     = @IntType(false, 9);
 
 const toLittle = little.toLittle;
 const Little   = little.Little;
@@ -50,12 +50,12 @@ pub const BasePokemon = packed struct {
     safari_zone_rate: u8,
 
     color: common.Color,
-    flip: u1,
+    flip: bool,
 
     padding: [2]u8
 };
 
-pub const EvolutionKind = enum(u16) {
+pub const EvolutionType = enum(u16) {
     Unused                 = toLittle(u16, 0x00).get(),
     FriendShip             = toLittle(u16, 0x01).get(),
     FriendShipDuringDay    = toLittle(u16, 0x02).get(),
@@ -75,7 +75,7 @@ pub const EvolutionKind = enum(u16) {
 };
 
 pub const Evolution = packed struct {
-    kind: EvolutionKind,
+    @"type": EvolutionType,
     param: Little(u16),
     target: Little(u16),
     padding: [2]u8,
@@ -96,76 +96,103 @@ pub const Trainer = packed struct {
     name: [12]u8,
     items: [4]Little(u16),
     is_double: Little(u32),
+    ai: Little(u32),
     party_size: Little(u32),
     party_offset: Little(u32),
 };
 
-pub const PartyMember = packed struct {
+pub const PartyMemberBase = packed struct {
     iv: Little(u16),
-    level: u8,
+    level: Little(u16),
     species: Little(u16),
+};
+
+pub const PartyMember = packed struct {
+    base: PartyMemberBase,
+    padding: Little(u16),
 };
 
 pub const PartyMemberWithMoves = packed struct {
-    iv: Little(u16),
-    level: u8,
-    species: Little(u16),
+    base: PartyMemberBase,
     moves: [4]Little(u16),
+    padding: Little(u16),
 };
 
 pub const PartyMemberWithHeld = packed struct {
-    iv: Little(u16),
-    level: u8,
-    species: Little(u16),
+    base: PartyMemberBase,
     held_item: Little(u16),
 };
 
 pub const PartyMemberWithBoth = packed struct {
-    iv: Little(u16),
-    level: u8,
-    species: Little(u16),
+    base: PartyMemberBase,
     held_item: Little(u16),
     moves: [4]Little(u16),
 };
 
-pub const Party = union(PartyType) {
-    Standard:  []PartyMember,
-    WithMoves: []PartyMemberWithMoves,
-    WithHeld:  []PartyMemberWithHeld,
-    WithBoth:  []PartyMemberWithBoth,
+pub const Move = packed struct {
+    effect: u8,
+    power: u8,
+    @"type": common.Type,
+    accuracy: u8,
+    pp: u8,
+    side_effect_chance: u8,
+    target: u8,
+    priority: u8,
+    flags: Little(u32),
 };
 
-// SOURCE: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_index_number_(Generation_III)
-// TODO: Can we get this data without hardcoding?
-const pokemon_count = 440;
+pub const LevelUpMove = packed struct {
+    level: u7,
+    move_id: u9,
+};
+
+pub const Item = packed struct {
+    name: [14]u8,
+    id: Little(u16),
+    price: Little(u16),
+    unknown1: [2]u8,
+    description_offset: Little(u32),
+    unknown2: [2]u8,
+    pocked: u8,
+    unknown3: u8,
+    out_battle_effect_offset: Little(u32),
+    unknown5: Little(u32),
+    in_battle_effect_offset: Little(u32),
+    unknown6: Little(u32),
+};
+
+const Offset = struct {
+    start: usize,
+    end: usize,
+
+    fn slice(offset: &const Offset, comptime T: type, data: []u8) []T {
+        return ([]T)(data[offset.start..offset.end]);
+    }
+};
 
 const Offsets = struct {
-    // Some bytes here
-    trainer_parties:            usize,
-    trainer_class_names:        usize,
-    trainers:                   usize,
-    species_names:              usize,
-    move_names:                 usize,
-    // Some bytes here
-    base_stats:                 usize,
-    level_up_learnsets:         usize,
-    evolution_table:            usize,
-    level_up_learnset_pointers: usize,
-    // Some bytes here
+    trainers:                   Offset,
+    moves:                      Offset,
+    tm_hm_learnset:             Offset,
+    base_stats:                 Offset,
+    evolution_table:            Offset,
+    level_up_learnset_pointers: Offset,
+    hms:                        Offset,
+    items:                      Offset,
+    tms:                        Offset,
 };
 
 // TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
 const emerald_offsets = Offsets {
-    .trainer_parties            = 0x030B62C,
-    .trainer_class_names        = 0x030B62C,
-    .trainers                   = 0x0310030,
-    .species_names              = 0x0310030,
-    .move_names                 = 0x031977C,
-
-    .base_stats                 = 0x03203CC,
-    .level_up_learnsets         = 0x03230DC,
-    .evolution_table            = 0x032531C,
-    .level_up_learnset_pointers = 0x032937C,
+    .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8 },
+    .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C },
+    .tm_hm_learnset             = Offset { .start = 0x031E898, .end = 0x031F578 },
+    .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC },
+    .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C },
+    .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
+    .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC },
+    .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C },
+    .tms                        = Offset { .start = 0x0616040, .end = 0x06160B4 },
 };
 
 error InvalidRomSize;
@@ -181,76 +208,66 @@ const bulbasaur_fingerprint = []u8 {
 };
 
 pub const Game = struct {
-    header: gba.Header,
+    const legendaries = []u16 {
+        0x090, 0x091, 0x092, // Articuno, Zapdos, Moltres
+        0x096, 0x097,        // Mewtwo, Mew
+        0x0F3, 0x0F4, 0x0F5, // Raikou, Entei, Suicune
+        0x0F9, 0x0FA, 0x0FB, // Lugia, Ho-Oh, Celebi
+        0x191, 0x192, 0x193, // Regirock, Regice, Registeel
+        0x194, 0x195, 0x196, // Kyogre, Groudon, Rayquaza
+        0x197, 0x198,        // Latias, Latios
+        0x199, 0x19A,        // Jirachi, Deoxys
+    };
+
     offsets: &const Offsets,
+    data: []u8,
 
-    unknown1: []u8,
-
-    trainer_parties:     []u8,
-    trainer_class_names: []u8,
-    trainers:            []Trainer,
-    species_names:       []u8,
-    //move_names: []u8,
-
-    unknown2: []u8,
-
+    // All these fields point into data
+    header: &gba.Header,
+    trainers: []Trainer,
+    moves: []Move,
+    tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
-    level_up_learnsets: []u8,
     evolution_table: [][5]Evolution,
-    //level_up_learnset_pointers: []u8,
+    level_up_learnset_pointers: []Little(u32),
+    hms: []Little(u16),
+    items: []Item,
+    tms: []Little(u16),
 
-    unknown3: []u8,
-
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Game {
-        var res = try allocator.create(Game);
-        errdefer allocator.destroy(res);
-
-        res.header = try utils.noAllocRead(gba.Header, file);
-        try res.header.validate();
-
-        const offsets = try getOffsets(res.header);
-        res.offsets = offsets;
-
-        res.unknown1 = try utils.allocAndRead(u8, file, allocator, offsets.trainer_parties - try file.getPos());
-        errdefer allocator.free(res.unknown1);
-
-        res.trainer_parties = try utils.allocAndRead(u8, file, allocator, offsets.trainer_class_names - offsets.trainer_parties);
-        errdefer allocator.free(res.trainer_parties);
-
-        res.trainer_class_names = try utils.allocAndRead(u8, file, allocator,  offsets.trainers - offsets.trainer_class_names);
-        errdefer allocator.free(res.trainer_class_names);
-
-        res.trainers = try utils.allocAndRead(Trainer, file, allocator, (offsets.species_names - offsets.trainers) / @sizeOf(Trainer));
-        errdefer allocator.free(res.trainers);
-
-        res.species_names = try utils.allocAndRead(u8, file, allocator, offsets.move_names - offsets.species_names);
-        errdefer allocator.free(res.species_names);
-
-        res.unknown2 = try utils.allocAndRead(u8, file, allocator, offsets.base_stats - (offsets.species_names + res.species_names.len));
-        errdefer allocator.free(res.unknown2);
-
-        res.base_stats = try utils.allocAndRead(BasePokemon, file, allocator, (offsets.level_up_learnsets - offsets.base_stats) / @sizeOf(BasePokemon));
-        errdefer allocator.free(res.base_stats);
-
-        res.level_up_learnsets = try utils.allocAndRead(u8, file, allocator, offsets.evolution_table - offsets.level_up_learnsets);
-        errdefer allocator.free(res.level_up_learnsets);
-
-        res.evolution_table = try utils.allocAndRead([5]Evolution, file, allocator, (offsets.level_up_learnset_pointers - offsets.evolution_table) / @sizeOf([5]Evolution));
-        errdefer allocator.free(res.evolution_table);
-
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Game {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
-        res.unknown3 = try stream.readAllAlloc(allocator, @maxValue(usize));
-        errdefer allocator.free(res.unknown3);
+        const header = try utils.noAllocRead(gba.Header, file);
+        try header.validate();
+        try file.seekTo(0);
 
-        if ((try file.getPos()) % 0x1000000 != 0)
-            return error.InvalidRomSize;
+        const offsets = try getOffsets(header);
+        const rom = try stream.readAllAlloc(allocator, @maxValue(usize));
+        errdefer allocator.free(rom);
+
+        if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
+
+        var res = try allocator.create(Game);
+        *res = Game {
+            .offsets                    = offsets,
+            .data                       = rom,
+            .header                     = @ptrCast(&gba.Header, &rom[0]),
+            .trainers                   = offsets.trainers.slice(Trainer, rom),
+            .moves                      = offsets.moves.slice(Move, rom),
+            .tm_hm_learnset             = offsets.tm_hm_learnset.slice(Little(u64), rom),
+            .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
+            .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
+            .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
+            .hms                        = offsets.hms.slice(Little(u16), rom),
+            .items                      = offsets.items.slice(Item, rom),
+            .tms                        = offsets.tms.slice(Little(u16), rom),
+        };
 
         return res;
     }
 
-    fn getOffsets(header: &const gba.Header) -> %&const Offsets {
+    fn getOffsets(header: &const gba.Header) %&const Offsets {
         if (mem.eql(u8, header.game_title, "POKEMON EMER")) {
             return &emerald_offsets;
         }
@@ -268,70 +285,99 @@ pub const Game = struct {
         return error.InvalidGen3PokemonHeader;
     }
 
-    pub fn getTrainerParty(game: &const Game, trainer: &const Trainer) -> %Party {
-        if (trainer.party_offset.get() < 0x8000000) return error.InvalidTrainerPartyOffset;
-
-        const offset = trainer.party_offset.get() - 0x8000000;
-        const party_table_start = game.offsets.trainer_parties;
-        const party_table_end   = game.offsets.trainer_class_names;
-        if (offset < party_table_start or party_table_end < offset) return error.InvalidTrainerPartyOffset;
-
-        switch (trainer.party_type) {
-            PartyType.Standard => return Party {
-                .Standard = try getSpecificParty(PartyMember, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            PartyType.WithMoves => return Party {
-                .WithMoves = try getSpecificParty(PartyMemberWithMoves, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            PartyType.WithHeld => return Party {
-                .WithHeld = try getSpecificParty(PartyMemberWithHeld, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            PartyType.WithBoth => return Party {
-                .WithBoth = try getSpecificParty(PartyMemberWithBoth, game.trainer_parties, offset, trainer.party_size.get(), party_table_end),
-            },
-            else => return error.InvalidPartyType,
-        }
-    }
-
-    fn getSpecificParty(comptime TMember: type, trainer_parties: []u8, offset: usize, size: usize, table_end: usize) -> %[]TMember {
-        const party_end = offset + size * @sizeOf(TMember);
-        if (table_end < party_end) return error.InvalidTrainerPartyOffset;
-        return ([]TMember)(trainer_parties[offset..party_end]);
-    }
-
-    pub fn validateData(game: &const Game) -> %void {
+    pub fn validateData(game: &const Game) %void {
         if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
             return error.NoBulbasaurFound;
     }
 
-    pub fn writeToStream(game: &const Game, stream: &io.OutStream) -> %void {
+    pub fn writeToStream(game: &const Game, stream: &io.OutStream) %void {
         try game.header.validate();
-
-        try stream.write(utils.asConstBytes(gba.Header, game.header));
-        try stream.write(game.unknown1);
-        try stream.write(game.trainer_parties);
-        try stream.write(game.trainer_class_names);
-        try stream.write(([]u8)(game.trainers));
-        try stream.write(game.species_names);
-        try stream.write(game.unknown2);
-        try stream.write(([]u8)(game.base_stats));
-        try stream.write(game.level_up_learnsets);
-        try stream.write(([]u8)(game.evolution_table));
-        try stream.write(game.unknown3);
+        try stream.write(game.data);
     }
 
-    pub fn destroy(game: &const Game, allocator: &mem.Allocator) {
-        allocator.free(game.unknown1);
-        allocator.free(game.trainer_parties);
-        allocator.free(game.trainer_class_names);
-        allocator.free(game.trainers);
-        allocator.free(game.species_names);
-        allocator.free(game.unknown2);
-        allocator.free(game.base_stats);
-        allocator.free(game.level_up_learnsets);
-        allocator.free(game.evolution_table);
-        allocator.free(game.unknown3);
-
+    pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
+        allocator.free(game.data);
         allocator.destroy(game);
+    }
+
+    pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
+        return utils.ptrAt(BasePokemon, game.base_stats, index);
+    }
+
+    pub fn getTrainer(game: &const Game, index: usize) ?&Trainer {
+        return utils.ptrAt(Trainer, game.trainers, index);
+    }
+
+    pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) ?&PartyMemberBase {
+        if (trainer.party_offset.get() < 0x8000000) return null;
+
+        const offset = trainer.party_offset.get() - 0x8000000;
+
+        switch (trainer.party_type) {
+            PartyType.Standard => {
+                return getBasePartyMember(PartyMember, game.data, index, offset, trainer.party_size.get());
+            },
+            PartyType.WithMoves => {
+                return getBasePartyMember(PartyMemberWithMoves, game.data, index, offset, trainer.party_size.get());
+            },
+            PartyType.WithHeld => {
+                return getBasePartyMember(PartyMemberWithHeld, game.data, index, offset, trainer.party_size.get());
+            },
+            PartyType.WithBoth => {
+                return getBasePartyMember(PartyMemberWithBoth, game.data, index, offset, trainer.party_size.get());
+            },
+            else => return null,
+        }
+    }
+
+    fn getBasePartyMember(comptime TMember: type, data: []u8, index: usize, offset: usize, size: usize) ?&PartyMemberBase {
+        const party_end = offset + size * @sizeOf(TMember);
+        if (data.len < party_end) return null;
+
+        const party = ([]TMember)(data[offset..party_end]);
+        const pokemon = utils.ptrAt(TMember, party, index) ?? return null;
+        return &pokemon.base;
+    }
+
+    pub fn getMove(game: &const Game, index: usize) ?&Move {
+        return utils.ptrAt(Move, game.moves, index);
+    }
+
+    pub fn getMoveCount(game: &const Game) usize {
+        return game.moves.len;
+    }
+
+    pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
+        const offset = blk: {
+            const res = utils.itemAt(Little(u32), game.level_up_learnset_pointers, species) ?? return null;
+            if (res.get() < 0x8000000) return null;
+            break :blk res.get() - 0x8000000;
+        };
+        if (game.data.len < offset) return null;
+
+        const end = blk: {
+            var i : usize = offset;
+            while (true) : (i += @sizeOf(LevelUpMove)) {
+                if (game.data.len < i)     return null;
+                if (game.data.len < i + 1) return null;
+                if (game.data[i] == 0xFF and game.data[i+1] == 0xFF) break;
+            }
+
+            break :blk i;
+        };
+
+        return ([]LevelUpMove)(game.data[offset..end]);
+    }
+
+    pub fn getTms(game: &const Game) []Little(u16) {
+        return game.tms;
+    }
+
+    pub fn getHms(game: &const Game) []Little(u16) {
+        return game.hms;
+    }
+
+    pub fn getTmHmLearnset(game: &const Game, species: usize) ?&Little(u64) {
+        return utils.ptrAt(Little(u64), game.tm_hm_learnset, species);
     }
 };

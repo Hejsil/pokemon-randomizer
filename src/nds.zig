@@ -1,8 +1,8 @@
 const std    = @import("std");
+const crc    = @import("crc");
 const utils  = @import("utils.zig");
 const ascii  = @import("ascii.zig");
 const little = @import("little.zig");
-const crc    = @import("zig-crc/crc.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
@@ -237,11 +237,11 @@ pub const Header = packed struct {
 
     signature_across_header_entries: [0x80]u8,
 
-    pub fn isDsi(self: &const Header) -> bool {
+    pub fn isDsi(self: &const Header) bool {
         return (self.unitcode & 0x02) != 0;
     }
 
-    pub fn validate(self: &const Header) -> %void {
+    pub fn validate(self: &const Header) %void {
         if (self.header_checksum.get() != crc_modbus.checksum(utils.asConstBytes(Header, self)[0..0x15E]))
             return error.InvalidHeaderChecksum;
 
@@ -342,11 +342,11 @@ pub const Header = packed struct {
         }
     }
 
-    fn isUpperAsciiOrZero(char: u8) -> bool {
+    fn isUpperAsciiOrZero(char: u8) bool {
         return ascii.isUpperAscii(char) or char == 0;
     }
 
-    pub fn prettyPrint(self: &const Header, stream: &io.OutStream) -> %void {
+    pub fn prettyPrint(self: &const Header, stream: &io.OutStream) %void {
         // game_title might be \0 terminated, but we don't want to print that
         const zero_index = mem.indexOfScalar(u8, self.game_title, 0) ?? self.game_title.len;
         try stream.print("game_title: {}\n", self.game_title[0..zero_index]);
@@ -515,13 +515,13 @@ pub const Header = packed struct {
         try prettyPrintSliceField(u8, "signature_across_header_entries", "{x}", stream, self.signature_across_header_entries);
     }
 
-    fn prettyPrintSliceField(comptime T: type, comptime field_name: []const u8, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
+    fn prettyPrintSliceField(comptime T: type, comptime field_name: []const u8, comptime format: []const u8, stream: &io.OutStream, slice: []const T) %void {
         try stream.print(field_name ++ ": ");
         try prettyPrintSlice(T, format, stream, slice);
         try stream.print("\n");
     }
 
-    fn prettyPrintSlice(comptime T: type, comptime format: []const u8, stream: &io.OutStream, slice: []const T) -> %void {
+    fn prettyPrintSlice(comptime T: type, comptime format: []const u8, stream: &io.OutStream, slice: []const T) %void {
         try stream.write("{ ");
 
         for (slice) |item, i| {
@@ -588,7 +588,7 @@ pub const IconTitle = packed struct {
     //icon_animation_palette: [0x100]u8,
     //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
 
-    pub fn validate(self: &const IconTitle) -> %void {
+    pub fn validate(self: &const IconTitle) %void {
         if (u2(self.version) == 0)
             return error.InvalidVersion;
         if (self.version_padding != 0)
@@ -612,7 +612,7 @@ pub const IconTitle = packed struct {
         //}
     }
 
-    fn is0xFF(char: u8) -> bool { return char == 0xFF; }
+    fn is0xFF(char: u8) bool { return char == 0xFF; }
 };
 
 error AddressesOverlap;
@@ -621,7 +621,7 @@ pub const File = struct {
     name: []u8,
     data: []u8,
 
-    pub fn destroy(file: &const File, allocator: &mem.Allocator) {
+    pub fn destroy(file: &const File, allocator: &mem.Allocator) void {
         allocator.free(file.name);
         allocator.free(file.data);
     }
@@ -632,7 +632,7 @@ pub const Folder = struct {
     files:   []File,
     folders: []Folder,
 
-    pub fn destroy(folder: &const Folder, allocator: &mem.Allocator) {
+    pub fn destroy(folder: &const Folder, allocator: &mem.Allocator) void {
         for (folder.folders) |fold| {
             fold.destroy(allocator);
         }
@@ -646,14 +646,14 @@ pub const Folder = struct {
         allocator.free(folder.folders);
     }
 
-    fn printIndent(stream: &io.OutStream, indent: usize) -> %void {
+    fn printIndent(stream: &io.OutStream, indent: usize) %void {
         var i : usize = 0;
         while (i < indent) : (i += 1) {
             try stream.write("    ");
         }
     }
 
-    pub fn tree(folder: &const Folder, stream: &io.OutStream, indent: usize) -> %void {
+    pub fn tree(folder: &const Folder, stream: &io.OutStream, indent: usize) %void {
         try printIndent(stream, indent);
         try stream.print("{}/\n", folder.name);
 
@@ -673,7 +673,7 @@ pub const Folder = struct {
         fnt_sub_size: u32,
     };
 
-    fn sizes(folder: &const Folder) -> Sizes {
+    fn sizes(folder: &const Folder) Sizes {
         var result = Sizes {
             .files = 0,
             .folders = 0,
@@ -739,7 +739,7 @@ pub const Rom = struct {
     icon_title: IconTitle,
     root: Folder,
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) -> %&Rom {
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Rom {
         var result = try allocator.create(Rom);
         errdefer allocator.destroy(result);
 
@@ -789,7 +789,7 @@ pub const Rom = struct {
         return result;
     }
 
-    fn readOverlayFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) -> %[][]u8 {
+    fn readOverlayFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) %[][]u8 {
         var results = try allocator.alloc([]u8, overlay_table.len);
         var allocated : usize = 0;
         errdefer cleanUpOverlayFiles(results[0..allocated], allocator);
@@ -811,14 +811,14 @@ pub const Rom = struct {
         return results;
     }
 
-    fn cleanUpOverlayFiles(files: [][]u8, allocator: &mem.Allocator) -> void {
+    fn cleanUpOverlayFiles(files: [][]u8, allocator: &mem.Allocator) void {
         for (files) |file|
             allocator.free(file);
 
         allocator.free(files);
     }
 
-    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) -> %Folder {
+    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) %Folder {
         if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
         if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
 
@@ -853,7 +853,7 @@ pub const Rom = struct {
         fnt_main_table: []const FntMainEntry,
         fnt_entry: &const FntMainEntry,
         fnt_offset: usize,
-        name: []u8) -> %Folder {
+        name: []u8) %Folder {
 
         try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
         var folders = std.ArrayList(Folder).init(allocator);
@@ -946,7 +946,7 @@ pub const Rom = struct {
         };
     }
 
-    pub fn writeToFile(self: &Rom, file: &io.File) -> %void {
+    pub fn writeToFile(self: &Rom, file: &io.File) %void {
         try self.icon_title.validate();
 
         const header = &self.header;
@@ -1014,11 +1014,11 @@ pub const Rom = struct {
         try file.write(utils.asBytes(IconTitle, &self.icon_title));
     }
 
-    fn hasNitroFooter(self: &const Rom) -> bool {
+    fn hasNitroFooter(self: &const Rom) bool {
         return self.nitro_footer[0].get() == 0xDEC00621;
     }
 
-    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
+    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) void {
         allocator.free(self.arm9);
         allocator.free(self.arm7);
         allocator.free(self.arm9_overlay_table);
@@ -1046,7 +1046,7 @@ const OverlayWriter = struct {
     file_offset: u32,
     file_id: u16,
 
-    fn init(file: &io.File, file_offset: u32, start_file_id: u16) -> OverlayWriter {
+    fn init(file: &io.File, file_offset: u32, start_file_id: u16) OverlayWriter {
         return OverlayWriter {
             .file = file,
             .file_offset = file_offset,
@@ -1054,7 +1054,7 @@ const OverlayWriter = struct {
         };
     }
 
-    fn writeOverlayFiles(self: &OverlayWriter, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) -> %void {
+    fn writeOverlayFiles(self: &OverlayWriter, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) %void {
         for (overlay_table) |*overlay_entry, i| {
             const overlay_file = overlay_files[i];
             const fat_entry = FatEntry.init(alignAddr(u32, self.file_offset, nds_alignment), u32(overlay_file.len));
@@ -1073,7 +1073,7 @@ const OverlayWriter = struct {
 };
 
 const nds_alignment = 0x200;
-fn alignAddr(comptime T: type, address: T, alignment: T) -> T {
+fn alignAddr(comptime T: type, address: T, alignment: T) T {
     const rem = address % alignment;
     const result = address + (alignment - rem);
 
@@ -1097,14 +1097,14 @@ const FatEntry = packed struct {
     start: Little(u32),
     end: Little(u32),
 
-    fn init(offset: u32, size: u32) -> FatEntry {
+    fn init(offset: u32, size: u32) FatEntry {
         return FatEntry {
             .start = toLittle(u32, offset),
             .end   = toLittle(u32, offset + size),
         };
     }
 
-    fn getSize(self: &const FatEntry) -> usize {
+    fn getSize(self: &const FatEntry) usize {
         return self.end.get() - self.start.get();
     }
 };
@@ -1116,7 +1116,7 @@ const FSWriter = struct {
     file_id: u16,
     folder_id: u16,
 
-    fn init(file: &io.File, file_offset: u32, fnt_sub_offset: u32, start_file_id: u16) -> FSWriter {
+    fn init(file: &io.File, file_offset: u32, fnt_sub_offset: u32, start_file_id: u16) FSWriter {
         return FSWriter {
             .file = file,
             .file_offset = file_offset,
@@ -1126,7 +1126,7 @@ const FSWriter = struct {
         };
     }
 
-    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, folder_count: u16) -> %void {
+    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, folder_count: u16) %void {
         try writer.file.seekTo(fnt_offset);
         try writer.file.write(utils.asConstBytes(
             FntMainEntry,
@@ -1139,7 +1139,7 @@ const FSWriter = struct {
         try writer.writeFolder(root, fnt_offset, fat_offset, writer.folder_id);
     }
 
-    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, id: u16) -> %void {
+    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, id: u16) %void {
         for (folder.files) |f| {
             // Write file to sub fnt
             try writer.file.seekTo(writer.fnt_sub_offset);

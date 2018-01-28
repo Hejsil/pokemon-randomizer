@@ -11,27 +11,125 @@ const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
 const rand  = std.rand;
+const fmt   = std.fmt;
 const path  = os.path;
 
-var input_file  : []const u8 = undefined;
+var help = false;
+var input_file  : []const u8 = "input";
 var output_file : []const u8 = "randomized";
 
-fn setInFile(op: &void, str: []const u8) -> %void { input_file = str; }
-fn setOutFile(op: &void, str: []const u8) -> %void { output_file = str; }
+error InvalidOptions;
+error NotARom;
 
-const Arg = clap.Arg(void);
+fn setHelp(op: &randomizer.Options, str: []const u8) %void { help = true; }
+fn setInFile(op: &randomizer.Options, str: []const u8) %void { input_file = str; }
+fn setOutFile(op: &randomizer.Options, str: []const u8) %void { output_file = str; }
+fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) %void {
+    if (mem.eql(u8, str, "same")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Random;
+    } else if (mem.eql(u8, str, "same-type")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.SameType;
+    } else if (mem.eql(u8, str, "type-themed")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.TypeThemed;
+    } else if (mem.eql(u8, str, "legendaries")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Legendaries;
+    }  else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) %void { op.trainer.same_total_stats = true; }
+fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) %void {
+    if (mem.eql(u8, str, "none")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
+    } else if (mem.eql(u8, str, "same")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Same;
+    //} else if (mem.eql(u8, str, "random")) {
+    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Random;
+    //} else if (mem.eql(u8, str, "random-useful")) {
+    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomUseful;
+    //} else if (mem.eql(u8, str, "random-best")) {
+    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomBest;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setTrainerMoves(op: &randomizer.Options, str: []const u8) %void {
+    if (mem.eql(u8, str, "same")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.Random;
+    } else if (mem.eql(u8, str, "random-within-learnset")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.RandomWithinLearnset;
+    } else if (mem.eql(u8, str, "best")) {
+        op.trainer.moves = randomizer.Options.Trainer.Moves.Best;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setTrainerIv(op: &randomizer.Options, str: []const u8) %void { op.trainer.iv = try parseGenericOption(str); }
+
+fn parseGenericOption(str: []const u8) %randomizer.GenericOption {
+    if (mem.eql(u8, str, "same")) {
+        return randomizer.GenericOption.Same;
+    } else if (mem.eql(u8, str, "random")) {
+        return randomizer.GenericOption.Random;
+    } else if (mem.eql(u8, str, "best")) {
+        return randomizer.GenericOption.Best;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setLevelModifier(op: &randomizer.Options, str: []const u8) %void {
+    const precent = try fmt.parseInt(i16, str, 10);
+    op.trainer.level_modifier = (f64(precent) / 100) + 1;
+}
+
+const Arg = clap.Arg(randomizer.Options);
 const program_arguments = comptime []Arg {
+    Arg.init(setHelp)
+        .help("Display this help and exit.")
+        .short('h')
+        .long("help"),
     Arg.init(setInFile)
         .help("The rom to randomize.")
         .required(true),
     Arg.init(setOutFile)
         .help("The place to output the randomized rom.")
-        .short("o")
+        .short('o')
         .long("output")
-        .takesValue(true)
+        .takesValue(true),
+    Arg.init(setTrainerPokemon)
+        .help("How trainer Pokémons should be randomized. Options: [same, random, same-type, type-themed, legendaries].")
+        .long("trainer-pokemon")
+        .takesValue(true),
+    Arg.init(setTrainerSameStrength)
+        .help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.")
+        .long("trainer-same-total-stats"),
+    Arg.init(setTrainerHeldItems)
+        .help("How trainer Pokémon held items should be randomized. Options: [none, same, random, random-useful, random-best].")
+        .long("trainer-held-items")
+        .takesValue(true),
+    Arg.init(setTrainerMoves)
+        .help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].")
+        .long("trainer-moves")
+        .takesValue(true),
+    Arg.init(setTrainerIv)
+        .help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].")
+        .long("trainer-iv")
+        .takesValue(true),
+    Arg.init(setLevelModifier)
+        .help("A percent level modifier to trainers Pokémon.")
+        .long("trainer-level-modifier")
+        .takesValue(true),
 };
 
-pub fn main() -> %void {
+pub fn main() %void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
     var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
     defer inc_allocator.deinit();
@@ -44,28 +142,15 @@ pub fn main() -> %void {
     const args = try os.argsAlloc(allocator);
     defer os.argsFree(allocator, args);
 
-    clap.parse(void, args, void{}, program_arguments) catch |err| {
+    const options = clap.parse(randomizer.Options, program_arguments, randomizer.Options.default(), args) catch |err| {
         // TODO: Write useful error message to user
         return err;
     };
 
-
-    var rom = loadRom(input_file, allocator) catch |err| {
-        switch (err) {
-            error.NotARom => {
-                try stdout_stream.print("{} is not a rom.\n", input_file);
-            },
-            else => {
-                // TODO: This could also be an allocation error.
-                //       Follow issue https://github.com/zig-lang/zig/issues/632
-                //       and refactor when we can check if error is part of an error set.
-                try stdout_stream.print("Unable to open {}.\n", input_file);
-            }
-        }
-
-        return err;
-    };
-    defer rom.destroy(allocator);
+    if (help) {
+        try clap.help(randomizer.Options, program_arguments, stdout_stream);
+        return;
+    }
 
     var out_file = io.File.openWrite(output_file, null) catch |err| {
         try stdout_stream.print("Couldn't open {}.\n", output_file);
@@ -73,73 +158,49 @@ pub fn main() -> %void {
     };
     defer out_file.close();
 
-    switch (rom) {
-        Rom.Gba => |gen3_rom| {
-            gen3_rom.validateData() catch |err| {
-                try stdout_stream.print("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
 
-                switch (err) {
-                    error.NoBulbasaurFound => {
-                        try stdout_stream.print("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
-                        try stdout_stream.print("Note: If you are randomizing a hacked version, then .\n");
-                    },
-                    else => {}
-                }
-            };
-
-            var file_stream = io.FileOutStream.init(&out_file);
-            gen3_rom.writeToStream(&file_stream.stream) catch |err| {
-                try stdout_stream.print("Unable to write gba to {}.\n", output_file);
-                return err;
-            };
-        },
-        Rom.Nds => |nds_rom| {
-            nds_rom.writeToFile(&out_file) catch |err| {
-                try stdout_stream.print("Unable to write nds to {}\n", output_file);
-                return err;
-            };
-        },
-        else => {
-            try stdout_stream.print("Rom type not supported (yet)\n");
-        }
-    }
-}
-
-const Rom = union(enum) {
-    Gba: &gen3.Game,
-    Nds: &nds.Rom,
-
-    pub fn destroy(self: &const Rom, allocator: &mem.Allocator) {
-        switch (*self) {
-            Rom.Gba => |gen3_rom| gen3_rom.destroy(allocator),
-            Rom.Nds => |nds_rom|  nds_rom.destroy(allocator),
-        }
-    }
-};
-
-error NotARom;
-fn loadRom(file_path: []const u8, allocator: &mem.Allocator) -> %Rom {
     gba_blk: {
-        var rom_file = try io.File.openRead(file_path, null);
-        var rom = gen3.Game.fromFile(&rom_file, allocator) catch {
-            rom_file.close();
-            break :gba_blk;
-        };
-        rom_file.close();
+        var rom_file = try io.File.openRead(input_file, null);
+        //defer rom_file.close(); error: unreachable code
+        var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
-        return Rom { .Gba = rom };
+        game.validateData() catch |err| {
+            try stdout_stream.print("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
+
+            switch (err) {
+                error.NoBulbasaurFound => {
+                    try stdout_stream.print("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
+                    try stdout_stream.print("Note: If you are randomizing a hacked version, then .\n");
+                },
+                else => {}
+            }
+        };
+
+        var random = rand.Rand.init(0);
+        try randomizer.randomize(game, options, &random, allocator);
+
+        var file_stream = io.FileOutStream.init(&out_file);
+        game.writeToStream(&file_stream.stream) catch |err| {
+            try stdout_stream.print("Unable to write gba to {}.\n", output_file);
+            return err;
+        };
+
+        return;
     }
 
     nds_blk: {
-        var rom_file = try io.File.openRead(file_path, null);
-        var rom = nds.Rom.fromFile(&rom_file, allocator) catch {
-            rom_file.close();
-            break :nds_blk;
-        };
-        rom_file.close();
+        var rom_file = try io.File.openRead(input_file, null);
+        //defer rom_file.close(); error: unreachable code
+        var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
 
-        return Rom { .Nds = rom };
+        nds_rom.writeToFile(&out_file) catch |err| {
+            try stdout_stream.print("Unable to write nds to {}\n", output_file);
+            return err;
+        };
+
+        return;
     }
 
+    try stdout_stream.print("Rom type not supported (yet)\n");
     return error.NotARom;
 }
