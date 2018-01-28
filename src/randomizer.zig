@@ -242,11 +242,12 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
             trainer_pokemon.level.set(new_level);
         }
 
-        switch (options.ai) {
-            GenericOption.Same => {},
-            GenericOption.Random => trainer.ai.set(random.range(u32, 0, @maxValue(u32))),
-            GenericOption.Best => trainer.ai.set(@maxValue(u32)),
-        }
+        // TODO: Trainers flee with certain ai's?
+        //switch (options.ai) {
+        //    GenericOption.Same => {},
+        //    GenericOption.Random => trainer.ai.set(random.range(u32, 0, @maxValue(u32))),
+        //    GenericOption.Best => trainer.ai.set(@maxValue(u32)),
+        //}
     }
 }
 
