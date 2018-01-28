@@ -33,7 +33,9 @@ fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) %void {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.SameType;
     } else if (mem.eql(u8, str, "type-themed")) {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.TypeThemed;
-    } else {
+    } else if (mem.eql(u8, str, "legendaries")) {
+        op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Legendaries;
+    }  else {
         return error.InvalidOptions;
     }
 }
@@ -104,7 +106,7 @@ const program_arguments = comptime []Arg {
         .long("output")
         .takesValue(true),
     Arg.init(setTrainerPokemon)
-        .help("How trainer Pokémons should be randomized. Options: [same, random, same-type, type-themed].")
+        .help("How trainer Pokémons should be randomized. Options: [same, random, same-type, type-themed, legendaries].")
         .long("trainer-pokemon")
         .takesValue(true),
     Arg.init(setTrainerSameStrength)

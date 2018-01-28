@@ -34,6 +34,9 @@ pub const Options = struct {
             /// Each trainer will have a type trainer_theme, and will be given random
             /// Pokémons from that type.
             TypeThemed,
+
+            /// All trainers will be given only random legendary Pokémons
+            Legendaries,
         };
 
         pub const HeldItems = enum {
@@ -203,6 +206,10 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                     const new_pokemon = try getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, pokemons, random, allocator);
                     trainer_pokemon.species.set(new_pokemon);
                 },
+                Options.Trainer.Pokemon.Legendaries => {
+                    const new_pokemon = try getRandomTrainerPokemon(game, curr_pokemon, options.same_total_stats, @typeOf(*game).legendaries, random, allocator);
+                    trainer_pokemon.species.set(new_pokemon);
+                }
             }
 
             switch (@typeOf(*game)) {

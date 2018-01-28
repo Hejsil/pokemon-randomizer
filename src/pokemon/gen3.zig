@@ -208,6 +208,17 @@ const bulbasaur_fingerprint = []u8 {
 };
 
 pub const Game = struct {
+    const legendaries = []u16 {
+        0x090, 0x091, 0x092, // Articuno, Zapdos, Moltres
+        0x096, 0x097,        // Mewtwo, Mew
+        0x0F3, 0x0F4, 0x0F5, // Raikou, Entei, Suicune
+        0x0F9, 0x0FA, 0x0FB, // Lugia, Ho-Oh, Celebi
+        0x191, 0x192, 0x193, // Regirock, Regice, Registeel
+        0x194, 0x195, 0x196, // Kyogre, Groudon, Rayquaza
+        0x197, 0x198,        // Latias, Latios
+        0x199, 0x19A,        // Jirachi, Deoxys
+    };
+
     offsets: &const Offsets,
     data: []u8,
 
