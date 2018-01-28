@@ -230,10 +230,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 },
                 else => unreachable,
             }
-
             // TODO: 
-            //moves: MoveSet,
-            //ai: GenericOption,
             //iv: GenericOption,
             //ev: GenericOption,
 
@@ -244,6 +241,12 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 break :blk u8(math.round(res));
             };
             trainer_pokemon.level.set(new_level);
+        }
+
+        switch (options.ai) {
+            GenericOption.Same => {},
+            GenericOption.Random => trainer.ai.set(random.range(u32, 0, @maxValue(u32))),
+            GenericOption.Best => trainer.ai.set(@maxValue(u32)),
         }
     }
 }
