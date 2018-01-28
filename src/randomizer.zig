@@ -46,14 +46,15 @@ pub const Options = struct {
             /// Trainer Pokémon held items will not change.
             Same,
 
+            // TODO: Figure out how to implement these:
             /// Trainer Pokémons will have random held items.
-            Random,
+            //Random,
 
             /// Trainer Pokémons will have random, but useful, held items.
-            RandomUseful,
+            //RandomUseful,
 
             /// Trainer Pokémons will hold the best held items in the game.
-            RandomBest,
+            //RandomBest,
         };
 
         pub const Moves = enum {
@@ -281,15 +282,15 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
             pokemon.held_item.set(0);
         },
         Options.Trainer.HeldItems.Same => {},
-        Options.Trainer.HeldItems.Random => {
-            // TODO:
-        },
-        Options.Trainer.HeldItems.RandomUseful => {
-            // TODO:
-        },
-        Options.Trainer.HeldItems.RandomBest => {
-            // TODO:
-        },
+        //Options.Trainer.HeldItems.Random => {
+        //    // TODO:
+        //},
+        //Options.Trainer.HeldItems.RandomUseful => {
+        //    // TODO:
+        //},
+        //Options.Trainer.HeldItems.RandomBest => {
+        //    // TODO:
+        //},
     }
 }
 

@@ -46,12 +46,12 @@ fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) %void {
         op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
     } else if (mem.eql(u8, str, "same")) {
         op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Same;
-    } else if (mem.eql(u8, str, "random")) {
-        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Random;
-    } else if (mem.eql(u8, str, "random-useful")) {
-        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomUseful;
-    } else if (mem.eql(u8, str, "random-best")) {
-        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomBest;
+    //} else if (mem.eql(u8, str, "random")) {
+    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Random;
+    //} else if (mem.eql(u8, str, "random-useful")) {
+    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomUseful;
+    //} else if (mem.eql(u8, str, "random-best")) {
+    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomBest;
     } else {
         return error.InvalidOptions;
     }
