@@ -226,8 +226,12 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 },
                 else => unreachable,
             }
-            // TODO: 
-            //iv: GenericOption,
+
+            switch (options.iv) {
+                GenericOption.Same => {},
+                GenericOption.Random => trainer_pokemon.iv.set(random.range(u16, 0, @maxValue(u16))),
+                GenericOption.Best => trainer_pokemon.iv.set(@maxValue(u16)),
+            }
 
             const new_level = blk: {
                 var res = f64(trainer_pokemon.level.get()) * options.level_modifier;
