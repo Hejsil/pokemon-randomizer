@@ -71,7 +71,6 @@ fn setTrainerMoves(op: &randomizer.Options, str: []const u8) %void {
     }
 }
 
-fn setTrainerAi(op: &randomizer.Options, str: []const u8) %void { op.trainer.ai = try parseGenericOption(str); }
 fn setTrainerIv(op: &randomizer.Options, str: []const u8) %void { op.trainer.iv = try parseGenericOption(str); }
 
 fn parseGenericOption(str: []const u8) %randomizer.GenericOption {
@@ -119,10 +118,6 @@ const program_arguments = comptime []Arg {
     Arg.init(setTrainerMoves)
         .help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].")
         .long("trainer-moves")
-        .takesValue(true),
-    Arg.init(setTrainerAi)
-        .help("How trainer ai should be randomized. Options: [same, random, best].")
-        .long("trainer-ai")
         .takesValue(true),
     Arg.init(setTrainerIv)
         .help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].")

@@ -85,9 +85,6 @@ pub const Options = struct {
         /// Which moves each trainer Pokémon will be given.
         moves: Moves,
 
-        /// How the trainer AI should be randomized.
-        ai: GenericOption,
-
         /// How the trainer Pokémon ivs should be randomized.
         iv: GenericOption,
 
@@ -100,7 +97,6 @@ pub const Options = struct {
                 .same_total_stats = false,
                 .held_items = HeldItems.Same,
                 .moves = Moves.Same,
-                .ai = GenericOption.Same,
                 .iv = GenericOption.Same,
                 .level_modifier = 1.0,
             };
@@ -248,13 +244,6 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
             };
             trainer_pokemon.level.set(new_level);
         }
-
-        // TODO: Trainers flee with certain ai's?
-        //switch (options.ai) {
-        //    GenericOption.Same => {},
-        //    GenericOption.Random => trainer.ai.set(random.range(u32, 0, @maxValue(u32))),
-        //    GenericOption.Best => trainer.ai.set(@maxValue(u32)),
-        //}
     }
 }
 
