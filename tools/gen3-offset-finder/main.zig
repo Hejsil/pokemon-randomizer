@@ -24,6 +24,7 @@ pub fn main() %void {
     defer os.argsFree(allocator, args);
 
     if (args.len != 2) {
+        try stdout_stream.print("No file was provided.\n");
         return error.NoFileInArguments;
     }
 
@@ -86,14 +87,14 @@ pub fn main() %void {
                 null,
 
                 // ARCHIE_1 trainer bytes
-                0x00, 0x02, 0x06, 0x46, null, null, null, null, null, null, null, null, 0x00,
+                0x00, 0x02, 0x06, 0x46, 0xbb, 0xcc, 0xbd, 0xc2, 0xc3, 0xbf, 0xff, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x16, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, null, null, null,
                 null,
             },
             []?u8 {
                 // EUGENE trainer bytes
-                0x00, 0x21, 0x0B, 0x06, null, null, null, null, null, null, null, null, 0x00,
+                0x00, 0x21, 0x0B, 0x06, 0xbd, 0xc6, 0xbb, 0xcf, 0xbe, 0xbf, 0xff, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, null, null, null,
                 null,
@@ -165,6 +166,8 @@ pub fn main() %void {
     // items
     // tms
 
+    try stdout_stream.print("game_title: {}\n", header.game_title);
+    try stdout_stream.print("gamecode: {}\n", header.gamecode);
     try stdout_stream.print(".trainers       = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
     try stdout_stream.print(".moves          = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
     try stdout_stream.print(".tm_hm_learnset = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
