@@ -55,7 +55,7 @@ pub fn main() %void {
 
     const trainers = switch (version) {
         // https://github.com/pret/pokeemerald/blob/master/data/trainers.inc
-        Version.Emerald => findOffset(u8, data,
+        Version.Emerald => findOffsetUsingPattern(u8, data,
             []?u8 {
                 // Dummy trainer bytes
                 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -78,7 +78,7 @@ pub fn main() %void {
                 null,
             }),
         // https://github.com/pret/pokeruby/blob/master/data/trainers.inc
-        Version.Ruby, Version.Shappire => findOffset(u8, data,
+        Version.Ruby, Version.Shappire => findOffsetUsingPattern(u8, data,
             []?u8 {
                 // Dummy trainer bytes
                 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -106,7 +106,7 @@ pub fn main() %void {
     };
 
     // https://github.com/pret/pokeemerald/blob/master/data/battle_moves.inc
-    const moves = findOffset(u8, data,
+    const moves = findOffsetUsingPattern(u8, data,
         []?u8 {
             // Dummy bytes
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -123,7 +123,7 @@ pub fn main() %void {
     };
 
     // https://github.com/pret/pokeemerald/blob/master/data/tm_hm_learnsets.inc
-    const tm_hm_learnset = findOffset(u8, data,
+    const tm_hm_learnset = findOffsetUsingPattern(u8, data,
         []?u8 {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Dummy Pokémon
             0x20, 0x07, 0x35, 0x84, 0x08, 0x1e, 0xe4, 0x00, // Bulbasaur
@@ -140,7 +140,7 @@ pub fn main() %void {
         return error.UnableToFindOffset;
     };
 
-    const base_stats = findOffset(u8, data,
+    const base_stats = findOffsetUsingPattern(u8, data,
         []?u8 {
             // Dummy mon bytes
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -159,8 +159,36 @@ pub fn main() %void {
         return error.UnableToFindOffset;
     };
 
+    const zero_evo = []?u8 { 0x00 } ** 8;
+    const zero_evo_table = zero_evo ** 5;
+    const evolution_table = findOffsetUsingPattern(u8, data,
+        // Dummy mon
+        zero_evo_table ++
+
+        // Bulbasaur
+        []?u8 { 0x04, 0x00, 0x10, 0x00, 0x02, 0x00, 0x00, 0x00, } ++
+        zero_evo ** 4 ++
+
+        // Ivysaur
+        []?u8 { 0x04, 0x00, 0x20, 0x00, 0x03, 0x00, 0x00, 0x00, } ++
+        zero_evo ** 4,
+        // ---------------------------------------------------------------------
+        // Beldum
+        []?u8 { 0x04, 0x00, 0x14, 0x00, 0x8F, 0x01, 0x00, 0x00, } ++
+        zero_evo ** 4 ++
+
+        // Metang
+        []?u8 { 0x04, 0x00, 0x2D, 0x00, 0x90, 0x01, 0x00, 0x00, } ++
+        zero_evo ** 4 ++
+
+        // Metagross, Regirock, Regice, Registeel, Kyogre, Groudon, Rayquaza
+        // Latias, Latios, Jirachi, Deoxys, Chimecho
+        zero_evo_table ** 12) ?? {
+        try stdout_stream.print("Unable to find evolution_table offset.\n");
+        return error.UnableToFindOffset;
+    };
+
     // TODO:
-    // evolution_table
     // level_up_learnset_pointers
     // hms
     // items
@@ -168,10 +196,11 @@ pub fn main() %void {
 
     try stdout_stream.print("game_title: {}\n", header.game_title);
     try stdout_stream.print("gamecode: {}\n", header.gamecode);
-    try stdout_stream.print(".trainers       = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
-    try stdout_stream.print(".moves          = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
-    try stdout_stream.print(".tm_hm_learnset = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
-    try stdout_stream.print(".base_stats     = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
+    try stdout_stream.print(".trainers        = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
+    try stdout_stream.print(".moves           = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
+    try stdout_stream.print(".tm_hm_learnset  = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
+    try stdout_stream.print(".base_stats      = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
+    try stdout_stream.print(".evolution_table = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", evolution_table.start, evolution_table.end);
 }
 
 const Version = enum {
@@ -184,7 +213,7 @@ const Offset = struct {
 };
 
 /// Finds the start and end index based on a start and end pattern.
-fn findOffset(comptime T: type, data: []const T, start: []const ?T, end: []const ?T) ?Offset {
+fn findOffsetUsingPattern(comptime T: type, data: []const T, start: []const ?T, end: []const ?T) ?Offset {
     const start_index = indexOfPattern(T, data, 0, start) ?? return null;
     const end_index = indexOfPattern(T, data, start_index, end) ?? return null;
 
