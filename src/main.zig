@@ -112,7 +112,7 @@ const program_arguments = comptime []Arg {
         .help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.")
         .long("trainer-same-total-stats"),
     Arg.init(setTrainerHeldItems)
-        .help("How trainer Pokémon held items should be randomized. Options: [none, same, random, random-useful, random-best].")
+        .help("How trainer Pokémon held items should be randomized. Options: [none, same].")
         .long("trainer-held-items")
         .takesValue(true),
     Arg.init(setTrainerMoves)
