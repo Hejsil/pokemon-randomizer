@@ -79,7 +79,7 @@ pub fn main() %void {
         // TODO: Other games
         else => unreachable,
     } ?? {
-        try stdout_stream.print("Unable to find trainers offset\n");
+        try stdout_stream.print("Unable to find trainers offset.\n");
         return error.UnableToFindOffset;
     };
 
@@ -96,11 +96,27 @@ pub fn main() %void {
             // Psycho Boost bytes
             0xcc, 0x8c, 0x0e, 0x5a, 0x05, 0x64, 0x00, 0x00, 0x32, 0x00, 0x00, 0x00,
         }) ?? {
-        try stdout_stream.print("Unable to find moves offset\n");
+        try stdout_stream.print("Unable to find moves offset.\n");
         return error.UnableToFindOffset;
     };
 
-    // TODO: tm_hm_learnset
+    // https://github.com/pret/pokeemerald/blob/master/data/tm_hm_learnsets.inc
+    const tm_hm_learnset = findOffset(u8, data,
+        []?u8 {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Dummy Pokémon
+            0x20, 0x07, 0x35, 0x84, 0x08, 0x1e, 0xe4, 0x00, // Bulbasaur
+            0x20, 0x07, 0x35, 0x84, 0x08, 0x1e, 0xe4, 0x00, // Ivysaur
+            0x30, 0x47, 0x35, 0x86, 0x08, 0x1e, 0xe4, 0x00, // Venusaur
+        },
+        []?u8 {
+            0x3e, 0xd6, 0xbb, 0xb7, 0x93, 0x5e, 0x5c, 0x03, // Latios
+            0x2c, 0xc6, 0x9b, 0xb5, 0x93, 0x8e, 0x40, 0x00, // Jirachi
+            0x2d, 0xde, 0xbb, 0xf5, 0xc3, 0x8f, 0xe5, 0x00, // Deoxys
+            0x28, 0x8e, 0x1b, 0xb4, 0x03, 0x9f, 0x41, 0x00, // Chimecho
+        }) ?? {
+        try stdout_stream.print("Unable to find tm_hm_learnset offset.\n");
+        return error.UnableToFindOffset;
+    };
 
     const base_stats = findOffset(u8, data,
         []?u8 {
@@ -117,7 +133,7 @@ pub fn main() %void {
             0x41, 0x32, 0x46, 0x41, 0x5f, 0x50, 0x0e, 0x0e, 0x2d, 0x93, 0x00, 0x05, 0x00, 0x00,
             0x00, 0x00, 0x7f, 0x19, 0x46, 0x04, 0x0b, 0x0b, 0x1a, 0x00, 0x00, 0x01, 0x00, 0x00,
         }) ?? {
-        try stdout_stream.print("Unable to find base_stats offset\n");
+        try stdout_stream.print("Unable to find base_stats offset.\n");
         return error.UnableToFindOffset;
     };
 
@@ -128,9 +144,10 @@ pub fn main() %void {
     // items
     // tms
 
-    try stdout_stream.print(".trainers   = {{ .start = 0x{x}, .end = 0x{x}, }},\n", trainers.start, trainers.end);
-    try stdout_stream.print(".moves      = {{ .start = 0x{x}, .end = 0x{x}, }},\n", moves.start, moves.end);
-    try stdout_stream.print(".base_stats = {{ .start = 0x{x}, .end = 0x{x}, }},\n", base_stats.start, base_stats.end);
+    try stdout_stream.print(".trainers       = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
+    try stdout_stream.print(".moves          = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
+    try stdout_stream.print(".tm_hm_learnset = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
+    try stdout_stream.print(".base_stats     = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
 }
 
 const Version = enum {
