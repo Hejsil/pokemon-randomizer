@@ -13,14 +13,15 @@ const assert = debug.assert;
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
 //     * Handle "--something=VALUE"
-//     * Special arguments, like "help", should be able to ignore required arguments.
 
 pub fn Arg(comptime T: type) type { return struct {
     const Self = this;
 
+    pub const Kind = enum { Optional, Required, IgnoresRequired };
+
     help_message: []const u8,
     handler: fn(&T, []const u8) %void,
-    is_required: bool,
+    arg_kind: Kind,
     takes_value: bool,
     short_arg: ?u8,
     long_arg:  ?[]const u8,
@@ -29,7 +30,7 @@ pub fn Arg(comptime T: type) type { return struct {
         return Self {
             .help_message = "",
             .handler = handler,
-            .is_required = false,
+            .arg_kind = Kind.Optional,
             .takes_value = false,
             .short_arg = null,
             .long_arg = null,
@@ -56,8 +57,8 @@ pub fn Arg(comptime T: type) type { return struct {
         return res;
     }
 
-    pub fn required(self: &const Self, b: bool) Self {
-        var res = *self; res.is_required = b;
+    pub fn kind(self: &const Self, k: Kind) Self {
+        var res = *self; res.arg_kind = k;
         return res;
     }
 };}
@@ -82,7 +83,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
     {
         var required_index : usize = 0;
         for (options) |option, i| {
-            if (option.is_required) {
+            if (option.arg_kind == Arg(T).Kind.Required) {
                 required = bits.set(u128, required, u7(required_index), true);
                 required_index += 1;
             }
@@ -114,9 +115,16 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
 
                     try option.handler(&result, arg);
 
-                    if (option.is_required) {
-                        required = bits.set(u128, required, u7(required_index), false);
-                        required_index += 1;
+                    switch (option.arg_kind) {
+                        Arg(T).Kind.Required => {
+                            required = bits.set(u128, required, u7(required_index), false);
+                            required_index += 1;
+                        },
+                        Arg(T).Kind.IgnoresRequired => {
+                            required = 0;
+                            required_index += 1;
+                        },
+                        else => {}
                     }
 
                     break :loop;
@@ -136,9 +144,16 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
             const value = args[arg_i];
             try option.handler(&result, value);
 
-            if (option.is_required) {
-                required = bits.set(u128, required, u7(required_index), false);
-                required_index += 1;
+            switch (option.arg_kind) {
+                Arg(T).Kind.Required => {
+                    required = bits.set(u128, required, u7(required_index), false);
+                    required_index += 1;
+                },
+                Arg(T).Kind.IgnoresRequired => {
+                    required = 0;
+                    required_index += 1;
+                },
+                else => {}
             }
 
             break :loop;
@@ -236,7 +251,7 @@ test "clap.parse.Example" {
             .short('r')
             .long("red")
             .takesValue(true)
-            .required(true),
+            .kind(CArg.Kind.Required),
         CArg.init(Color.gFromStr)
             .help("The amount of green in our color")
             .short('g')

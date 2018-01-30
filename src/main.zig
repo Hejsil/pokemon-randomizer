@@ -95,10 +95,11 @@ const program_arguments = comptime []Arg {
     Arg.init(setHelp)
         .help("Display this help and exit.")
         .short('h')
-        .long("help"),
+        .long("help")
+        .kind(Arg.Kind.IgnoresRequired),
     Arg.init(setInFile)
         .help("The rom to randomize.")
-        .required(true),
+        .kind(Arg.Kind.Required),
     Arg.init(setOutFile)
         .help("The place to output the randomized rom.")
         .short('o')
