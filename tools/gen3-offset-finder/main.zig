@@ -188,19 +188,89 @@ pub fn main() %void {
         return error.UnableToFindOffset;
     };
 
+    const level_up_learnset_pointers = blk: {
+        const bulbasaur_levelup = mem.indexOf(u8, data, []u8 {
+                0x21, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x28, 0xE6, 0x32, 0x4A, 0x40, 0xEB, 0x4E, 0x4C, 0x5C, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Bulbasaur levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
+        const ivysaur_levelup = mem.indexOf(u8, data, []u8 {
+                0x21, 0x02, 0x2D, 0x02, 0x49, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x2C, 0xE6, 0x3A, 0x4A, 0x4C, 0xEB, 0x5E, 0x4C, 0x70, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Ivysaur levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
+        const venusaur_levelup = mem.indexOf(u8, data, []u8 {
+                0x21, 0x02, 0x2D, 0x02, 0x49, 0x02, 0x16, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x2C, 0xE6, 0x3A, 0x4A, 0x52, 0xEB, 0x6A, 0x4C, 0x82, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Venusaur levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
+        const jirachi_levelup = mem.indexOf(u8, data, []u8 {
+                0x11, 0x03, 0x5D, 0x02, 0x9C, 0x0A, 0x81, 0x14, 0x0E, 0x1F, 0x5E, 0x28, 0x1F, 0x33, 0x9C, 0x3C, 0x26, 0x46, 0xF8, 0x50, 0x42, 0x5B, 0x61, 0x65, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Jirachi levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
+        // TODO: Deoxys have different moves between FRLG, RUSA and EM
+        const deoxys_levelup = mem.indexOf(u8, data, []u8 {
+                0x2B, 0x02, 0x23, 0x02, 0x65, 0x0A, 0x68, 0x14, 0x1A, 0x1F, 0xE4, 0x28, 0x5E, 0x32, 0x81, 0x3C, 0x61, 0x46, 0x69, 0x50, 0x62, 0x5B, 0xF5, 0x64, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Deoxys levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
+        const chimecho_levelup = mem.indexOf(u8, data, []u8 {
+                0x23, 0x02, 0x2D, 0x0C, 0x36, 0x13, 0x5D, 0x1C, 0x24, 0x22, 0xFD, 0x2C, 0x19, 0x33, 0x95, 0x3C, 0x26, 0x42, 0xD7, 0x4C, 0xDB, 0x52, 0x5E, 0x5C, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Chimecho levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
+        // Store all offsets as LE offsets (This is how they are stored on the rom,
+        // and we wont to work on BE platforms too).
+        const level_up_start = []u32 {
+            // Dummy mon has the same levelup moveset as bulbasaur
+            mem.readIntLE(u32, asConstBytes(u32, u32(bulbasaur_levelup + 0x8000000))),
+            mem.readIntLE(u32, asConstBytes(u32, u32(bulbasaur_levelup + 0x8000000))),
+            mem.readIntLE(u32, asConstBytes(u32, u32(ivysaur_levelup   + 0x8000000))),
+            mem.readIntLE(u32, asConstBytes(u32, u32(venusaur_levelup  + 0x8000000))),
+        };
+
+        const level_up_end = []u32 {
+            mem.readIntLE(u32, asConstBytes(u32, u32(jirachi_levelup  + 0x8000000))),
+            mem.readIntLE(u32, asConstBytes(u32, u32(deoxys_levelup   + 0x8000000))),
+            mem.readIntLE(u32, asConstBytes(u32, u32(chimecho_levelup + 0x8000000))),
+        };
+
+        break :blk findOffset(u8, data, ([]const u8)(level_up_start[0..]), ([]const u8)(level_up_end[0..])) ?? {
+            try stdout_stream.print("Unable to find level_up_learnset_pointers offset.\n");
+            return error.UnableToFindOffset;
+        };
+    };
+
     // TODO:
-    // level_up_learnset_pointers
     // hms
     // items
     // tms
 
     try stdout_stream.print("game_title: {}\n", header.game_title);
     try stdout_stream.print("gamecode: {}\n", header.gamecode);
-    try stdout_stream.print(".trainers        = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
-    try stdout_stream.print(".moves           = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
-    try stdout_stream.print(".tm_hm_learnset  = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
-    try stdout_stream.print(".base_stats      = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
-    try stdout_stream.print(".evolution_table = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", evolution_table.start, evolution_table.end);
+    try stdout_stream.print(".trainers                   = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
+    try stdout_stream.print(".moves                      = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
+    try stdout_stream.print(".tm_hm_learnset             = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
+    try stdout_stream.print(".base_stats                 = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
+    try stdout_stream.print(".evolution_table            = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", evolution_table.start, evolution_table.end);
+    try stdout_stream.print(".level_up_learnset_pointers = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", level_up_learnset_pointers.start, level_up_learnset_pointers.end);
+}
+
+fn asConstBytes(comptime T: type, value: &const T) []const u8 {
+    return ([]const u8)(value[0..1]);
 }
 
 const Version = enum {
