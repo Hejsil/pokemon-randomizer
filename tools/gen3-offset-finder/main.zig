@@ -210,18 +210,17 @@ pub fn main() %void {
             return error.UnableToFindOffset;
         };
 
+        const latios_levelup = mem.indexOf(u8, data, []u8 {
+            0x95, 0x02, 0x06, 0x0B, 0x0E, 0x15, 0xDB, 0x1E, 0xE1, 0x28, 0xB6, 0x32, 0x1F, 0x3D, 0x27, 0x47, 0x5E, 0x50, 0x69, 0x5A, 0x5D, 0x65, 0xFF, 0xFF,
+            }) ?? {
+            try stdout_stream.print("Unable to find Latios levelup learnset.\n");
+            return error.UnableToFindOffset;
+        };
+
         const jirachi_levelup = mem.indexOf(u8, data, []u8 {
                 0x11, 0x03, 0x5D, 0x02, 0x9C, 0x0A, 0x81, 0x14, 0x0E, 0x1F, 0x5E, 0x28, 0x1F, 0x33, 0x9C, 0x3C, 0x26, 0x46, 0xF8, 0x50, 0x42, 0x5B, 0x61, 0x65, 0xFF, 0xFF,
             }) ?? {
             try stdout_stream.print("Unable to find Jirachi levelup learnset.\n");
-            return error.UnableToFindOffset;
-        };
-
-        // TODO: Deoxys have different moves between FRLG, RUSA and EM
-        const deoxys_levelup = mem.indexOf(u8, data, []u8 {
-                0x2B, 0x02, 0x23, 0x02, 0x65, 0x0A, 0x68, 0x14, 0x1A, 0x1F, 0xE4, 0x28, 0x5E, 0x32, 0x81, 0x3C, 0x61, 0x46, 0x69, 0x50, 0x62, 0x5B, 0xF5, 0x64, 0xFF, 0xFF,
-            }) ?? {
-            try stdout_stream.print("Unable to find Deoxys levelup learnset.\n");
             return error.UnableToFindOffset;
         };
 
@@ -234,21 +233,31 @@ pub fn main() %void {
 
         // Store all offsets as LE offsets (This is how they are stored on the rom,
         // and we wont to work on BE platforms too).
-        const level_up_start = []u32 {
+        const bulbasaur_pattern = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(bulbasaur_levelup + 0x8000000))));
+        const ivysaur_pattern   = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(ivysaur_levelup   + 0x8000000))));
+        const venusaur_pattern  = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(venusaur_levelup  + 0x8000000))));
+
+        const latios_pattern   = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(latios_levelup   + 0x8000000))));
+        const jirachi_pattern  = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(jirachi_levelup  + 0x8000000))));
+        const chimecho_pattern = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(chimecho_levelup + 0x8000000))));
+
+        const level_up_start = []?u8 {
             // Dummy mon has the same levelup moveset as bulbasaur
-            mem.readIntLE(u32, asConstBytes(u32, u32(bulbasaur_levelup + 0x8000000))),
-            mem.readIntLE(u32, asConstBytes(u32, u32(bulbasaur_levelup + 0x8000000))),
-            mem.readIntLE(u32, asConstBytes(u32, u32(ivysaur_levelup   + 0x8000000))),
-            mem.readIntLE(u32, asConstBytes(u32, u32(venusaur_levelup  + 0x8000000))),
+            bulbasaur_pattern[0], bulbasaur_pattern[1], bulbasaur_pattern[2], bulbasaur_pattern[3],
+            bulbasaur_pattern[0], bulbasaur_pattern[1], bulbasaur_pattern[2], bulbasaur_pattern[3],
+            ivysaur_pattern[0],   ivysaur_pattern[1],   ivysaur_pattern[2],   ivysaur_pattern[3],
+            venusaur_pattern[0],  venusaur_pattern[1],  venusaur_pattern[2],  venusaur_pattern[3],
         };
 
-        const level_up_end = []u32 {
-            mem.readIntLE(u32, asConstBytes(u32, u32(jirachi_levelup  + 0x8000000))),
-            mem.readIntLE(u32, asConstBytes(u32, u32(deoxys_levelup   + 0x8000000))),
-            mem.readIntLE(u32, asConstBytes(u32, u32(chimecho_levelup + 0x8000000))),
+        const level_up_end = []?u8 {
+            latios_pattern[0],   latios_pattern[1],   latios_pattern[2],   latios_pattern[3],
+            jirachi_pattern[0],  jirachi_pattern[1],  jirachi_pattern[2],  jirachi_pattern[3],
+            // Deoxys have different moves between FRLG, RUSA and EM
+            null,                null,                null,                null,
+            chimecho_pattern[0], chimecho_pattern[1], chimecho_pattern[2], chimecho_pattern[3],
         };
 
-        break :blk findOffset(u8, data, ([]const u8)(level_up_start[0..]), ([]const u8)(level_up_end[0..])) ?? {
+        break :blk findOffsetUsingPattern(u8, data, level_up_start, level_up_end) ?? {
             try stdout_stream.print("Unable to find level_up_learnset_pointers offset.\n");
             return error.UnableToFindOffset;
         };
