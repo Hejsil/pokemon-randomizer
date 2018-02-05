@@ -294,7 +294,27 @@ pub fn main() %void {
             0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x01, 0x01, 0x05, 0x04, null, null, null, null,
             0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
         }),
-        Version.Ruby, Version.Shappire => unreachable,
+        Version.Ruby, Version.Shappire => findOffsetUsingPattern(u8, data,
+        []?u8 {
+            // ????????
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
+            // MASTER BALL
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x01, 0x00,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x02, 0x00, null, null, null, null,
+            0x02, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
+        },
+        []?u8 {
+            // ????????
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
+            // ????????
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
+        }),
         else => unreachable,
     } ?? {
         try stdout_stream.print("Unable to find items offset.\n");
