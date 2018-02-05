@@ -328,14 +328,14 @@ pub fn main() %void {
 
     try stdout_stream.print("game_title: {}\n", header.game_title);
     try stdout_stream.print("gamecode: {}\n", header.gamecode);
-    try stdout_stream.print(".trainers                   = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", trainers.start, trainers.end);
-    try stdout_stream.print(".moves                      = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", moves.start, moves.end);
-    try stdout_stream.print(".tm_hm_learnset             = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
-    try stdout_stream.print(".base_stats                 = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
-    try stdout_stream.print(".evolution_table            = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", evolution_table.start, evolution_table.end);
-    try stdout_stream.print(".level_up_learnset_pointers = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", level_up_learnset_pointers.start, level_up_learnset_pointers.end);
-    try stdout_stream.print(".hm                         = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", hms_offsets.start, hms_offsets.end);
-    try stdout_stream.print(".items                      = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", items.start, items.end);
+    try stdout_stream.print(".trainers                   = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", trainers.start, trainers.end);
+    try stdout_stream.print(".moves                      = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", moves.start, moves.end);
+    try stdout_stream.print(".tm_hm_learnset             = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
+    try stdout_stream.print(".base_stats                 = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", base_stats.start, base_stats.end);
+    try stdout_stream.print(".evolution_table            = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", evolution_table.start, evolution_table.end);
+    try stdout_stream.print(".level_up_learnset_pointers = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", level_up_learnset_pointers.start, level_up_learnset_pointers.end);
+    try stdout_stream.print(".hm                         = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", hms_offsets.start, hms_offsets.end);
+    try stdout_stream.print(".items                      = {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", items.start, items.end);
 }
 
 fn asConstBytes(comptime T: type, value: &const T) []const u8 {
