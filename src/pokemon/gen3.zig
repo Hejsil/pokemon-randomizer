@@ -256,6 +256,16 @@ pub const Game = struct {
         return res;
     }
 
+    pub fn writeToStream(game: &const Game, stream: &io.OutStream) %void {
+        try game.header.validate();
+        try stream.write(game.data);
+    }
+
+    pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
+        allocator.free(game.data);
+        allocator.destroy(game);
+    }
+
     // TODO: When we are able to allocate at comptime, construct a HashMap
     //       that maps struct { game_title: []const u8, gamecode: []const u8, } -> Offsets
     // game_title: POKEMON EMER
@@ -313,16 +323,6 @@ pub const Game = struct {
             return error.NoBulbasaurFound;
     }
 
-    pub fn writeToStream(game: &const Game, stream: &io.OutStream) %void {
-        try game.header.validate();
-        try stream.write(game.data);
-    }
-
-    pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
-        allocator.free(game.data);
-        allocator.destroy(game);
-    }
-
     pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
         return utils.ptrAt(BasePokemon, game.base_stats, index);
     }
@@ -336,21 +336,13 @@ pub const Game = struct {
 
         const offset = trainer.party_offset.get() - 0x8000000;
 
-        switch (trainer.party_type) {
-            PartyType.Standard => {
-                return getBasePartyMember(PartyMember, game.data, index, offset, trainer.party_size.get());
-            },
-            PartyType.WithMoves => {
-                return getBasePartyMember(PartyMemberWithMoves, game.data, index, offset, trainer.party_size.get());
-            },
-            PartyType.WithHeld => {
-                return getBasePartyMember(PartyMemberWithHeld, game.data, index, offset, trainer.party_size.get());
-            },
-            PartyType.WithBoth => {
-                return getBasePartyMember(PartyMemberWithBoth, game.data, index, offset, trainer.party_size.get());
-            },
-            else => return null,
-        }
+        return switch (trainer.party_type) {
+            PartyType.Standard =>  getBasePartyMember(PartyMember, game.data, index, offset, trainer.party_size.get()),
+            PartyType.WithMoves => getBasePartyMember(PartyMemberWithMoves, game.data, index, offset, trainer.party_size.get()),
+            PartyType.WithHeld =>  getBasePartyMember(PartyMemberWithHeld, game.data, index, offset, trainer.party_size.get()),
+            PartyType.WithBoth =>  getBasePartyMember(PartyMemberWithBoth, game.data, index, offset, trainer.party_size.get()),
+            else => null,
+        };
     }
 
     fn getBasePartyMember(comptime TMember: type, data: []u8, index: usize, offset: usize, size: usize) ?&PartyMemberBase {
@@ -362,13 +354,8 @@ pub const Game = struct {
         return &pokemon.base;
     }
 
-    pub fn getMove(game: &const Game, index: usize) ?&Move {
-        return utils.ptrAt(Move, game.moves, index);
-    }
-
-    pub fn getMoveCount(game: &const Game) usize {
-        return game.moves.len;
-    }
+    pub fn getMove(game: &const Game, index: usize) ?&Move { return utils.ptrAt(Move, game.moves, index); }
+    pub fn getMoveCount(game: &const Game) usize { return game.moves.len; }
 
     pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
         const offset = blk: {
@@ -392,13 +379,8 @@ pub const Game = struct {
         return ([]LevelUpMove)(game.data[offset..end]);
     }
 
-    pub fn getTms(game: &const Game) []Little(u16) {
-        return game.tms;
-    }
-
-    pub fn getHms(game: &const Game) []Little(u16) {
-        return game.hms;
-    }
+    pub fn getTms(game: &const Game) []Little(u16) { return game.tms; }
+    pub fn getHms(game: &const Game) []Little(u16) { return game.hms; }
 
     pub fn getTmHmLearnset(game: &const Game, species: usize) ?&Little(u64) {
         return utils.ptrAt(Little(u64), game.tm_hm_learnset, species);
