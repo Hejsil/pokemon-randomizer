@@ -184,19 +184,6 @@ const Offsets = struct {
     tms:                        Offset,
 };
 
-// TODO: WIP https://github.com/pret/pokeemerald/blob/master/data/data2c.s
-const emerald_offsets = Offsets {
-    .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8 },
-    .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C },
-    .tm_hm_learnset             = Offset { .start = 0x031E898, .end = 0x031F578 },
-    .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC },
-    .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C },
-    .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
-    .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC },
-    .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C },
-    .tms                        = Offset { .start = 0x0615B94, .end = 0x0615C08 },
-};
-
 error InvalidRomSize;
 error InvalidGen3PokemonHeader;
 error NoBulbasaurFound;
@@ -269,20 +256,54 @@ pub const Game = struct {
         return res;
     }
 
+    // TODO: When we are able to allocate at comptime, construct a HashMap
+    //       that maps struct { game_title: []const u8, gamecode: []const u8, } -> Offsets
+    // game_title: POKEMON EMER
+    // gamecode: BPEE
+    const emerald_us_offsets = Offsets {
+        .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8, },
+        .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C, },
+        .tm_hm_learnset             = Offset { .start = 0x031E898, .end = 0x031F578, },
+        .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC, },
+        .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C, },
+        .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC, },
+        .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC, },
+        .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C, },
+        .tms                        = Offset { .start = 0x0615B94, .end = 0x0615C08, },
+    };
+
+    // game_title: POKEMON RUBY
+    // gamecode: AXVE
+    const ruby_us_offsets = Offsets {
+        .trainers                   = Offset { .start = 0x01F0514, .end = 0x01F3A0C, },
+        .moves                      = Offset { .start = 0x01FB144, .end = 0x01FC1E8, },
+        .tm_hm_learnset             = Offset { .start = 0x01FD108, .end = 0x01FDDE8, },
+        .base_stats                 = Offset { .start = 0x01FEC30, .end = 0x0201940, },
+        .evolution_table            = Offset { .start = 0x0203B80, .end = 0x0207BE0, },
+        .level_up_learnset_pointers = Offset { .start = 0x0207BE0, .end = 0x0208250, },
+        .hms                        = Offset { .start = 0x0208332, .end = 0x0208344, },
+        .items                      = Offset { .start = 0x03C5580, .end = 0x03C917C, },
+        .tms                        = Offset { .start = 0x037651C, .end = 0x0376590, },
+    };
+
+    // game_title: POKEMON SAPP
+    // gamecode: AXPE
+    const sapphire_us_offsets = Offsets {
+        .trainers                   = Offset { .start = 0x01F04A4, .end = 0x01F399C, },
+        .moves                      = Offset { .start = 0x01FB0D4, .end = 0x01FC178, },
+        .tm_hm_learnset             = Offset { .start = 0x01FD098, .end = 0x01FDD78, },
+        .base_stats                 = Offset { .start = 0x01FEBC0, .end = 0x02018D0, },
+        .evolution_table            = Offset { .start = 0x0203B10, .end = 0x0207B70, },
+        .level_up_learnset_pointers = Offset { .start = 0x0207B70, .end = 0x02081E0, },
+        .hms                        = Offset { .start = 0x02082C2, .end = 0x02082D4, },
+        .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
+        .tms                        = Offset { .start = 0x03764AC, .end = 0x0376520, },
+    };
+
     fn getOffsets(header: &const gba.Header) %&const Offsets {
-        if (mem.eql(u8, header.game_title, "POKEMON EMER")) {
-            return &emerald_offsets;
-        }
-
-        // TODO:
-        //if (mem.eql(u8, header.game_title, "POKEMON SAPP")) {
-        //
-        //}
-
-        // TODO:
-        //if (mem.eql(u8, header.game_title, "POKEMON RUBY")) {
-        //
-        //}
+        if (mem.eql(u8, header.game_title, "POKEMON EMER")) return &emerald_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON RUBY")) return &ruby_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON SAPP")) return &sapphire_us_offsets;
 
         return error.InvalidGen3PokemonHeader;
     }
