@@ -194,7 +194,7 @@ const emerald_offsets = Offsets {
     .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC },
     .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC },
     .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C },
-    .tms                        = Offset { .start = 0x0616040, .end = 0x06160B4 },
+    .tms                        = Offset { .start = 0x0615B94, .end = 0x0615C08 },
 };
 
 error InvalidRomSize;
