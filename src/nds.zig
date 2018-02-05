@@ -458,6 +458,31 @@ pub const Folder = struct {
         allocator.free(folder.folders);
     }
 
+    pub fn getFile(folder: &const Folder, path: []const u8) ?&File {
+        var splitIter = mem.split(path, "/");
+        var curr_folder = folder;
+        var curr = splitIter.next() ?? return null;
+
+        while (splitIter.next()) |next| : (curr = next) {
+            for (curr_folder.folders) |*sub_folder| {
+                if (mem.eql(u8, curr, sub_folder.name)) {
+                    curr_folder = sub_folder;
+                    break;
+                }
+            } else {
+                return null;
+            }
+        }
+
+        for (curr_folder.files) |*file| {
+            if (mem.eql(u8, curr, file.name)) {
+                return file;
+            }
+        }
+
+        return null;
+    }
+
     fn printIndent(stream: &io.OutStream, indent: usize) %void {
         var i : usize = 0;
         while (i < indent) : (i += 1) {

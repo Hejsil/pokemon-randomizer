@@ -1,12 +1,17 @@
 const nds = @import("../nds.zig");
 
-pub const Game = struct {
-    pub fn fromNds(rom: &nds.Rom, allocator: &mem.Allocator) %&Game {
-        unreachable;
-    }
+error Err;
 
-    pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
-        unreachable;
+pub const Game = struct {
+
+    base_stats: &nds.File,
+
+    pub fn fromRom(rom: &nds.Rom) %Game {
+        const root = &rom.root;
+
+        return Game {
+            .base_stats = root.getFile("a/0/1/6") ?? return error.Err,
+        };
     }
 
     pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {

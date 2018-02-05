@@ -5,6 +5,7 @@ const utils      = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
 const clap       = @import("clap.zig");
 const gen3       = @import("pokemon/gen3.zig");
+const gen5       = @import("pokemon/gen5.zig");
 
 const os    = std.os;
 const debug = std.debug;
@@ -193,6 +194,8 @@ pub fn main() %void {
         var rom_file = try io.File.openRead(input_file, null);
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
+
+        var game = try gen5.Game.fromRom(nds_rom);
 
         nds_rom.writeToFile(&out_file) catch |err| {
             try stdout_stream.print("Unable to write nds to {}\n", output_file);
