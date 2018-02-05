@@ -306,6 +306,10 @@ pub fn main() %void {
             0x02, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
         },
         []?u8 {
+            // HM08
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x5A, 0x01,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x01, 0x00, 0x03, 0x01, null, null, null, null,
+            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
             // ????????
             null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
