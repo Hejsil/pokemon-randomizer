@@ -263,6 +263,12 @@ pub fn main() %void {
         };
     };
 
+    const hms = []u8 { 0x0f, 0x00, 0x13, 0x00, 0x39, 0x00, 0x46, 0x00, 0x94, 0x00, 0xf9, 0x00, 0x7f, 0x00, 0x23, 0x01, 0xff, 0xff, };
+    const hms_start = mem.indexOf(u8, data, hms) ?? {
+        try stdout_stream.print("Unable to find hms offset.\n");
+        return error.UnableToFindOffset;
+    };
+    const hms_offsets = Offset { .start = hms_start, .end = hms_start + hms.len };
     // TODO:
     // hms
     // items
@@ -276,6 +282,7 @@ pub fn main() %void {
     try stdout_stream.print(".base_stats                 = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", base_stats.start, base_stats.end);
     try stdout_stream.print(".evolution_table            = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", evolution_table.start, evolution_table.end);
     try stdout_stream.print(".level_up_learnset_pointers = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", level_up_learnset_pointers.start, level_up_learnset_pointers.end);
+    try stdout_stream.print(".hm                         = {{ .start = 0x{x7}, .end = 0x{x7}, }},\n", hms_offsets.start, hms_offsets.end);
 }
 
 fn asConstBytes(comptime T: type, value: &const T) []const u8 {
