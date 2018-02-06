@@ -679,6 +679,7 @@ pub const Rom = struct {
             fnt_main_table,
             fnt_main_table[0],
             fnt_offset,
+            0,
             root_name
         );
     }
@@ -690,6 +691,7 @@ pub const Rom = struct {
         fnt_main_table: []const FntMainEntry,
         fnt_entry: &const FntMainEntry,
         fnt_offset: usize,
+        img_base: usize,
         name: []u8) %Folder {
 
         try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
@@ -731,15 +733,10 @@ pub const Rom = struct {
             switch (kind) {
                 Kind.File => {
                     if (fat.len <= file_id) return error.InvalidFileId;
+
                     const entry = fat[file_id];
-
-                    // If entries start or end address are 0, then the entry is unused.
-                    // (See File Allocation Table (FAT))
-                    // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
-                    if (entry.start.get() == 0 or entry.end.get() == 0) continue;
-
                     const current_pos = try file.getPos();
-                    const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get(), entry.getSize());
+                    const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get() + img_base, entry.getSize());
                     errdefer allocator.free(file_data);
 
                     try file.seekTo(current_pos);
@@ -766,6 +763,7 @@ pub const Rom = struct {
                             fnt_main_table,
                             fnt_main_table[id.get() & 0x0FFF],
                             fnt_offset,
+                            img_base,
                             child_name
                         )
                     );
@@ -773,7 +771,6 @@ pub const Rom = struct {
                     try file.seekTo(current_pos);
                 }
             }
-
         }
 
         return Folder {
@@ -819,7 +816,7 @@ pub const Rom = struct {
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
         var fs_writer = FSWriter.init(file, overlay_writer.file_offset, fnt_sub_offset, overlay_writer.file_id);
-        try fs_writer.writeFileSystem(self.root, header.fnt_offset.get(), header.fat_offset.get(), fs_info.folders);
+        try fs_writer.writeFileSystem(self.root, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
 
         header.total_used_rom_size = toLittle(u32, alignAddr(u32, fs_writer.file_offset, 4));
         header.device_capacity = blk: {
@@ -963,7 +960,7 @@ const FSWriter = struct {
         };
     }
 
-    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, folder_count: u16) %void {
+    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) %void {
         try writer.file.seekTo(fnt_offset);
         try writer.file.write(utils.asConstBytes(
             FntMainEntry,
@@ -973,10 +970,10 @@ const FSWriter = struct {
                 .parent_id                 = Little(u16).init(folder_count),
             }));
 
-        try writer.writeFolder(root, fnt_offset, fat_offset, writer.folder_id);
+        try writer.writeFolder(root, fnt_offset, fat_offset, img_base, writer.folder_id);
     }
 
-    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, id: u16) %void {
+    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) %void {
         for (folder.files) |f| {
             // Write file to sub fnt
             try writer.file.seekTo(writer.fnt_sub_offset);
@@ -997,7 +994,7 @@ const FSWriter = struct {
             try writer.file.write(
                 utils.asConstBytes(
                     FatEntry,
-                    FatEntry.init(u32(start), u32(size))
+                    FatEntry.init(u32(start - img_base), u32(size))
                 ));
             writer.file_id += 1;
         }
@@ -1032,7 +1029,7 @@ const FSWriter = struct {
                     .parent_id                 = Little(u16).init(id),
                 }));
 
-            try writer.writeFolder(f, fnt_offset, fat_offset, writer.folder_id);
+            try writer.writeFolder(f, fnt_offset, fat_offset, img_base, writer.folder_id);
         }
 
         try writer.file.seekTo(curr_sub_offset);
