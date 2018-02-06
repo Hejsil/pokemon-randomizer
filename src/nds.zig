@@ -427,15 +427,50 @@ pub const IconTitle = packed struct {
     fn is0xFF(char: u8) bool { return char == 0xFF; }
 };
 
-error AddressesOverlap;
+pub const Narc = struct {
+    files: []File,
+
+    pub const NHeader = packed struct {
+        chunk_name: [4]u8,
+        byte_order: Little(u16),
+        version: Little(u16),
+        file_size: Little(u32),
+        chunk_size: Little(u16),
+        following_chuncks: Little(u16),
+    };
+
+    pub const ChunkHeader = packed struct {
+        name: [4]u8,
+        size: Little(u32),
+    };
+
+    pub const FatHeader = packed struct {
+        chunk: ChunkHeader,
+        number_of_files: Little(u16),
+        reserved: Little(u16),
+    };
+};
 
 pub const File = struct {
     name: []u8,
-    data: []u8,
+    @"type": Type,
+
+    pub const Type = union(enum) {
+        Binary: []u8,
+        Narc: Narc,
+    };
 
     pub fn destroy(file: &const File, allocator: &mem.Allocator) void {
         allocator.free(file.name);
-        allocator.free(file.data);
+
+        switch (file.@"type") {
+            Type.Binary => |data| {
+                allocator.free(data);
+            },
+            Type.Narc => |narc| {
+
+            }
+        }
     }
 };
 
@@ -560,7 +595,7 @@ pub const Rom = struct {
 
     // After arm9, there is 12 bytes that might be a nitro footer. If the first
     // 4 bytes are == 0xDEC00621, then it's a nitro_footer.
-    // NOTE: This information was deduced from reading the source code for 
+    // NOTE: This information was deduced from reading the source code for
     //       ndstool and EveryFileExplore. http://problemkaputt.de/gbatek.htm does
     //       not seem to have this information anywhere.
     nitro_footer: [3]Little(u32),
@@ -739,17 +774,11 @@ pub const Rom = struct {
                     if (entry.start.get() == 0 or entry.end.get() == 0) continue;
 
                     const current_pos = try file.getPos();
-                    const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get(), entry.getSize());
-                    errdefer allocator.free(file_data);
+                    const nitro_file = try readFile(file, allocator, entry, child_name);
+                    errdefer nitro_file.destroy(allocator);
 
                     try file.seekTo(current_pos);
-                    try files.append(
-                        File {
-                            .name = child_name,
-                            .data = file_data,
-                        }
-                    );
-
+                    try files.append(nitro_file);
                     file_id += 1;
                 },
                 Kind.Folder => {
@@ -780,6 +809,36 @@ pub const Rom = struct {
             .name    = name,
             .folders = folders.toOwnedSlice(),
             .files   = files.toOwnedSlice()
+        };
+    }
+
+    fn readFile(file: &io.File, allocator: &mem.Allocator, fat: &const FatEntry, name: []u8) %File {
+        narc_read: {
+            const header = try utils.seekToNoAllocRead(Narc.NHeader, file, fat.start.get());
+            if (!mem.eql(u8, header.chunk_name, "NARC"))  break :narc_read;
+            if (header.byte_order.get()        != 0xFFFE) break :narc_read;
+            if (header.version.get()           != 0x0100) break :narc_read;
+            if (header.chunk_size.get()        != 0x0010) break :narc_read;
+            if (header.following_chuncks.get() != 0x0003) break :narc_read;
+
+            const fat_header = try utils.noAllocRead(Narc.FatHeader, file);
+            if (!mem.eql(u8, fat_header.chunk.name, "BTAF")) break :narc_read;
+
+            const fat_table = try utils.allocAndRead(FatEntry, file, allocator, fat_header.number_of_files.get());
+            defer allocator.free(fat_table);
+
+            const fnt_header = try utils.noAllocRead(Narc.ChunkHeader, file);
+            if (!mem.eql(u8, fnt_header.name, "BTNF")) break :narc_read;
+
+            var fnt_offset = try file.getPos();
+            //try file.seekTo();
+        }
+
+        return File {
+            .name = name,
+            .@"type" = File.Type {
+                .Binary = try utils.seekToAllocAndRead(u8, file, allocator, fat.start.get(), fat.getSize())
+            },
         };
     }
 
@@ -987,7 +1046,13 @@ const FSWriter = struct {
             // Write file content
             const start = alignAddr(u32, writer.file_offset, nds_alignment);
             try writer.file.seekTo(start);
-            try writer.file.write(f.data);
+
+            switch (f.@"type") {
+                File.Type.Binary => |data| {
+                    try writer.file.write(data);
+                },
+                else => unreachable,
+            }
 
             writer.file_offset = u32(try writer.file.getPos());
             const size = writer.file_offset - start;
