@@ -22,25 +22,28 @@ pub const Overlay = packed struct {
 };
 
 pub fn readFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) %[][]u8 {
-    var results = try allocator.alloc([]u8, overlay_table.len);
-    var allocated : usize = 0;
-    errdefer freeFiles(results[0..allocated], allocator);
+    var results = std.ArrayList([]u8).init(allocator);
+    try results.ensureCapacity(overlay_table.len);
+    errdefer {
+        freeFiles(results.toSlice(), allocator);
+        results.deinit();
+    }
 
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
-    for (results) |*res, i| {
-        const item = overlay_table[i];
-        const offset = (item.file_id.get() & 0x0FFF) * @sizeOf(fs.FatEntry);
+    for (overlay_table) |overlay, i| {
+        const offset = (overlay.file_id.get() & 0x0FFF) * @sizeOf(fs.FatEntry);
 
         var fat_entry : fs.FatEntry = undefined;
         try file.seekTo(fat_offset + offset);
         try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
 
-        *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
+        const overay_file = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
+        try results.append(overay_file);
     }
 
-    return results;
+    return results.toOwnedSlice();
 }
 
 pub fn freeFiles(files: [][]u8, allocator: &mem.Allocator) void {
