@@ -141,8 +141,8 @@ pub const FatEntry = packed struct {
 
     fn init(offset: u32, size: u32) FatEntry {
         return FatEntry {
-            .start = toLittle(u32, offset),
-            .end   = toLittle(u32, offset + size),
+            .start = toLittle(offset),
+            .end   = toLittle(offset + size),
         };
     }
 

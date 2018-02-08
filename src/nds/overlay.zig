@@ -74,8 +74,8 @@ pub const Writer = struct {
             try self.file.seekTo(fat_entry.start.get());
             try self.file.write(overlay_file);
 
-            overlay_entry.overlay_id = toLittle(u32, u32(i));
-            overlay_entry.file_id = toLittle(u32, u32(self.file_id));
+            overlay_entry.overlay_id = toLittle(u32(i));
+            overlay_entry.file_id = toLittle(u32(self.file_id));
             self.file_offset = u32(try self.file.getPos());
             self.file_id += 1;
         }

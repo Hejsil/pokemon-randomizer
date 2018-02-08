@@ -56,22 +56,22 @@ pub const BasePokemon = packed struct {
 };
 
 pub const EvolutionType = enum(u16) {
-    Unused                 = toLittle(u16, 0x00).get(),
-    FriendShip             = toLittle(u16, 0x01).get(),
-    FriendShipDuringDay    = toLittle(u16, 0x02).get(),
-    FriendShipDuringNight  = toLittle(u16, 0x03).get(),
-    LevelUp                = toLittle(u16, 0x04).get(),
-    Trade                  = toLittle(u16, 0x05).get(),
-    TradeHoldingItem       = toLittle(u16, 0x06).get(),
-    UseItem                = toLittle(u16, 0x07).get(),
-    AttackGthDefense       = toLittle(u16, 0x08).get(),
-    AttackEqlDefense       = toLittle(u16, 0x09).get(),
-    AttackLthDefense       = toLittle(u16, 0x0A).get(),
-    PersonalityValue1      = toLittle(u16, 0x0B).get(),
-    PersonalityValue2      = toLittle(u16, 0x0C).get(),
-    LevelUpMaySpawnPokemon = toLittle(u16, 0x0D).get(),
-    LevelUpSpawnIfCond     = toLittle(u16, 0x0E).get(),
-    Beauty                 = toLittle(u16, 0x0F).get(),
+    Unused                 = toLittle(u16(0x00)).get(),
+    FriendShip             = toLittle(u16(0x01)).get(),
+    FriendShipDuringDay    = toLittle(u16(0x02)).get(),
+    FriendShipDuringNight  = toLittle(u16(0x03)).get(),
+    LevelUp                = toLittle(u16(0x04)).get(),
+    Trade                  = toLittle(u16(0x05)).get(),
+    TradeHoldingItem       = toLittle(u16(0x06)).get(),
+    UseItem                = toLittle(u16(0x07)).get(),
+    AttackGthDefense       = toLittle(u16(0x08)).get(),
+    AttackEqlDefense       = toLittle(u16(0x09)).get(),
+    AttackLthDefense       = toLittle(u16(0x0A)).get(),
+    PersonalityValue1      = toLittle(u16(0x0B)).get(),
+    PersonalityValue2      = toLittle(u16(0x0C)).get(),
+    LevelUpMaySpawnPokemon = toLittle(u16(0x0D)).get(),
+    LevelUpSpawnIfCond     = toLittle(u16(0x0E)).get(),
+    Beauty                 = toLittle(u16(0x0F)).get(),
 };
 
 pub const Evolution = packed struct {
