@@ -1,12 +1,12 @@
-const std     = @import("std");
-const little  = @import("../little.zig");
-const utils   = @import("../utils.zig");
+const std    = @import("std");
+const common = @import("common.zig");
+const little = @import("../little.zig");
+const utils  = @import("../utils.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
 
-const alignAddr = @import("alignment.zig").alignAddr;
 const assert = debug.assert;
 
 const toLittle = little.toLittle;
@@ -307,7 +307,7 @@ pub const FSWriter = struct {
             writer.fnt_sub_offset = u32(try writer.file.getPos());
 
             // Write file content
-            const start = alignAddr(u32, writer.file_offset, 0x200);
+            const start = common.alignAddr(u32, writer.file_offset, 0x200);
             try writer.file.seekTo(start);
             try writer.file.write(f.data);
 

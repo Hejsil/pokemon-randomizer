@@ -1,4 +1,5 @@
 const std     = @import("std");
+const common  = @import("common.zig");
 const overlay = @import("overlay.zig");
 const utils   = @import("../utils.zig");
 const little  = @import("../little.zig");
@@ -9,7 +10,6 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-const alignAddr = @import("alignment.zig").alignAddr;
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
@@ -122,15 +122,15 @@ pub const Rom = struct {
             header.arm9_overlay_offset = toLittle(u32, header.arm9_overlay_offset.get() + @sizeOf(@typeOf(self.nitro_footer)));
         }
 
-        header.arm7_rom_offset     = toLittle(u32, alignAddr(u32, header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), 0x200));
+        header.arm7_rom_offset     = toLittle(u32, common.alignAddr(u32, header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), 0x200));
         header.arm7_size           = toLittle(u32, u32(self.arm7.len));
         header.arm7_overlay_offset = toLittle(u32, header.arm7_rom_offset.get() + header.arm7_size.get());
         header.arm7_overlay_size   = toLittle(u32, u32(self.arm7_overlay_table.len * @sizeOf(Overlay)));
-        header.banner_offset       = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), 0x200));
+        header.banner_offset       = toLittle(u32, common.alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), 0x200));
         header.banner_size         = toLittle(u32, @sizeOf(Banner));
-        header.fnt_offset          = toLittle(u32, alignAddr(u32, header.banner_offset.get() + header.banner_size.get(), 0x200));
+        header.fnt_offset          = toLittle(u32, common.alignAddr(u32, header.banner_offset.get() + header.banner_size.get(), 0x200));
         header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(fs.FntMainEntry) + fs_info.fnt_sub_size));
-        header.fat_offset          = toLittle(u32, alignAddr(u32, header.fnt_offset.get() + header.fnt_size.get(), 0x200));
+        header.fat_offset          = toLittle(u32, common.alignAddr(u32, header.fnt_offset.get() + header.fnt_size.get(), 0x200));
         header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
         const fnt_sub_offset = header.fnt_offset.get() + fs_info.folders * @sizeOf(fs.FntMainEntry);
@@ -143,7 +143,7 @@ pub const Rom = struct {
         var fs_writer = fs.FSWriter.init(file, overlay_writer.file_offset, fnt_sub_offset, overlay_writer.file_id);
         try fs_writer.writeFileSystem(self.root, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
 
-        header.total_used_rom_size = toLittle(u32, alignAddr(u32, fs_writer.file_offset, 4));
+        header.total_used_rom_size = toLittle(u32, common.alignAddr(u32, fs_writer.file_offset, 4));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
