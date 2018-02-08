@@ -12,3 +12,4 @@ Useful documentation of the Pokémon data and Rom file structure.
 * [Bulbapedia on Pokemon Data Structures](https://bulbapedia.bulbagarden.net/wiki/Category:Structures)
 * [Pokemon Game Disassemblies](https://github.com/search?utf8=%E2%9C%93&q=Pokemon+Disassembly&type=)
 * [Pokémon Emerald Offsets](http://www.romhack.me/database/21/pok%C3%A9mon-emerald-rom-offsets/)
+* [Nds formats](http://www.romhacking.net/documents/%5B469%5Dnds_formats.htm)
