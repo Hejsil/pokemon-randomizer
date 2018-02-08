@@ -14,11 +14,20 @@ const Little   = little.Little;
 
 pub const File = struct {
     name: []u8,
-    data: []u8,
+    @"type": Type,
+
+    const Type = union(enum) {
+        Binary: []u8,
+        Narc: Folder,
+    };
 
     pub fn destroy(file: &const File, allocator: &mem.Allocator) void {
         allocator.free(file.name);
-        allocator.free(file.data);
+
+        switch (file.@"type") {
+            Type.Binary => |data| allocator.free(data),
+            Type.Narc => |narc| narc.destroy(allocator),
+        }
     }
 };
 
@@ -230,8 +239,8 @@ fn buildFolderFromFntMainEntry(
                 try file.seekTo(current_pos);
                 try files.append(
                     File {
-                        .name = child_name,
-                        .data = file_data,
+                        .name = name,
+                        .@"type" = File.Type { .Binary = file_data, },
                     }
                 );
 
@@ -309,7 +318,11 @@ pub const FSWriter = struct {
             // Write file content
             const start = common.alignAddr(writer.file_offset, u32(0x200));
             try writer.file.seekTo(start);
-            try writer.file.write(f.data);
+
+            switch (f.@"type") {
+                File.Type.Binary => |data| try writer.file.write(data),
+                File.Type.Narc => |narc| unreachable,
+            }
 
             writer.file_offset = u32(try writer.file.getPos());
             const size = writer.file_offset - start;
