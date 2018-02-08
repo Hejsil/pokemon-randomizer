@@ -1,6 +1,7 @@
-const std    = @import("std");
-const utils  = @import("../utils.zig");
-const little = @import("../little.zig");
+const std     = @import("std");
+const overlay = @import("overlay.zig");
+const utils   = @import("../utils.zig");
+const little  = @import("../little.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
@@ -8,12 +9,15 @@ const io    = std.io;
 
 const assert = debug.assert;
 
+const alignAddr = @import("alignment.zig").alignAddr;
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
-pub const Header = @import("header.zig").Header;
-pub const Banner = @import("banner.zig").Banner;
 pub const fs = @import("fs.zig");
+
+pub const Header  = @import("header.zig").Header;
+pub const Banner  = @import("banner.zig").Banner;
+pub const Overlay = overlay.Overlay;
 
 error AddressesOverlap;
 
@@ -110,12 +114,12 @@ pub const Rom = struct {
         var stream = &file_stream.stream;
 
         for (results) |*res, i| {
-            const overlay = overlay_table[i];
-            const offset = (overlay.file_id.get() & 0x0FFF) * @sizeOf(FatEntry);
+            const item = overlay_table[i];
+            const offset = (item.file_id.get() & 0x0FFF) * @sizeOf(fs.FatEntry);
 
-            var fat_entry : FatEntry = undefined;
+            var fat_entry : fs.FatEntry = undefined;
             try file.seekTo(fat_offset + offset);
-            try stream.readNoEof(utils.asBytes(FatEntry, &fat_entry));
+            try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
 
             *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
         }
@@ -131,17 +135,17 @@ pub const Rom = struct {
     }
 
     fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) %fs.Folder {
-        if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
-        if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
+        if (fat_size % @sizeOf(fs.FatEntry) != 0)       return error.InvalidFatSize;
+        if (fat_size > 61440 * @sizeOf(fs.FatEntry))    return error.InvalidFatSize;
 
-        const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
-        const fnt_main_table = try utils.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
+        const fnt_first = try utils.seekToNoAllocRead(fs.FntMainEntry, file, fnt_offset);
+        const fnt_main_table = try utils.seekToAllocAndRead(fs.FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
         defer allocator.free(fnt_main_table);
 
         if (!utils.between(usize, fnt_main_table.len, 1, 4096))    return error.InvalidFntMainTableSize;
-        if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
+        if (fnt_size < fnt_main_table.len * @sizeOf(fs.FntMainEntry)) return error.InvalidFntMainTableSize;
 
-        const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
+        const fat = try utils.seekToAllocAndRead(fs.FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(fs.FatEntry));
         defer allocator.free(fat);
 
         const root_name = try allocator.alloc(u8, 0);
@@ -162,9 +166,9 @@ pub const Rom = struct {
     fn buildFolderFromFntMainEntry(
         file: &io.File,
         allocator: &mem.Allocator,
-        fat: []const FatEntry,
-        fnt_main_table: []const FntMainEntry,
-        fnt_entry: &const FntMainEntry,
+        fat: []const fs.FatEntry,
+        fnt_main_table: []const fs.FntMainEntry,
+        fnt_entry: &const fs.FntMainEntry,
         fnt_offset: usize,
         img_base: usize,
         name: []u8) %fs.Folder {
@@ -261,8 +265,8 @@ pub const Rom = struct {
         const header = &self.header;
         const fs_info = self.root.sizes();
 
-        if (@maxValue(u16) < fs_info.folders * @sizeOf(FntMainEntry)) return error.InvalidSizeInHeader;
-        if (@maxValue(u16) < fs_info.files   * @sizeOf(FatEntry))     return error.InvalidSizeInHeader;
+        if (@maxValue(u16) < fs_info.folders * @sizeOf(fs.FntMainEntry)) return error.InvalidSizeInHeader;
+        if (@maxValue(u16) < fs_info.files   * @sizeOf(fs.FatEntry))     return error.InvalidSizeInHeader;
 
         header.arm9_rom_offset     = toLittle(u32, 0x4000);
         header.arm9_size           = toLittle(u32, u32(self.arm9.len));
@@ -272,25 +276,25 @@ pub const Rom = struct {
             header.arm9_overlay_offset = toLittle(u32, header.arm9_overlay_offset.get() + @sizeOf(@typeOf(self.nitro_footer)));
         }
 
-        header.arm7_rom_offset     = toLittle(u32, alignAddr(u32, header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), nds_alignment));
+        header.arm7_rom_offset     = toLittle(u32, alignAddr(u32, header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), 0x200));
         header.arm7_size           = toLittle(u32, u32(self.arm7.len));
         header.arm7_overlay_offset = toLittle(u32, header.arm7_rom_offset.get() + header.arm7_size.get());
         header.arm7_overlay_size   = toLittle(u32, u32(self.arm7_overlay_table.len * @sizeOf(Overlay)));
-        header.banner_offset       = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment));
+        header.banner_offset       = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), 0x200));
         header.banner_size         = toLittle(u32, @sizeOf(Banner));
-        header.fnt_offset          = toLittle(u32, alignAddr(u32, header.banner_offset.get() + header.banner_size.get(), nds_alignment));
-        header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry) + fs_info.fnt_sub_size));
-        header.fat_offset          = toLittle(u32, alignAddr(u32, header.fnt_offset.get() + header.fnt_size.get(), nds_alignment));
-        header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(FatEntry)));
+        header.fnt_offset          = toLittle(u32, alignAddr(u32, header.banner_offset.get() + header.banner_size.get(), 0x200));
+        header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(fs.FntMainEntry) + fs_info.fnt_sub_size));
+        header.fat_offset          = toLittle(u32, alignAddr(u32, header.fnt_offset.get() + header.fnt_size.get(), 0x200));
+        header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
-        const fnt_sub_offset = header.fnt_offset.get() + fs_info.folders * @sizeOf(FntMainEntry);
+        const fnt_sub_offset = header.fnt_offset.get() + fs_info.folders * @sizeOf(fs.FntMainEntry);
         const file_offset = header.fat_offset.get() + header.fat_size.get();
 
-        var overlay_writer = OverlayWriter.init(file, file_offset, 0);
+        var overlay_writer = overlay.Writer.init(file, file_offset, 0);
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
-        var fs_writer = FSWriter.init(file, overlay_writer.file_offset, fnt_sub_offset, overlay_writer.file_id);
+        var fs_writer = fs.FSWriter.init(file, overlay_writer.file_offset, fnt_sub_offset, overlay_writer.file_id);
         try fs_writer.writeFileSystem(self.root, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
 
         header.total_used_rom_size = toLittle(u32, alignAddr(u32, fs_writer.file_offset, 4));
@@ -338,179 +342,3 @@ pub const Rom = struct {
         allocator.destroy(self);
     }
 };
-
-pub const Overlay = packed struct {
-    overlay_id: Little(u32),
-    ram_address: Little(u32),
-    ram_size: Little(u32),
-    bss_size: Little(u32),
-    static_initialiser_start_address: Little(u32),
-    static_initialiser_end_address: Little(u32),
-    file_id: Little(u32),
-    reserved: [4]u8,
-};
-
-const OverlayWriter = struct {
-    file: &io.File,
-    file_offset: u32,
-    file_id: u16,
-
-    fn init(file: &io.File, file_offset: u32, start_file_id: u16) OverlayWriter {
-        return OverlayWriter {
-            .file = file,
-            .file_offset = file_offset,
-            .file_id = start_file_id,
-        };
-    }
-
-    fn writeOverlayFiles(self: &OverlayWriter, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) %void {
-        for (overlay_table) |*overlay_entry, i| {
-            const overlay_file = overlay_files[i];
-            const fat_entry = FatEntry.init(alignAddr(u32, self.file_offset, nds_alignment), u32(overlay_file.len));
-            try self.file.seekTo(fat_offset + (self.file_id * @sizeOf(FatEntry)));
-            try self.file.write(utils.asConstBytes(FatEntry, fat_entry));
-
-            try self.file.seekTo(fat_entry.start.get());
-            try self.file.write(overlay_file);
-
-            overlay_entry.overlay_id = toLittle(u32, u32(i));
-            overlay_entry.file_id = toLittle(u32, u32(self.file_id));
-            self.file_offset = u32(try self.file.getPos());
-            self.file_id += 1;
-        }
-    }
-};
-
-const nds_alignment = 0x200;
-fn alignAddr(comptime T: type, address: T, alignment: T) T {
-    const rem = address % alignment;
-    const result = address + (alignment - rem);
-
-    assert(result % alignment == 0);
-    assert(address <= result);
-
-    return result;
-}
-
-const FntMainEntry = packed struct {
-    offset_to_subtable: Little(u32),
-    first_file_id_in_subtable: Little(u16),
-
-    // For the first entry in main-table, the parent id is actually,
-    // the total number of directories (See FNT Directory Main-Table):
-    // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
-    parent_id: Little(u16),
-};
-
-const FatEntry = packed struct {
-    start: Little(u32),
-    end: Little(u32),
-
-    fn init(offset: u32, size: u32) FatEntry {
-        return FatEntry {
-            .start = toLittle(u32, offset),
-            .end   = toLittle(u32, offset + size),
-        };
-    }
-
-    fn getSize(self: &const FatEntry) usize {
-        return self.end.get() - self.start.get();
-    }
-};
-
-const FSWriter = struct {
-    file: &io.File,
-    file_offset: u32,
-    fnt_sub_offset: u32,
-    file_id: u16,
-    folder_id: u16,
-
-    fn init(file: &io.File, file_offset: u32, fnt_sub_offset: u32, start_file_id: u16) FSWriter {
-        return FSWriter {
-            .file = file,
-            .file_offset = file_offset,
-            .fnt_sub_offset = fnt_sub_offset,
-            .file_id = start_file_id,
-            .folder_id = 0xF000,
-        };
-    }
-
-    fn writeFileSystem(writer: &FSWriter, root: &const fs.Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) %void {
-        try writer.file.seekTo(fnt_offset);
-        try writer.file.write(utils.asConstBytes(
-            FntMainEntry,
-            FntMainEntry {
-                .offset_to_subtable        = Little(u32).init(writer.fnt_sub_offset - fnt_offset),
-                .first_file_id_in_subtable = Little(u16).init(writer.file_id),
-                .parent_id                 = Little(u16).init(folder_count),
-            }));
-
-        try writer.writeFolder(root, fnt_offset, fat_offset, img_base, writer.folder_id);
-    }
-
-    fn writeFolder(writer: &FSWriter, folder: &const fs.Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) %void {
-        for (folder.files) |f| {
-            // Write file to sub fnt
-            try writer.file.seekTo(writer.fnt_sub_offset);
-            try writer.file.write([]u8 { u8(f.name.len) });
-            try writer.file.write(f.name);
-            writer.fnt_sub_offset = u32(try writer.file.getPos());
-
-            // Write file content
-            const start = alignAddr(u32, writer.file_offset, nds_alignment);
-            try writer.file.seekTo(start);
-            try writer.file.write(f.data);
-
-            writer.file_offset = u32(try writer.file.getPos());
-            const size = writer.file_offset - start;
-
-            // Write offsets to fat
-            try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * writer.file_id);
-            try writer.file.write(
-                utils.asConstBytes(
-                    FatEntry,
-                    FatEntry.init(u32(start - img_base), u32(size))
-                ));
-            writer.file_id += 1;
-        }
-
-        // Skip writing folders to sub table, but still skip forward all the bytes
-        // so we can start writing sub folders sub tables.
-        var curr_sub_offset = writer.fnt_sub_offset;
-        for (folder.folders) |f, i| {
-            writer.fnt_sub_offset += 1;               // try writer.file.write([]u8 { u8(f.name.len + 0x80) });
-            writer.fnt_sub_offset += u32(f.name.len); // try writer.file.write(f.name);
-            writer.fnt_sub_offset += 2;               // try writer.file.write(utils.asConstBytes(Little(u16), Little(u16).init(writer.folder_id)));
-        }
-        writer.fnt_sub_offset += 1; // '\0'
-
-        const assert_end = writer.fnt_sub_offset;
-
-        for (folder.folders) |f| {
-            writer.folder_id += 1;
-            try writer.file.seekTo(curr_sub_offset);
-            try writer.file.write([]u8 { u8(f.name.len + 0x80) });
-            try writer.file.write(f.name);
-            try writer.file.write(utils.asConstBytes(Little(u16), Little(u16).init(writer.folder_id)));
-            curr_sub_offset = u32(try writer.file.getPos());
-
-            const main_offset = fnt_offset + @sizeOf(FntMainEntry) * (writer.folder_id & 0x0FFF);
-            try writer.file.seekTo(main_offset);
-            try writer.file.write(utils.asConstBytes(
-                FntMainEntry,
-                FntMainEntry {
-                    .offset_to_subtable        = Little(u32).init(writer.fnt_sub_offset - fnt_offset),
-                    .first_file_id_in_subtable = Little(u16).init(writer.file_id),
-                    .parent_id                 = Little(u16).init(id),
-                }));
-
-            try writer.writeFolder(f, fnt_offset, fat_offset, img_base, writer.folder_id);
-        }
-
-        try writer.file.seekTo(curr_sub_offset);
-        try writer.file.write([]u8 { 0x00 });
-        curr_sub_offset = u32(try writer.file.getPos());
-        assert(curr_sub_offset == assert_end);
-    }
-};
-
