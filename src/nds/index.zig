@@ -92,14 +92,15 @@ pub const Rom = struct {
         // TODO: On dsi, this can be of different sizes
         result.banner = try utils.seekToNoAllocRead(Banner, file, result.header.banner_offset.get());
         try result.banner.validate();
+        if (result.header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
 
         result.root = try fs.read(
             file,
             allocator,
             result.header.fnt_offset.get(),
-            result.header.fnt_size.get(),
             result.header.fat_offset.get(),
-            result.header.fat_size.get());
+            result.header.fat_size.get() / @sizeOf(fs.FatEntry),
+            0);
         errdefer result.root.destroy(allocator);
 
         return result;

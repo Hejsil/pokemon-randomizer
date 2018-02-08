@@ -1,5 +1,6 @@
 const std    = @import("std");
 const common = @import("common.zig");
+const narc   = @import("narc.zig");
 const little = @import("../little.zig");
 const utils  = @import("../utils.zig");
 
@@ -26,7 +27,7 @@ pub const File = struct {
 
         switch (file.@"type") {
             Type.Binary => |data| allocator.free(data),
-            Type.Narc => |narc| narc.destroy(allocator),
+            Type.Narc => |narc_fs| narc_fs.destroy(allocator),
         }
     }
 };
@@ -160,18 +161,13 @@ pub const FatEntry = packed struct {
     }
 };
 
-pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) %Folder {
-    if (fat_size % @sizeOf(FatEntry) != 0)    return error.InvalidFatSize;
-    if (fat_size > 61440 * @sizeOf(FatEntry)) return error.InvalidFatSize;
-
+pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) %Folder {
     const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
     const fnt_main_table = try utils.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
     defer allocator.free(fnt_main_table);
 
-    if (!utils.between(usize, fnt_main_table.len, 1, 4096))       return error.InvalidFntMainTableSize;
-    if (fnt_size < fnt_main_table.len * @sizeOf(FntMainEntry)) return error.InvalidFntMainTableSize;
-
-    const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, fat_size / @sizeOf(FatEntry));
+    if (!utils.between(usize, fnt_main_table.len, 1, 4096)) return error.InvalidFntMainTableSize;
+    const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, file_count);
     defer allocator.free(fat);
 
     const root_name = try allocator.alloc(u8, 0);
@@ -184,7 +180,7 @@ pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_si
         fnt_main_table,
         fnt_main_table[0],
         fnt_offset,
-        0,
+        img_base,
         root_name
     );
 }
@@ -233,16 +229,10 @@ fn buildFolderFromFntMainEntry(
 
                 const entry = fat[file_id];
                 const current_pos = try file.getPos();
-                const file_data = try utils.seekToAllocAndRead(u8, file, allocator, entry.start.get() + img_base, entry.getSize());
-                errdefer allocator.free(file_data);
+                const sub_file = try readFile(file, allocator, entry, img_base, name);
 
                 try file.seekTo(current_pos);
-                try files.append(
-                    File {
-                        .name = name,
-                        .@"type" = File.Type { .Binary = file_data, },
-                    }
-                );
+                try files.append(sub_file);
 
                 file_id += 1;
             },
@@ -274,6 +264,57 @@ fn buildFolderFromFntMainEntry(
         .name    = name,
         .folders = folders.toOwnedSlice(),
         .files   = files.toOwnedSlice()
+    };
+}
+
+error InvalidChunkName;
+error InvalidChunkSize;
+
+fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) %File {
+    narc_read: {
+        const names = narc.Chunk.names;
+        const header = utils.seekToNoAllocRead(narc.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
+        if (!mem.eql(u8, header.chunk_name, names.narc)) break :narc_read;
+        if (header.byte_order.get() != 0xFFFE)           break :narc_read;
+        if (header.chunk_size.get() != 0x0010)           break :narc_read;
+        if (header.following_chunks.get() != 0x0003)     break :narc_read;
+
+        // If we have a valid narc header, then we assume we are reading a narc
+        // file. All error from here, are therefore bubbled up.
+        const fat_chunk_start = try file.getPos();
+        const fat_header      = try utils.noAllocRead(narc.Chunk, file);
+        const file_count      = try utils.noAllocRead(Little(u16), file);
+        const reserved        = try utils.noAllocRead(Little(u16), file);
+        const fat_offet       = try file.getPos();
+        const fat_chunk_end   = fat_chunk_start + fat_header.size.get();
+        if (!mem.eql(u8, fat_header.name, names.fat))                            return error.InvalidChunkName;
+        if ((fat_chunk_end - fat_offet) % @sizeOf(FatEntry) != 0)                return error.InvalidChunkSize;
+        if ((fat_chunk_end - fat_offet) / @sizeOf(FatEntry) != file_count.get()) return error.InvalidChunkSize;
+
+        try file.seekTo(fat_chunk_end);
+        const fnt_chunk_start = try file.getPos();
+        const fnt_header      = try utils.noAllocRead(narc.Chunk, file);
+        const fnt_offset      = try file.getPos();
+        const fnt_chunk_end   = fnt_chunk_start + fnt_header.size.get();
+        if (!mem.eql(u8, fat_header.name, names.fat)) return error.InvalidChunkName;
+        if (fnt_chunk_end % 0x4 != 0)                 return error.InvalidChunkSize;
+
+        try file.seekTo(fnt_chunk_end);
+        const file_data_header = try utils.noAllocRead(narc.Chunk, file);
+        const narc_img_base    = try file.getPos();
+        if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
+
+        const narc_fs = try read(file, allocator, fnt_offset, fat_offet, file_count.get(), narc_img_base);
+        return File {
+            .name = name,
+            .@"type" = File.Type { .Narc = narc_fs, },
+        };
+    }
+
+    const data = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get() + img_base, fat_entry.getSize());
+    return File {
+        .name = name,
+        .@"type" = File.Type { .Binary = data, },
     };
 }
 
@@ -321,7 +362,9 @@ pub const FSWriter = struct {
 
             switch (f.@"type") {
                 File.Type.Binary => |data| try writer.file.write(data),
-                File.Type.Narc => |narc| unreachable,
+                File.Type.Narc => |narc_fs| {
+                    unreachable
+                },
             }
 
             writer.file_offset = u32(try writer.file.getPos());
