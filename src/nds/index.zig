@@ -76,8 +76,8 @@ pub const Rom = struct {
             result.header.arm9_overlay_offset.get(),
             result.header.arm9_overlay_size.get() / @sizeOf(Overlay));
         errdefer allocator.free(result.arm9_overlay_table);
-        result.arm9_overlay_files = try readOverlayFiles(file, allocator, result.arm9_overlay_table, result.header.fat_offset.get());
-        errdefer cleanUpOverlayFiles(result.arm9_overlay_files, allocator);
+        result.arm9_overlay_files = try overlay.readFiles(file, allocator, result.arm9_overlay_table, result.header.fat_offset.get());
+        errdefer overlay.freeFiles(result.arm9_overlay_files, allocator);
 
         result.arm7_overlay_table = try utils.seekToAllocAndRead(
             Overlay,
@@ -86,8 +86,8 @@ pub const Rom = struct {
             result.header.arm7_overlay_offset.get(),
             result.header.arm7_overlay_size.get() / @sizeOf(Overlay));
         errdefer allocator.free(result.arm7_overlay_table);
-        result.arm7_overlay_files = try readOverlayFiles(file, allocator, result.arm7_overlay_table, result.header.fat_offset.get());
-        errdefer cleanUpOverlayFiles(result.arm7_overlay_files, allocator);
+        result.arm7_overlay_files = try overlay.readFiles(file, allocator, result.arm7_overlay_table, result.header.fat_offset.get());
+        errdefer overlay.freeFiles(result.arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
         result.banner = try utils.seekToNoAllocRead(Banner, file, result.header.banner_offset.get());
@@ -103,35 +103,6 @@ pub const Rom = struct {
         errdefer result.root.destroy(allocator);
 
         return result;
-    }
-
-    fn readOverlayFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) %[][]u8 {
-        var results = try allocator.alloc([]u8, overlay_table.len);
-        var allocated : usize = 0;
-        errdefer cleanUpOverlayFiles(results[0..allocated], allocator);
-
-        var file_stream = io.FileInStream.init(file);
-        var stream = &file_stream.stream;
-
-        for (results) |*res, i| {
-            const item = overlay_table[i];
-            const offset = (item.file_id.get() & 0x0FFF) * @sizeOf(fs.FatEntry);
-
-            var fat_entry : fs.FatEntry = undefined;
-            try file.seekTo(fat_offset + offset);
-            try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
-
-            *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
-        }
-
-        return results;
-    }
-
-    fn cleanUpOverlayFiles(files: [][]u8, allocator: &mem.Allocator) void {
-        for (files) |file|
-            allocator.free(file);
-
-        allocator.free(files);
     }
 
     fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) %fs.Folder {
@@ -336,8 +307,8 @@ pub const Rom = struct {
         allocator.free(self.arm7);
         allocator.free(self.arm9_overlay_table);
         allocator.free(self.arm7_overlay_table);
-        cleanUpOverlayFiles(self.arm9_overlay_files, allocator);
-        cleanUpOverlayFiles(self.arm7_overlay_files, allocator);
+        overlay.freeFiles(self.arm9_overlay_files, allocator);
+        overlay.freeFiles(self.arm7_overlay_files, allocator);
         self.root.destroy(allocator);
         allocator.destroy(self);
     }
