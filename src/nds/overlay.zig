@@ -3,7 +3,8 @@ const fs     = @import("fs.zig");
 const utils  = @import("../utils.zig");
 const little = @import("../little.zig");
 
-const io = std.io;
+const io  = std.io;
+const mem = std.mem;
 
 const alignAddr = @import("alignment.zig").alignAddr;
 const toLittle = little.toLittle;
@@ -19,6 +20,33 @@ pub const Overlay = packed struct {
     file_id: Little(u32),
     reserved: [4]u8,
 };
+
+pub fn readFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) %[][]u8 {
+    var results = try allocator.alloc([]u8, overlay_table.len);
+    var allocated : usize = 0;
+    errdefer freeFiles(results[0..allocated], allocator);
+
+    var file_stream = io.FileInStream.init(file);
+    var stream = &file_stream.stream;
+
+    for (results) |*res, i| {
+        const item = overlay_table[i];
+        const offset = (item.file_id.get() & 0x0FFF) * @sizeOf(fs.FatEntry);
+
+        var fat_entry : fs.FatEntry = undefined;
+        try file.seekTo(fat_offset + offset);
+        try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
+
+        *res = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
+    }
+
+    return results;
+}
+
+pub fn freeFiles(files: [][]u8, allocator: &mem.Allocator) void {
+    for (files) |file| allocator.free(file);
+    allocator.free(files);
+}
 
 pub const Writer = struct {
     file: &io.File,
