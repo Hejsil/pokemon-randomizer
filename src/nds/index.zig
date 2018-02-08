@@ -15,86 +15,7 @@ const toLittle = little.toLittle;
 const Little   = little.Little;
 
 pub const Header = @import("header.zig").Header;
-
-error InvalidVersion;
-error InvalidVersionPadding;
-error InvalidHasAnimatedDsiIconPadding;
-error InvalidReserved1;
-error InvalidReserved2;
-error InvalidChinese;
-error InvalidKorean;
-error InvalidIconAnimationBitmap;
-error InvalidIconAnimationPalette;
-error InvalidIconAnimationSequence;
-
-pub const IconTitle = packed struct {
-    pub const Version = enum(u2) {
-        Original                  = 0x01,
-        WithChineseTitle          = 0x02,
-        WithChineseAndKoreanTitle = 0x03,
-    };
-
-    version: Version,
-    version_padding: u6,
-
-    has_animated_dsi_icon: bool,
-    has_animated_dsi_icon_padding: u7,
-
-    crc16_across_0020h_083Fh: Little(u16),
-    crc16_across_0020h_093Fh: Little(u16),
-    crc16_across_0020h_0A3Fh: Little(u16),
-    crc16_across_1240h_23BFh: Little(u16),
-
-    reserved1: [0x16]u8,
-
-    icon_bitmap: [0x200]u8,
-    icon_palette: [0x20]u8,
-
-    title_japanese: [0x100]u8,
-    title_english:  [0x100]u8,
-    title_french:   [0x100]u8,
-    title_german:   [0x100]u8,
-    title_italian:  [0x100]u8,
-    title_spanish:  [0x100]u8,
-    //title_chinese:  [0x100]u8,
-    //title_korean:   [0x100]u8,
-
-    // TODO: IconTitle is actually a variable size structure.
-    //       "original Icon/Title structure rounded to 200h-byte sector boundary (ie. A00h bytes for Version 1 or 2)," 
-    //       "however, later DSi carts are having a size entry at CartHdr[208h] (usually 23C0h)."
-    //reserved2: [0x800]u8,
-
-    //// animated DSi icons only
-    //icon_animation_bitmap: [0x1000]u8,
-    //icon_animation_palette: [0x100]u8,
-    //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
-
-    pub fn validate(self: &const IconTitle) %void {
-        if (u2(self.version) == 0)
-            return error.InvalidVersion;
-        if (self.version_padding != 0)
-            return error.InvalidVersionPadding;
-        if (self.has_animated_dsi_icon_padding != 0)
-            return error.InvalidHasAnimatedDsiIconPadding;
-
-        if (!utils.all(u8, self.reserved1, ascii.isZero))
-            return error.InvalidReserved1;
-
-        //if (!utils.all(u8, self.reserved2, ascii.isZero))
-        //    return error.InvalidReserved2;
-
-        //if (!self.has_animated_dsi_icon) {
-        //    if (!utils.all(u8, self.icon_animation_bitmap, is0xFF))
-        //        return error.InvalidIconAnimationBitmap;
-        //    if (!utils.all(u8, self.icon_animation_palette, is0xFF))
-        //        return error.InvalidIconAnimationPalette;
-        //    if (!utils.all(u8, self.icon_animation_sequence, is0xFF))
-        //        return error.InvalidIconAnimationSequence;
-        //}
-    }
-
-    fn is0xFF(char: u8) bool { return char == 0xFF; }
-};
+pub const Banner = @import("header.zig").Banner;
 
 error AddressesOverlap;
 
@@ -242,7 +163,7 @@ pub const Rom = struct {
     arm7_overlay_table: []Overlay,
     arm7_overlay_files: [][]u8,
 
-    icon_title: IconTitle,
+    banner: Banner,
     root: Folder,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Rom {
@@ -280,8 +201,8 @@ pub const Rom = struct {
         errdefer cleanUpOverlayFiles(result.arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
-        result.icon_title = try utils.seekToNoAllocRead(IconTitle, file, result.header.icon_title_offset.get());
-        try result.icon_title.validate();
+        result.banner = try utils.seekToNoAllocRead(Banner, file, result.header.banner_offset.get());
+        try result.banner.validate();
 
         result.root = try readFileSystem(
             file,
@@ -450,7 +371,7 @@ pub const Rom = struct {
     }
 
     pub fn writeToFile(self: &Rom, file: &io.File) %void {
-        try self.icon_title.validate();
+        try self.banner.validate();
 
         const header = &self.header;
         const fs_info = self.root.sizes();
@@ -470,9 +391,9 @@ pub const Rom = struct {
         header.arm7_size           = toLittle(u32, u32(self.arm7.len));
         header.arm7_overlay_offset = toLittle(u32, header.arm7_rom_offset.get() + header.arm7_size.get());
         header.arm7_overlay_size   = toLittle(u32, u32(self.arm7_overlay_table.len * @sizeOf(Overlay)));
-        header.icon_title_offset   = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment));
-        header.icon_title_size     = toLittle(u32, @sizeOf(IconTitle));
-        header.fnt_offset          = toLittle(u32, alignAddr(u32, header.icon_title_offset.get() + header.icon_title_size.get(), nds_alignment));
+        header.banner_offset   = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment));
+        header.banner_size     = toLittle(u32, @sizeOf(Banner));
+        header.fnt_offset          = toLittle(u32, alignAddr(u32, header.banner_offset.get() + header.banner_size.get(), nds_alignment));
         header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry) + fs_info.fnt_sub_size));
         header.fat_offset          = toLittle(u32, alignAddr(u32, header.fnt_offset.get() + header.fnt_size.get(), nds_alignment));
         header.fat_size            = toLittle(u32, u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(FatEntry)));
@@ -513,8 +434,8 @@ pub const Rom = struct {
         try file.write(self.arm7);
         try file.seekTo(header.arm7_overlay_offset.get());
         try file.write(([]u8)(self.arm7_overlay_table));
-        try file.seekTo(header.icon_title_offset.get());
-        try file.write(utils.asBytes(IconTitle, &self.icon_title));
+        try file.seekTo(header.banner_offset.get());
+        try file.write(utils.asBytes(Banner, &self.banner));
     }
 
     fn hasNitroFooter(self: &const Rom) bool {
@@ -709,31 +630,31 @@ const FSWriter = struct {
 };
 
 comptime {
-    assert(@offsetOf(IconTitle, "version")                  == 0x0000);
-    assert(@offsetOf(IconTitle, "has_animated_dsi_icon")    == 0x0001);
+    assert(@offsetOf(Banner, "version")                  == 0x0000);
+    assert(@offsetOf(Banner, "has_animated_dsi_icon")    == 0x0001);
 
-    assert(@offsetOf(IconTitle, "crc16_across_0020h_083Fh") == 0x0002);
-    assert(@offsetOf(IconTitle, "crc16_across_0020h_093Fh") == 0x0004);
-    assert(@offsetOf(IconTitle, "crc16_across_0020h_0A3Fh") == 0x0006);
-    assert(@offsetOf(IconTitle, "crc16_across_1240h_23BFh") == 0x0008);
-    assert(@offsetOf(IconTitle, "reserved1")                == 0x000A);
+    assert(@offsetOf(Banner, "crc16_across_0020h_083Fh") == 0x0002);
+    assert(@offsetOf(Banner, "crc16_across_0020h_093Fh") == 0x0004);
+    assert(@offsetOf(Banner, "crc16_across_0020h_0A3Fh") == 0x0006);
+    assert(@offsetOf(Banner, "crc16_across_1240h_23BFh") == 0x0008);
+    assert(@offsetOf(Banner, "reserved1")                == 0x000A);
 
-    assert(@offsetOf(IconTitle, "icon_bitmap")              == 0x0020);
-    assert(@offsetOf(IconTitle, "icon_palette")             == 0x0220);
+    assert(@offsetOf(Banner, "icon_bitmap")              == 0x0020);
+    assert(@offsetOf(Banner, "icon_palette")             == 0x0220);
 
-    assert(@offsetOf(IconTitle, "title_japanese")           == 0x0240);
-    assert(@offsetOf(IconTitle, "title_english")            == 0x0340);
-    assert(@offsetOf(IconTitle, "title_french")             == 0x0440);
-    assert(@offsetOf(IconTitle, "title_german")             == 0x0540);
-    assert(@offsetOf(IconTitle, "title_italian")            == 0x0640);
-    assert(@offsetOf(IconTitle, "title_spanish")            == 0x0740);
-    //assert(@offsetOf(IconTitle, "title_chinese")            == 0x0840);
-    //assert(@offsetOf(IconTitle, "title_korean")             == 0x0940);
-    //assert(@offsetOf(IconTitle, "reserved2")               == 0x0A40);
+    assert(@offsetOf(Banner, "title_japanese")           == 0x0240);
+    assert(@offsetOf(Banner, "title_english")            == 0x0340);
+    assert(@offsetOf(Banner, "title_french")             == 0x0440);
+    assert(@offsetOf(Banner, "title_german")             == 0x0540);
+    assert(@offsetOf(Banner, "title_italian")            == 0x0640);
+    assert(@offsetOf(Banner, "title_spanish")            == 0x0740);
+    //assert(@offsetOf(Banner, "title_chinese")            == 0x0840);
+    //assert(@offsetOf(Banner, "title_korean")             == 0x0940);
+    //assert(@offsetOf(Banner, "reserved2")               == 0x0A40);
 
-    //assert(@offsetOf(IconTitleT, "icon_animation_bitmap")   == 0x1240);
-    //assert(@offsetOf(IconTitleT, "icon_animation_palette")  == 0x2240);
-    //assert(@offsetOf(IconTitle, "icon_animation_sequence") == 0x2340);
+    //assert(@offsetOf(BannerT, "icon_animation_bitmap")   == 0x1240);
+    //assert(@offsetOf(BannerT, "icon_animation_palette")  == 0x2240);
+    //assert(@offsetOf(Banner, "icon_animation_sequence") == 0x2340);
     //
-    //assert(@sizeOf(IconTitle) == 0x23C0);
+    //assert(@sizeOf(Banner) == 0x23C0);
 }
