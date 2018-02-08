@@ -1,16 +1,7 @@
 const std    = @import("std");
-const crc    = @import("crc");
-const ascii  = @import("../ascii.zig");
-const utils  = @import("../utils.zig");
-const little = @import("../little.zig");
 
-const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
-const sort  = std.sort;
-
-const assert = debug.assert;
-
 
 pub const File = struct {
     name: []u8,

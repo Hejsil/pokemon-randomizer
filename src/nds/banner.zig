@@ -1,5 +1,3 @@
-const std    = @import("std");
-const crc    = @import("crc");
 const ascii  = @import("../ascii.zig");
 const utils  = @import("../utils.zig");
 const little = @import("../little.zig");
