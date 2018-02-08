@@ -629,32 +629,3 @@ const FSWriter = struct {
     }
 };
 
-comptime {
-    assert(@offsetOf(Banner, "version")                  == 0x0000);
-    assert(@offsetOf(Banner, "has_animated_dsi_icon")    == 0x0001);
-
-    assert(@offsetOf(Banner, "crc16_across_0020h_083Fh") == 0x0002);
-    assert(@offsetOf(Banner, "crc16_across_0020h_093Fh") == 0x0004);
-    assert(@offsetOf(Banner, "crc16_across_0020h_0A3Fh") == 0x0006);
-    assert(@offsetOf(Banner, "crc16_across_1240h_23BFh") == 0x0008);
-    assert(@offsetOf(Banner, "reserved1")                == 0x000A);
-
-    assert(@offsetOf(Banner, "icon_bitmap")              == 0x0020);
-    assert(@offsetOf(Banner, "icon_palette")             == 0x0220);
-
-    assert(@offsetOf(Banner, "title_japanese")           == 0x0240);
-    assert(@offsetOf(Banner, "title_english")            == 0x0340);
-    assert(@offsetOf(Banner, "title_french")             == 0x0440);
-    assert(@offsetOf(Banner, "title_german")             == 0x0540);
-    assert(@offsetOf(Banner, "title_italian")            == 0x0640);
-    assert(@offsetOf(Banner, "title_spanish")            == 0x0740);
-    //assert(@offsetOf(Banner, "title_chinese")            == 0x0840);
-    //assert(@offsetOf(Banner, "title_korean")             == 0x0940);
-    //assert(@offsetOf(Banner, "reserved2")               == 0x0A40);
-
-    //assert(@offsetOf(BannerT, "icon_animation_bitmap")   == 0x1240);
-    //assert(@offsetOf(BannerT, "icon_animation_palette")  == 0x2240);
-    //assert(@offsetOf(Banner, "icon_animation_sequence") == 0x2340);
-    //
-    //assert(@sizeOf(Banner) == 0x23C0);
-}
