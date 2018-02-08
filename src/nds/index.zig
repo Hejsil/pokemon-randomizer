@@ -1,8 +1,7 @@
 const std    = @import("std");
 const crc    = @import("crc");
-const utils  = @import("utils.zig");
-const ascii  = @import("ascii.zig");
-const little = @import("little.zig");
+const utils  = @import("../utils.zig");
+const little = @import("../little.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
@@ -15,122 +14,10 @@ const toLittle = little.toLittle;
 const Little   = little.Little;
 
 pub const Header = @import("header.zig").Header;
-pub const Banner = @import("header.zig").Banner;
+pub const Banner = @import("banner.zig").Banner;
+pub const fs = @import("fs.zig");
 
 error AddressesOverlap;
-
-pub const File = struct {
-    name: []u8,
-    data: []u8,
-
-    pub fn destroy(file: &const File, allocator: &mem.Allocator) void {
-        allocator.free(file.name);
-        allocator.free(file.data);
-    }
-};
-
-pub const Folder = struct {
-    name:    []u8,
-    files:   []File,
-    folders: []Folder,
-
-    pub fn destroy(folder: &const Folder, allocator: &mem.Allocator) void {
-        for (folder.folders) |fold| {
-            fold.destroy(allocator);
-        }
-
-        for (folder.files) |file| {
-            file.destroy(allocator);
-        }
-
-        allocator.free(folder.name);
-        allocator.free(folder.files);
-        allocator.free(folder.folders);
-    }
-
-    pub fn getFile(folder: &const Folder, path: []const u8) ?&File {
-        var splitIter = mem.split(path, "/");
-        var curr_folder = folder;
-        var curr = splitIter.next() ?? return null;
-
-        while (splitIter.next()) |next| : (curr = next) {
-            for (curr_folder.folders) |*sub_folder| {
-                if (mem.eql(u8, curr, sub_folder.name)) {
-                    curr_folder = sub_folder;
-                    break;
-                }
-            } else {
-                return null;
-            }
-        }
-
-        for (curr_folder.files) |*file| {
-            if (mem.eql(u8, curr, file.name)) {
-                return file;
-            }
-        }
-
-        return null;
-    }
-
-    fn printIndent(stream: &io.OutStream, indent: usize) %void {
-        var i : usize = 0;
-        while (i < indent) : (i += 1) {
-            try stream.write("    ");
-        }
-    }
-
-    pub fn tree(folder: &const Folder, stream: &io.OutStream, indent: usize) %void {
-        try printIndent(stream, indent);
-        try stream.print("{}/\n", folder.name);
-
-        for (folder.folders) |f| {
-            try f.tree(stream, indent + 1);
-        }
-
-        for (folder.files) |f| {
-            try printIndent(stream, indent + 1);
-            try stream.print("{}\n", f.name);
-        }
-    }
-
-    const Sizes = struct {
-        files: u16,
-        folders: u16,
-        fnt_sub_size: u32,
-    };
-
-    fn sizes(folder: &const Folder) Sizes {
-        var result = Sizes {
-            .files = 0,
-            .folders = 0,
-            .fnt_sub_size = 0,
-        };
-
-        // Each folder have a sub fnt, which is terminated by 0x00
-        result.fnt_sub_size += 1;
-        result.folders      += 1;
-
-        for (folder.folders) |fold| {
-            const s = fold.sizes();
-            result.files        += s.files;
-            result.folders      += s.folders;
-            result.fnt_sub_size += s.fnt_sub_size;
-
-            result.fnt_sub_size += 1;
-            result.fnt_sub_size += u16(fold.name.len);
-            result.fnt_sub_size += 2;
-        }
-
-        for (folder.files) |file| {
-            result.files        += 1;
-            result.fnt_sub_size += 1;
-            result.fnt_sub_size += u16(file.name.len);
-        }
-
-        return result;
-    }
-};
 
 error InvalidFatSize;
 error InvalidFntMainTableSize;
@@ -164,7 +51,7 @@ pub const Rom = struct {
     arm7_overlay_files: [][]u8,
 
     banner: Banner,
-    root: Folder,
+    root: fs.Folder,
 
     pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Rom {
         var result = try allocator.create(Rom);
@@ -245,7 +132,7 @@ pub const Rom = struct {
         allocator.free(files);
     }
 
-    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) %Folder {
+    fn readFileSystem(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fnt_size: usize, fat_offset: usize, fat_size: usize) %fs.Folder {
         if (fat_size % @sizeOf(FatEntry) != 0)       return error.InvalidFatSize;
         if (fat_size > 61440 * @sizeOf(FatEntry))    return error.InvalidFatSize;
 
@@ -282,10 +169,10 @@ pub const Rom = struct {
         fnt_entry: &const FntMainEntry,
         fnt_offset: usize,
         img_base: usize,
-        name: []u8) %Folder {
+        name: []u8) %fs.Folder {
 
         try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
-        var folders = std.ArrayList(Folder).init(allocator);
+        var folders = std.ArrayList(fs.Folder).init(allocator);
         errdefer {
             for (folders.toSlice()) |f| {
                 f.destroy(allocator);
@@ -294,7 +181,7 @@ pub const Rom = struct {
             folders.deinit();
         }
 
-        var files = std.ArrayList(File).init(allocator);
+        var files = std.ArrayList(fs.File).init(allocator);
         errdefer {
             for (files.toSlice()) |f| {
                 f.destroy(allocator);
@@ -331,7 +218,7 @@ pub const Rom = struct {
 
                     try file.seekTo(current_pos);
                     try files.append(
-                        File {
+                        fs.File {
                             .name = child_name,
                             .data = file_data,
                         }
@@ -363,7 +250,7 @@ pub const Rom = struct {
             }
         }
 
-        return Folder {
+        return fs.Folder {
             .name    = name,
             .folders = folders.toOwnedSlice(),
             .files   = files.toOwnedSlice()
@@ -391,8 +278,8 @@ pub const Rom = struct {
         header.arm7_size           = toLittle(u32, u32(self.arm7.len));
         header.arm7_overlay_offset = toLittle(u32, header.arm7_rom_offset.get() + header.arm7_size.get());
         header.arm7_overlay_size   = toLittle(u32, u32(self.arm7_overlay_table.len * @sizeOf(Overlay)));
-        header.banner_offset   = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment));
-        header.banner_size     = toLittle(u32, @sizeOf(Banner));
+        header.banner_offset       = toLittle(u32, alignAddr(u32, header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), nds_alignment));
+        header.banner_size         = toLittle(u32, @sizeOf(Banner));
         header.fnt_offset          = toLittle(u32, alignAddr(u32, header.banner_offset.get() + header.banner_size.get(), nds_alignment));
         header.fnt_size            = toLittle(u32, u32(fs_info.folders * @sizeOf(FntMainEntry) + fs_info.fnt_sub_size));
         header.fat_offset          = toLittle(u32, alignAddr(u32, header.fnt_offset.get() + header.fnt_size.get(), nds_alignment));
@@ -417,7 +304,7 @@ pub const Rom = struct {
 
             break :blk device_cap;
         };
-        header.header_checksum = toLittle(u16, crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]));
+        header.calcChecksum();
 
         try header.validate();
         try file.seekTo(0x00);
@@ -550,7 +437,7 @@ const FSWriter = struct {
         };
     }
 
-    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) %void {
+    fn writeFileSystem(writer: &FSWriter, root: &const fs.Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) %void {
         try writer.file.seekTo(fnt_offset);
         try writer.file.write(utils.asConstBytes(
             FntMainEntry,
@@ -563,7 +450,7 @@ const FSWriter = struct {
         try writer.writeFolder(root, fnt_offset, fat_offset, img_base, writer.folder_id);
     }
 
-    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) %void {
+    fn writeFolder(writer: &FSWriter, folder: &const fs.Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) %void {
         for (folder.files) |f| {
             // Write file to sub fnt
             try writer.file.seekTo(writer.fnt_sub_offset);

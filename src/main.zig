@@ -1,6 +1,6 @@
 const std        = @import("std");
 const gba        = @import("gba.zig");
-const nds        = @import("nds.zig");
+const nds        = @import("nds/index.zig");
 const utils      = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
 const clap       = @import("clap.zig");

@@ -1,10 +1,10 @@
-const nds = @import("../nds.zig");
+const nds = @import("../nds/index.zig");
 
 error Err;
 
 pub const Game = struct {
 
-    base_stats: &nds.File,
+    base_stats: &nds.fs.File,
 
     pub fn fromRom(rom: &nds.Rom) %Game {
         const root = &rom.root;

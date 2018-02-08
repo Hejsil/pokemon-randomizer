@@ -1,4 +1,18 @@
+const std    = @import("std");
+const crc    = @import("crc");
+const ascii  = @import("../ascii.zig");
+const utils  = @import("../utils.zig");
+const little = @import("../little.zig");
 
+const debug = std.debug;
+const mem   = std.mem;
+const io    = std.io;
+const sort  = std.sort;
+
+const assert = debug.assert;
+
+const toLittle = little.toLittle;
+const Little   = little.Little;
 
 error InvalidHeaderChecksum;
 error InvalidGameTitle;
@@ -35,7 +49,7 @@ error InvalidReserved18;
 error InvalidDigestNtrRegionOffset;
 error InvalidTitleIdRest;
 
-const crc_modbus = comptime blk: {
+pub const crc_modbus = comptime blk: {
     @setEvalBranchQuota(crc.crcspec_init_backward_cycles);
     break :blk crc.CrcSpec(u16).init(0x8005, 0xFFFF, 0x0000, true, true);
 };
@@ -87,7 +101,7 @@ pub const Header = packed struct {
     port_40001A4h_setting_for_normal_commands: [4]u8,
     port_40001A4h_setting_for_key1_commands:   [4]u8,
 
-    icon_title_offset: Little(u32),
+    banner_offset: Little(u32),
 
     secure_area_checksum: Little(u16),
     secure_area_delay:    Little(u16),
@@ -160,7 +174,7 @@ pub const Header = packed struct {
     digest_sector_size:             Little(u32),
     digest_block_sectorcount:       Little(u32),
 
-    icon_title_size: Little(u32),
+    banner_size: Little(u32),
 
     reserved8: [4]u8,
 
@@ -227,6 +241,10 @@ pub const Header = packed struct {
         return (self.unitcode & 0x02) != 0;
     }
 
+    pub fn calcChecksum(header: &Header) void {
+        header.header_checksum = toLittle(u16, crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]));
+    }
+
     pub fn validate(self: &const Header) %void {
         if (self.header_checksum.get() != crc_modbus.checksum(utils.asConstBytes(Header, self)[0..0x15E]))
             return error.InvalidHeaderChecksum;
@@ -267,7 +285,7 @@ pub const Header = packed struct {
         if (self.arm7_size.get() > 0x3BFE00)
             return error.InvalidArm7Size;
 
-        if (utils.between(u32, self.icon_title_offset.get(), 0x1, 0x7FFF))
+        if (utils.between(u32, self.banner_offset.get(), 0x1, 0x7FFF))
             return error.InvalidIconTitleOffset;
 
         if (self.secure_area_delay.get() != 0x051E and self.secure_area_delay.get() != 0x0D7E)
