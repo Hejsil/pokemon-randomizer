@@ -134,14 +134,12 @@ pub const Rom = struct {
         header.fat_offset          = toLittle(common.alignAddr(header.fnt_offset.get() + header.fnt_size.get(), u32(0x200)));
         header.fat_size            = toLittle(u32((fs_info.files + self.arm9_overlay_table.len + self.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
-        const fnt_sub_offset = header.fnt_offset.get() + fs_info.folders * @sizeOf(fs.FntMainEntry);
         const file_offset = header.fat_offset.get() + header.fat_size.get();
-
         var overlay_writer = overlay.Writer.init(file, file_offset, 0);
         try overlay_writer.writeOverlayFiles(self.arm9_overlay_table, self.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(self.arm7_overlay_table, self.arm7_overlay_files, header.fat_offset.get());
 
-        var fs_writer = fs.FSWriter.init(file, overlay_writer.file_offset, fnt_sub_offset, overlay_writer.file_id);
+        var fs_writer = fs.FSWriter.init(file, overlay_writer.file_offset, overlay_writer.file_id);
         try fs_writer.writeFileSystem(self.root, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
 
         header.total_used_rom_size = toLittle( common.alignAddr(fs_writer.file_offset, u32(4)));

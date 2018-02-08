@@ -325,17 +325,18 @@ pub const FSWriter = struct {
     file_id: u16,
     folder_id: u16,
 
-    fn init(file: &io.File, file_offset: u32, fnt_sub_offset: u32, start_file_id: u16) FSWriter {
+    fn init(file: &io.File, file_offset: u32, start_file_id: u16) FSWriter {
         return FSWriter {
             .file = file,
             .file_offset = file_offset,
-            .fnt_sub_offset = fnt_sub_offset,
+            .fnt_sub_offset = 0,
             .file_id = start_file_id,
             .folder_id = 0xF000,
         };
     }
 
     fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) %void {
+        writer.fnt_sub_offset = fnt_offset + folder_count * @sizeOf(FntMainEntry);
         try writer.file.seekTo(fnt_offset);
         try writer.file.write(utils.asConstBytes(
             FntMainEntry,
@@ -361,13 +362,69 @@ pub const FSWriter = struct {
             try writer.file.seekTo(start);
 
             switch (f.@"type") {
-                File.Type.Binary => |data| try writer.file.write(data),
+                File.Type.Binary => |data| {
+                    try writer.file.write(data);
+                    writer.file_offset = u32(try writer.file.getPos());
+                },
                 File.Type.Narc => |narc_fs| {
-                    unreachable
+                    const names = narc.Chunk.names;
+                    const fs_info = narc_fs.sizes();
+
+                    // We write the narc header last.
+                    try writer.file.seekTo(start + @sizeOf(narc.Header));
+                    const fat_chunk_start = try writer.file.getPos();
+                    const fat_chunk_end   = fat_chunk_start + @sizeOf(narc.Chunk) + fs_info.files * @sizeOf(FatEntry);
+                    try writer.file.write(
+                        utils.asConstBytes(
+                            narc.Chunk,
+                            narc.Chunk {
+                                .name = names.fat,
+                                .size = toLittle(u32(fat_chunk_end - fat_chunk_start)),
+                            },
+                        ));
+                    const narc_fat_offset = try writer.file.getPos();
+
+                    try writer.file.seekTo(fat_chunk_end);
+                    const fnt_chunk_start = try writer.file.getPos();
+                    const fnt_chunk_end   = common.alignAddr(fnt_chunk_start + @sizeOf(narc.Chunk) + fs_info.fnt_sub_size, u32(4));
+                    try writer.file.write(
+                        utils.asConstBytes(
+                            narc.Chunk,
+                            narc.Chunk {
+                                .name = names.fnt,
+                                .size = toLittle(u32(fnt_chunk_end - fnt_chunk_start)),
+                            },
+                        ));
+                    const narc_fnt_offset = try writer.file.getPos();
+                    const narc_img_base = fnt_chunk_end + @sizeOf(narc.Chunk);
+
+                    // We also skip writing file_data chunk header, till after we've written
+                    // the file system, as we don't know the size of the chunk otherwise.
+                    var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
+                    try fs_writer.writeFileSystem(narc_fs, u32(narc_fnt_offset), u32(narc_fat_offset), u32(narc_img_base), fs_info.folders);
+
+                    try writer.file.seekTo(fnt_chunk_end);
+                    try writer.file.write(
+                        utils.asConstBytes(
+                            narc.Chunk,
+                            narc.Chunk {
+                                .name = names.file_data,
+                                .size = toLittle(u32(fs_writer.file_offset - fnt_chunk_end)),
+                            },
+                        ));
+
+                    const narc_file_size = fs_writer.file_offset - start;
+                    try writer.file.seekTo(start);
+                    try writer.file.write(
+                        utils.asConstBytes(
+                            narc.Header,
+                            narc.Header.init(narc_file_size),
+                        ));
+
+                    writer.file_offset = u32(fs_writer.file_offset);
                 },
             }
 
-            writer.file_offset = u32(try writer.file.getPos());
             const size = writer.file_offset - start;
 
             // Write offsets to fat
