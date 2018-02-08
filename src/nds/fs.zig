@@ -307,7 +307,7 @@ pub const FSWriter = struct {
             writer.fnt_sub_offset = u32(try writer.file.getPos());
 
             // Write file content
-            const start = common.alignAddr(u32, writer.file_offset, 0x200);
+            const start = common.alignAddr(writer.file_offset, u32(0x200));
             try writer.file.seekTo(start);
             try writer.file.write(f.data);
 

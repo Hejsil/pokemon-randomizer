@@ -67,7 +67,7 @@ pub const Writer = struct {
     fn writeOverlayFiles(self: &Writer, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) %void {
         for (overlay_table) |*overlay_entry, i| {
             const overlay_file = overlay_files[i];
-            const fat_entry = fs.FatEntry.init(common.alignAddr(u32, self.file_offset, 0x200), u32(overlay_file.len));
+            const fat_entry = fs.FatEntry.init(common.alignAddr(self.file_offset, u32(0x200)), u32(overlay_file.len));
             try self.file.seekTo(fat_offset + (self.file_id * @sizeOf(fs.FatEntry)));
             try self.file.write(utils.asConstBytes(fs.FatEntry, fat_entry));
 
