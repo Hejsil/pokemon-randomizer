@@ -306,7 +306,7 @@ pub const Rom = struct {
 
             break :blk device_cap;
         };
-        header.calcChecksum();
+        header.header_checksum = toLittle(u16, header.calcChecksum());
 
         try header.validate();
         try file.seekTo(0x00);

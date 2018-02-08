@@ -240,12 +240,12 @@ pub const Header = packed struct {
         return (self.unitcode & 0x02) != 0;
     }
 
-    pub fn calcChecksum(header: &Header) void {
-        header.header_checksum = toLittle(u16, crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]));
+    pub fn calcChecksum(header: &const Header) u16 {
+        return crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]);
     }
 
     pub fn validate(self: &const Header) %void {
-        if (self.header_checksum.get() != crc_modbus.checksum(utils.asConstBytes(Header, self)[0..0x15E]))
+        if (self.header_checksum.get() != self.calcChecksum())
             return error.InvalidHeaderChecksum;
 
         if (!utils.all(u8, self.game_title, isUpperAsciiOrZero))
