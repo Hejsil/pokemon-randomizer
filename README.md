@@ -11,7 +11,7 @@ The randomizer relies on libraries which are included as git submodules. You,
 therefore, need to clone with `--recursive`, in order to get these libraries on
 clone.
 
-The repo contains both the Pokémon randomizer, but also a few tools used to mak
+The repo contains both the Pokémon randomizer, but also a few tools used to make
 development of the randomizer a little simpler.
 
 Here are the different build commands:
