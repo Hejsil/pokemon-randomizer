@@ -6,11 +6,11 @@ const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
 
-error NoFileInArguments;
-error UnknownPokemonVersion;
-error UnableToFindOffset;
 
-pub fn main() %void {
+
+
+
+pub fn main() !void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
     var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
     defer inc_allocator.deinit();

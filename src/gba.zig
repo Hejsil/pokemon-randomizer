@@ -8,12 +8,12 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-error InvalidGameTitle;
-error InvalidGamecode;
-error InvalidMakercode;
-error InvalidFixedValue;
-error InvalidReserved1;
-error InvalidReserved2;
+
+
+
+
+
+
 
 pub const Header = packed struct {
     rom_entry_point: [4]u8,
@@ -33,7 +33,7 @@ pub const Header = packed struct {
 
     reserved2: [2]u8,
 
-    pub fn validate(self: &const Header) %void {
+    pub fn validate(self: &const Header) !void {
         if (!utils.all(u8, self.game_title, ascii.isUpperAscii))
             return error.InvalidGameTitle;
         if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))

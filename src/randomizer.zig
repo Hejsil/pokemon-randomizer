@@ -113,7 +113,7 @@ pub const Options = struct {
     }
 };
 
-pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) %void {
+pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) !void {
     // TODO: When we can get the max value of enums, fix this code:
     //                     VVVVVVVVVVVVVVVVVVVVV
     var pokemons_by_type = [u8(common.Type.Fairy) + 1]std.ArrayList(u16) {
@@ -152,7 +152,7 @@ pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocat
     try randomizeTrainers(game, pokemons_by_type[0..], options.trainer, random, allocator);
 }
 
-fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) %void {
+fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) !void {
     var trainer_id : usize = 0;
     while (game.getTrainer(trainer_id)) |trainer| : (trainer_id += 1) {
         const trainer_theme = switch (options.pokemon) {
@@ -248,7 +248,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     }
 }
 
-fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) %u16 {
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) !u16 {
     if (same_total_stats) {
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
@@ -294,7 +294,7 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, trainer_pokemon: var, option: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) %void {
+fn randomizeTrainerPokemonMoves(game: var, trainer_pokemon: var, option: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) !void {
     switch (option.moves) {
         Options.Trainer.Moves.Same => {
             // If trainer Pokémons where randomized, then keeping the same moves
@@ -435,7 +435,7 @@ fn randomMoveId(game: var, random: &rand.Rand) u16 {
 }
 
 /// Caller owns memory returned
-fn getMovesLearned(game: var, species: usize, allocator: &mem.Allocator) %[]u16 {
+fn getMovesLearned(game: var, species: usize, allocator: &mem.Allocator) ![]u16 {
     const tms = game.getTms();
     const hms = game.getHms();
     const levelup_learnset = game.getLevelupMoves(species) ?? unreachable; // TODO: Handle

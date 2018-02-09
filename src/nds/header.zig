@@ -13,40 +13,40 @@ const assert = debug.assert;
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
-error InvalidHeaderChecksum;
-error InvalidGameTitle;
-error InvalidGamecode;
-error InvalidMakercode;
-error InvalidUnitcode;
-error InvalidEncryptionSeedSelect;
-error InvalidReserved1;
-error InvalidArm9RomOffset;
-error InvalidArm9EntryAddress;
-error InvalidArm9RamAddress;
-error InvalidArm9Size;
-error InvalidArm7RomOffset;
-error InvalidArm7EntryAddress;
-error InvalidArm7RamAddress;
-error InvalidArm7Size;
-error InvalidIconTitleOffset;
-error InvalidSecureAreaDelay;
-error InvalidRomHeaderSize;
-error InvalidReserved3;
-error InvalidReserved3Dsi;
-error InvalidReserved4;
-error InvalidReserved5;
-error InvalidReserved6;
-error InvalidReserved7;
-error InvalidReserved8;
-error InvalidReserved9;
-error InvalidReserved10;
-error InvalidReserved11;
-error InvalidReserved12;
-error InvalidReserved16;
-error InvalidReserved17;
-error InvalidReserved18;
-error InvalidDigestNtrRegionOffset;
-error InvalidTitleIdRest;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub const crc_modbus = comptime blk: {
     @setEvalBranchQuota(crc.crcspec_init_backward_cycles);
@@ -244,7 +244,7 @@ pub const Header = packed struct {
         return crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]);
     }
 
-    pub fn validate(self: &const Header) %void {
+    pub fn validate(self: &const Header) !void {
         if (self.header_checksum.get() != self.calcChecksum())
             return error.InvalidHeaderChecksum;
 

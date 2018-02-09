@@ -19,19 +19,19 @@ pub const Header  = @import("header.zig").Header;
 pub const Banner  = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
-error AddressesOverlap;
 
-error InvalidFatSize;
-error InvalidFntMainTableSize;
-error InvalidFntRootDirectoryId;
-error InvalidFntSubDirectoryId;
-error InvalidSubTableTypeLength;
-error InvalidSubDirectoryId;
-error InvalidFileId;
-error InvalidNameLength;
-error InvalidSizeInHeader;
-error FailedToWriteNitroToFnt;
-error FailedToWriteNitroToFat;
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub const Rom = struct {
     header: Header,
@@ -55,7 +55,7 @@ pub const Rom = struct {
     banner: Banner,
     root: fs.Folder,
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Rom {
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) !&Rom {
         var result = try allocator.create(Rom);
         errdefer allocator.destroy(result);
 
@@ -106,7 +106,7 @@ pub const Rom = struct {
         return result;
     }
 
-    pub fn writeToFile(self: &Rom, file: &io.File) %void {
+    pub fn writeToFile(self: &Rom, file: &io.File) !void {
         try self.banner.validate();
 
         const header = &self.header;

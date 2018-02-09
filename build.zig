@@ -1,6 +1,6 @@
 const Builder = @import("std").build.Builder;
 
-pub fn build(b: &Builder) %void {
+pub fn build(b: &Builder) void {
     const randomizer_step = b.step("randomizer", "Build randomizer");
     const randomizer = b.addExecutable("randomizer", "src/main.zig");
     randomizer.addPackagePath("crc", "lib/zig-crc/crc.zig");

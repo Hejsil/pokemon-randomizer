@@ -5,16 +5,16 @@ const little = @import("../little.zig");
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
-error InvalidVersion;
-error InvalidVersionPadding;
-error InvalidHasAnimatedDsiIconPadding;
-error InvalidReserved1;
-error InvalidReserved2;
-error InvalidChinese;
-error InvalidKorean;
-error InvalidIconAnimationBitmap;
-error InvalidIconAnimationPalette;
-error InvalidIconAnimationSequence;
+
+
+
+
+
+
+
+
+
+
 
 pub const Banner = packed struct {
     pub const Version = enum(u2) {
@@ -58,7 +58,7 @@ pub const Banner = packed struct {
     //icon_animation_palette: [0x100]u8,
     //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
 
-    pub fn validate(self: &const Banner) %void {
+    pub fn validate(self: &const Banner) !void {
         if (u2(self.version) == 0)
             return error.InvalidVersion;
         if (self.version_padding != 0)

@@ -21,7 +21,7 @@ pub const Overlay = packed struct {
     reserved: [4]u8,
 };
 
-pub fn readFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) %[][]u8 {
+pub fn readFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) ![][]u8 {
     var results = std.ArrayList([]u8).init(allocator);
     try results.ensureCapacity(overlay_table.len);
     errdefer {
@@ -64,7 +64,7 @@ pub const Writer = struct {
         };
     }
 
-    fn writeOverlayFiles(self: &Writer, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) %void {
+    fn writeOverlayFiles(self: &Writer, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) !void {
         for (overlay_table) |*overlay_entry, i| {
             const overlay_file = overlay_files[i];
             const fat_entry = fs.FatEntry.init(common.alignAddr(self.file_offset, u32(0x200)), u32(overlay_file.len));

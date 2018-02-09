@@ -49,7 +49,7 @@ pub fn constPtrAt(comptime T: type, slice: []const T, index: usize) ?&const T {
     }
 }
 
-pub fn noAllocRead(comptime T: type, file: &io.File) %T {
+pub fn noAllocRead(comptime T: type, file: &io.File) !T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
@@ -59,17 +59,17 @@ pub fn noAllocRead(comptime T: type, file: &io.File) %T {
     return result;
 }
 
-pub fn seekToNoAllocRead(comptime T: type, file: &io.File, offset: usize) %T {
+pub fn seekToNoAllocRead(comptime T: type, file: &io.File, offset: usize) !T {
     try file.seekTo(offset);
     return noAllocRead(T, file);
 }
 
-pub fn seekToAllocAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) %[]T {
+pub fn seekToAllocAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize, size: usize) ![]T {
     try file.seekTo(offset);
     return allocAndRead(T, file, allocator, size);
 }
 
-pub fn allocAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator, size: usize) %[]T {
+pub fn allocAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator, size: usize) ![]T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
@@ -81,12 +81,12 @@ pub fn allocAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator,
     return data;
 }
 
-pub fn seekToCreateAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize) %&T {
+pub fn seekToCreateAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator, offset: usize) !&T {
     const res = try seekToAllocAndRead(T, file, allocator, offset, 1);
     return &res[0];
 }
 
-pub fn createAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator) %&T {
+pub fn createAndRead(comptime T: type, file: &io.File, allocator: &mem.Allocator) !&T {
     const res = try allocAndRead(T, file, allocator, 1);
     return &res[0];
 }

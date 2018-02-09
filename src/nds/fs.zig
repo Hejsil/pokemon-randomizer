@@ -76,14 +76,14 @@ pub const Folder = struct {
         return null;
     }
 
-    fn printIndent(stream: &io.OutStream, indent: usize) %void {
+    fn printIndent(stream: &io.OutStream, indent: usize) !void {
         var i : usize = 0;
         while (i < indent) : (i += 1) {
             try stream.write("    ");
         }
     }
 
-    pub fn tree(folder: &const Folder, stream: &io.OutStream, indent: usize) %void {
+    pub fn tree(folder: &const Folder, stream: &io.OutStream, indent: usize) !void {
         try printIndent(stream, indent);
         try stream.print("{}/\n", folder.name);
 
@@ -161,7 +161,7 @@ pub const FatEntry = packed struct {
     }
 };
 
-pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) %Folder {
+pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) !Folder {
     const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
     const fnt_main_table = try utils.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
     defer allocator.free(fnt_main_table);
@@ -267,10 +267,10 @@ fn buildFolderFromFntMainEntry(
     };
 }
 
-error InvalidChunkName;
-error InvalidChunkSize;
 
-fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) %File {
+
+
+fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !File {
     narc_read: {
         const names = narc.Chunk.names;
         const header = utils.seekToNoAllocRead(narc.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
@@ -335,7 +335,7 @@ pub const FSWriter = struct {
         };
     }
 
-    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) %void {
+    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) !void {
         writer.fnt_sub_offset = fnt_offset + folder_count * @sizeOf(FntMainEntry);
         try writer.file.seekTo(fnt_offset);
         try writer.file.write(utils.asConstBytes(
@@ -349,7 +349,7 @@ pub const FSWriter = struct {
         try writer.writeFolder(root, fnt_offset, fat_offset, img_base, writer.folder_id);
     }
 
-    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) %void {
+    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) !void {
         for (folder.files) |f| {
             // Write file to sub fnt
             try writer.file.seekTo(writer.fnt_sub_offset);

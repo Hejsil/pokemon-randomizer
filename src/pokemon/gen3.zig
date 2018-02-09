@@ -184,12 +184,12 @@ const Offsets = struct {
     tms:                        Offset,
 };
 
-error InvalidRomSize;
-error InvalidGen3PokemonHeader;
-error NoBulbasaurFound;
-error InvalidGeneration;
-error InvalidTrainerPartyOffset;
-error InvalidPartyType;
+
+
+
+
+
+
 
 const bulbasaur_fingerprint = []u8 {
     0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
@@ -223,7 +223,7 @@ pub const Game = struct {
     items: []Item,
     tms: []Little(u16),
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Game {
+    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) !&Game {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
@@ -256,7 +256,7 @@ pub const Game = struct {
         return res;
     }
 
-    pub fn writeToStream(game: &const Game, stream: &io.OutStream) %void {
+    pub fn writeToStream(game: &const Game, stream: &io.OutStream) !void {
         try game.header.validate();
         try stream.write(game.data);
     }
@@ -310,7 +310,7 @@ pub const Game = struct {
         .tms                        = Offset { .start = 0x03764AC, .end = 0x0376520, },
     };
 
-    fn getOffsets(header: &const gba.Header) %&const Offsets {
+    fn getOffsets(header: &const gba.Header) !&const Offsets {
         if (mem.eql(u8, header.game_title, "POKEMON EMER")) return &emerald_us_offsets;
         if (mem.eql(u8, header.game_title, "POKEMON RUBY")) return &ruby_us_offsets;
         if (mem.eql(u8, header.game_title, "POKEMON SAPP")) return &sapphire_us_offsets;
@@ -318,7 +318,7 @@ pub const Game = struct {
         return error.InvalidGen3PokemonHeader;
     }
 
-    pub fn validateData(game: &const Game) %void {
+    pub fn validateData(game: &const Game) !void {
         if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
             return error.NoBulbasaurFound;
     }

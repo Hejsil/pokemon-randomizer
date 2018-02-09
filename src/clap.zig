@@ -20,13 +20,13 @@ pub fn Arg(comptime T: type) type { return struct {
     pub const Kind = enum { Optional, Required, IgnoresRequired };
 
     help_message: []const u8,
-    handler: fn(&T, []const u8) %void,
+    handler: fn(&T, []const u8) error!void,
     arg_kind: Kind,
     takes_value: bool,
     short_arg: ?u8,
     long_arg:  ?[]const u8,
 
-    pub fn init(handler: fn(&T, []const u8) %void) Self {
+    pub fn init(handler: fn(&T, []const u8) error!void) Self {
         return Self {
             .help_message = "",
             .handler = handler,
@@ -63,12 +63,12 @@ pub fn Arg(comptime T: type) type { return struct {
     }
 };}
 
-error MissingValueToArgument;
-error InvalidArgument;
-error ToManyOptions;
-error RequiredArgumentWasntHandled;
 
-pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) %T {
+
+
+
+
+pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) !T {
     var result = *defaults;
 
     const Kind    = enum { Long, Short, None };
@@ -173,7 +173,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
 //    * Usage
 //    * Description
 
-pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream) %void {
+pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream(error)) !void {
     const equal_value : []const u8 = "=OPTION";
     var longest_long : usize = 0;
     for (options) |option| {
@@ -231,15 +231,15 @@ test "clap.parse.Example" {
 
         r: u8, g: u8, b: u8,
 
-        fn rFromStr(self: &Self, str: []const u8) %void {
+        fn rFromStr(self: &Self, str: []const u8) !void {
             self.r = try fmt.parseInt(u8, str, 10);
         }
 
-        fn gFromStr(self: &Self, str: []const u8) %void {
+        fn gFromStr(self: &Self, str: []const u8) !void {
             self.g = try fmt.parseInt(u8, str, 10);
         }
 
-        fn bFromStr(self: &Self, str: []const u8) %void {
+        fn bFromStr(self: &Self, str: []const u8) !void {
             self.b = try fmt.parseInt(u8, str, 10);
         }
     };
