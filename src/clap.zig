@@ -173,7 +173,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
 //    * Usage
 //    * Description
 
-pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream(error)) !void {
+pub fn help(comptime T: type, options: []const Arg(T), out_stream: var) !void {
     const equal_value : []const u8 = "=OPTION";
     var longest_long : usize = 0;
     for (options) |option| {
@@ -190,38 +190,38 @@ pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream(err
     for (options) |option| {
         if (option.short_arg == null and option.long_arg == null) continue;
 
-        try stream.print("    ");
+        try out_stream.print("    ");
         if (option.short_arg) |short| {
-            try stream.print("-{c}", short);
+            try out_stream.print("-{c}", short);
         } else {
-            try stream.print("  ");
+            try out_stream.print("  ");
         }
 
         if (option.short_arg != null and option.long_arg != null) {
-            try stream.print(", ");
+            try out_stream.print(", ");
         } else {
-            try stream.print("  ");
+            try out_stream.print("  ");
         }
 
         // We need to ident by:
         // "--<longest_long> ".len
         var missing_spaces = longest_long + 3;
         if (option.long_arg) |long| {
-            try stream.print("--{}", long);
+            try out_stream.print("--{}", long);
             missing_spaces -= 2 + long.len;
 
             if (option.takes_value) {
-                try stream.print("{}", equal_value);
+                try out_stream.print("{}", equal_value);
                 missing_spaces -= equal_value.len;
             }
         }
 
         var i : usize = 0;
         while (i < (missing_spaces + 1)) : (i += 1) {
-            try stream.print(" ");
+            try out_stream.print(" ");
         }
 
-        try stream.print("{}\n", option.help_message);
+        try out_stream.print("{}\n", option.help_message);
     }
 }
 

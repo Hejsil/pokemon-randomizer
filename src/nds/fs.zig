@@ -161,7 +161,9 @@ pub const FatEntry = packed struct {
     }
 };
 
-pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) !Folder {
+// TODO: We can infer errors for recursive functions. We therefore have to specify the error set. For now, we just use error, but
+//       we probably want something more specific
+pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) error!Folder {
     const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
     const fnt_main_table = try utils.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
     defer allocator.free(fnt_main_table);
@@ -185,6 +187,7 @@ pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_of
     );
 }
 
+// TODO: More specific error set
 fn buildFolderFromFntMainEntry(
     file: &io.File,
     allocator: &mem.Allocator,
@@ -193,7 +196,7 @@ fn buildFolderFromFntMainEntry(
     fnt_entry: &const FntMainEntry,
     fnt_offset: usize,
     img_base: usize,
-    name: []u8) %Folder {
+    name: []u8) error!Folder {
 
     try file.seekTo(fnt_entry.offset_to_subtable.get() + fnt_offset);
     var folders = std.ArrayList(Folder).init(allocator);
@@ -335,7 +338,8 @@ pub const FSWriter = struct {
         };
     }
 
-    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) !void {
+    // TODO: More specific error set
+    fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) error!void {
         writer.fnt_sub_offset = fnt_offset + folder_count * @sizeOf(FntMainEntry);
         try writer.file.seekTo(fnt_offset);
         try writer.file.write(utils.asConstBytes(
@@ -349,7 +353,8 @@ pub const FSWriter = struct {
         try writer.writeFolder(root, fnt_offset, fat_offset, img_base, writer.folder_id);
     }
 
-    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) !void {
+    // TODO: More specific error set
+    fn writeFolder(writer: &FSWriter, folder: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, id: u16) error!void {
         for (folder.files) |f| {
             // Write file to sub fnt
             try writer.file.seekTo(writer.fnt_sub_offset);
@@ -481,4 +486,3 @@ pub const FSWriter = struct {
         assert(curr_sub_offset == assert_end);
     }
 };
-
