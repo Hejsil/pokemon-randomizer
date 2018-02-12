@@ -464,7 +464,7 @@ pub const FSWriter = struct {
                 // We write the narc header last.
                 try writer.file.seekTo(start + @sizeOf(formats.Header));
                 const fat_chunk_start = try writer.file.getPos();
-                const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + fs_info.files * @sizeOf(FatEntry);
+                const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + 0x4 + fs_info.files * @sizeOf(FatEntry);
                 const fat_chunk_size  = fat_chunk_end - fat_chunk_start;
                 try writer.file.write(
                     utils.asConstBytes(
