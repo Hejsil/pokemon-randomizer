@@ -400,7 +400,6 @@ pub const FSWriter = struct {
             writer.fnt_sub_offset = u32(try writer.file.getPos());
 
             try writer.writeFile(f, fat_offset, img_base);
-            writer.file_id += 1;
         }
 
         // Skip writing folders to sub table, but still skip forward all the bytes
@@ -496,15 +495,12 @@ pub const FSWriter = struct {
 
                 // We also skip writing file_data chunk header, till after we've written
                 // the file system, as we don't know the size of the chunk otherwise.
-
-                // Some games
                 const file_offset = if (no_fnt) blk: {
                     try writer.file.seekTo(fnt_chunk_start + @sizeOf(formats.Chunk));
                     try writer.file.write(
                         utils.asConstBytes(
                             FntMainEntry,
                             FntMainEntry {
-                                // Point to
                                 .offset_to_subtable        = toLittle(u32(0x4)),
                                 .first_file_id_in_subtable = toLittle(u16(0)),
                                 .parent_id                 = toLittle(u16(1)),
@@ -555,5 +551,6 @@ pub const FSWriter = struct {
                 FatEntry,
                 FatEntry.init(u32(start - img_base), u32(size))
             ));
+        writer.file_id += 1;
     }
 };
