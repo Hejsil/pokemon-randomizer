@@ -6,15 +6,17 @@ const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
 
-error NoFileInArguments;
-error UnknownPokemonVersion;
-error UnableToFindOffset;
 
-pub fn main() %void {
-    // TODO: Use Zig's own general purpose allocator... When it has one.
-    var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
-    defer inc_allocator.deinit();
-    const allocator = &inc_allocator.allocator;
+
+
+
+pub fn main() !void {
+    var direct_allocator = std.heap.DirectAllocator.init();
+    defer direct_allocator.deinit();
+    var arena = std.heap.ArenaAllocator.init(&direct_allocator.allocator);
+    defer arena.deinit();
+
+    const allocator = &arena.allocator;
 
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
@@ -28,7 +30,7 @@ pub fn main() %void {
         return error.NoFileInArguments;
     }
 
-    var file = io.File.openRead(args[1], null) catch |err| {
+    var file = os.File.openRead(allocator, args[1]) catch |err| {
         try stdout_stream.print("Couldn't open {}.\n", args[1]);
         return err;
     };

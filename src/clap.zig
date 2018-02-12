@@ -8,7 +8,6 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-
 // TODO: Missing a few convinient features
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
@@ -20,13 +19,13 @@ pub fn Arg(comptime T: type) type { return struct {
     pub const Kind = enum { Optional, Required, IgnoresRequired };
 
     help_message: []const u8,
-    handler: fn(&T, []const u8) %void,
+    handler: fn(&T, []const u8) error!void,
     arg_kind: Kind,
     takes_value: bool,
     short_arg: ?u8,
     long_arg:  ?[]const u8,
 
-    pub fn init(handler: fn(&T, []const u8) %void) Self {
+    pub fn init(handler: fn(&T, []const u8) error!void) Self {
         return Self {
             .help_message = "",
             .handler = handler,
@@ -37,38 +36,33 @@ pub fn Arg(comptime T: type) type { return struct {
         };
     }
 
-    pub fn help(self: &const Self, str: []const u8) Self {
-        var res = *self; res.help_message = str;
+    pub fn help(arg: &const Self, str: []const u8) Self {
+        var res = *arg; res.help_message = str;
         return res;
     }
 
-    pub fn short(self: &const Self, char: u8) Self {
-        var res = *self; res.short_arg = char;
+    pub fn short(arg: &const Self, char: u8) Self {
+        var res = *arg; res.short_arg = char;
         return res;
     }
 
-    pub fn long(self: &const Self, str: []const u8) Self {
-        var res = *self; res.long_arg = str;
+    pub fn long(arg: &const Self, str: []const u8) Self {
+        var res = *arg; res.long_arg = str;
         return res;
     }
 
-    pub fn takesValue(self: &const Self, b: bool) Self {
-        var res = *self; res.takes_value = b;
+    pub fn takesValue(arg: &const Self, b: bool) Self {
+        var res = *arg; res.takes_value = b;
         return res;
     }
 
-    pub fn kind(self: &const Self, k: Kind) Self {
-        var res = *self; res.arg_kind = k;
+    pub fn kind(arg: &const Self, k: Kind) Self {
+        var res = *arg; res.arg_kind = k;
         return res;
     }
 };}
 
-error MissingValueToArgument;
-error InvalidArgument;
-error ToManyOptions;
-error RequiredArgumentWasntHandled;
-
-pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) %T {
+pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) !T {
     var result = *defaults;
 
     const Kind    = enum { Long, Short, None };
@@ -173,7 +167,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args
 //    * Usage
 //    * Description
 
-pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream) %void {
+pub fn help(comptime T: type, options: []const Arg(T), out_stream: var) !void {
     const equal_value : []const u8 = "=OPTION";
     var longest_long : usize = 0;
     for (options) |option| {
@@ -190,38 +184,38 @@ pub fn help(comptime T: type, options: []const Arg(T), stream: &io.OutStream) %v
     for (options) |option| {
         if (option.short_arg == null and option.long_arg == null) continue;
 
-        try stream.print("    ");
+        try out_stream.print("    ");
         if (option.short_arg) |short| {
-            try stream.print("-{c}", short);
+            try out_stream.print("-{c}", short);
         } else {
-            try stream.print("  ");
+            try out_stream.print("  ");
         }
 
         if (option.short_arg != null and option.long_arg != null) {
-            try stream.print(", ");
+            try out_stream.print(", ");
         } else {
-            try stream.print("  ");
+            try out_stream.print("  ");
         }
 
         // We need to ident by:
         // "--<longest_long> ".len
         var missing_spaces = longest_long + 3;
         if (option.long_arg) |long| {
-            try stream.print("--{}", long);
+            try out_stream.print("--{}", long);
             missing_spaces -= 2 + long.len;
 
             if (option.takes_value) {
-                try stream.print("{}", equal_value);
+                try out_stream.print("{}", equal_value);
                 missing_spaces -= equal_value.len;
             }
         }
 
         var i : usize = 0;
         while (i < (missing_spaces + 1)) : (i += 1) {
-            try stream.print(" ");
+            try out_stream.print(" ");
         }
 
-        try stream.print("{}\n", option.help_message);
+        try out_stream.print("{}\n", option.help_message);
     }
 }
 
@@ -231,16 +225,16 @@ test "clap.parse.Example" {
 
         r: u8, g: u8, b: u8,
 
-        fn rFromStr(self: &Self, str: []const u8) %void {
-            self.r = try fmt.parseInt(u8, str, 10);
+        fn rFromStr(color: &Self, str: []const u8) !void {
+            color.r = try fmt.parseInt(u8, str, 10);
         }
 
-        fn gFromStr(self: &Self, str: []const u8) %void {
-            self.g = try fmt.parseInt(u8, str, 10);
+        fn gFromStr(color: &Self, str: []const u8) !void {
+            color.g = try fmt.parseInt(u8, str, 10);
         }
 
-        fn bFromStr(self: &Self, str: []const u8) %void {
-            self.b = try fmt.parseInt(u8, str, 10);
+        fn bFromStr(color: &Self, str: []const u8) !void {
+            color.b = try fmt.parseInt(u8, str, 10);
         }
     };
 

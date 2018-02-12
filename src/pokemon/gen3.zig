@@ -7,6 +7,7 @@ const common = @import("common.zig");
 const mem   = std.mem;
 const debug = std.debug;
 const io    = std.io;
+const os    = std.os;
 
 const assert = debug.assert;
 const u9     = @IntType(false, 9);
@@ -56,22 +57,22 @@ pub const BasePokemon = packed struct {
 };
 
 pub const EvolutionType = enum(u16) {
-    Unused                 = toLittle(u16, 0x00).get(),
-    FriendShip             = toLittle(u16, 0x01).get(),
-    FriendShipDuringDay    = toLittle(u16, 0x02).get(),
-    FriendShipDuringNight  = toLittle(u16, 0x03).get(),
-    LevelUp                = toLittle(u16, 0x04).get(),
-    Trade                  = toLittle(u16, 0x05).get(),
-    TradeHoldingItem       = toLittle(u16, 0x06).get(),
-    UseItem                = toLittle(u16, 0x07).get(),
-    AttackGthDefense       = toLittle(u16, 0x08).get(),
-    AttackEqlDefense       = toLittle(u16, 0x09).get(),
-    AttackLthDefense       = toLittle(u16, 0x0A).get(),
-    PersonalityValue1      = toLittle(u16, 0x0B).get(),
-    PersonalityValue2      = toLittle(u16, 0x0C).get(),
-    LevelUpMaySpawnPokemon = toLittle(u16, 0x0D).get(),
-    LevelUpSpawnIfCond     = toLittle(u16, 0x0E).get(),
-    Beauty                 = toLittle(u16, 0x0F).get(),
+    Unused                 = toLittle(u16(0x00)).get(),
+    FriendShip             = toLittle(u16(0x01)).get(),
+    FriendShipDuringDay    = toLittle(u16(0x02)).get(),
+    FriendShipDuringNight  = toLittle(u16(0x03)).get(),
+    LevelUp                = toLittle(u16(0x04)).get(),
+    Trade                  = toLittle(u16(0x05)).get(),
+    TradeHoldingItem       = toLittle(u16(0x06)).get(),
+    UseItem                = toLittle(u16(0x07)).get(),
+    AttackGthDefense       = toLittle(u16(0x08)).get(),
+    AttackEqlDefense       = toLittle(u16(0x09)).get(),
+    AttackLthDefense       = toLittle(u16(0x0A)).get(),
+    PersonalityValue1      = toLittle(u16(0x0B)).get(),
+    PersonalityValue2      = toLittle(u16(0x0C)).get(),
+    LevelUpMaySpawnPokemon = toLittle(u16(0x0D)).get(),
+    LevelUpSpawnIfCond     = toLittle(u16(0x0E)).get(),
+    Beauty                 = toLittle(u16(0x0F)).get(),
 };
 
 pub const Evolution = packed struct {
@@ -184,13 +185,6 @@ const Offsets = struct {
     tms:                        Offset,
 };
 
-error InvalidRomSize;
-error InvalidGen3PokemonHeader;
-error NoBulbasaurFound;
-error InvalidGeneration;
-error InvalidTrainerPartyOffset;
-error InvalidPartyType;
-
 const bulbasaur_fingerprint = []u8 {
     0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
     0x00, 0x00, 0x1F, 0x14, 0x46, 0x03, 0x01, 0x07, 0x41, 0x00, 0x00, 0x03, 0x00, 0x00,
@@ -223,16 +217,16 @@ pub const Game = struct {
     items: []Item,
     tms: []Little(u16),
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) %&Game {
-        var file_stream = io.FileInStream.init(file);
-        var stream = &file_stream.stream;
+    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !&Game {
+        var file_out_stream = io.FileInStream.init(file);
+        var out_stream = &file_out_stream.stream;
 
         const header = try utils.noAllocRead(gba.Header, file);
         try header.validate();
         try file.seekTo(0);
 
         const offsets = try getOffsets(header);
-        const rom = try stream.readAllAlloc(allocator, @maxValue(usize));
+        const rom = try out_stream.readAllAlloc(allocator, @maxValue(usize));
         errdefer allocator.free(rom);
 
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
@@ -256,9 +250,9 @@ pub const Game = struct {
         return res;
     }
 
-    pub fn writeToStream(game: &const Game, stream: &io.OutStream) %void {
+    pub fn writeToStream(game: &const Game, out_stream: var) !void {
         try game.header.validate();
-        try stream.write(game.data);
+        try out_stream.write(game.data);
     }
 
     pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
@@ -310,7 +304,7 @@ pub const Game = struct {
         .tms                        = Offset { .start = 0x03764AC, .end = 0x0376520, },
     };
 
-    fn getOffsets(header: &const gba.Header) %&const Offsets {
+    fn getOffsets(header: &const gba.Header) !&const Offsets {
         if (mem.eql(u8, header.game_title, "POKEMON EMER")) return &emerald_us_offsets;
         if (mem.eql(u8, header.game_title, "POKEMON RUBY")) return &ruby_us_offsets;
         if (mem.eql(u8, header.game_title, "POKEMON SAPP")) return &sapphire_us_offsets;
@@ -318,7 +312,7 @@ pub const Game = struct {
         return error.InvalidGen3PokemonHeader;
     }
 
-    pub fn validateData(game: &const Game) %void {
+    pub fn validateData(game: &const Game) !void {
         if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
             return error.NoBulbasaurFound;
     }

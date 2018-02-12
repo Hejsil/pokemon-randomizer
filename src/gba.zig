@@ -8,13 +8,6 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-error InvalidGameTitle;
-error InvalidGamecode;
-error InvalidMakercode;
-error InvalidFixedValue;
-error InvalidReserved1;
-error InvalidReserved2;
-
 pub const Header = packed struct {
     rom_entry_point: [4]u8,
     nintendo_logo: [156]u8,
@@ -33,20 +26,20 @@ pub const Header = packed struct {
 
     reserved2: [2]u8,
 
-    pub fn validate(self: &const Header) %void {
-        if (!utils.all(u8, self.game_title, ascii.isUpperAscii))
+    pub fn validate(header: &const Header) !void {
+        if (!utils.all(u8, header.game_title, ascii.isUpperAscii))
             return error.InvalidGameTitle;
-        if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
+        if (!utils.all(u8, header.gamecode, ascii.isUpperAscii))
             return error.InvalidGamecode;
 
-        if (!utils.all(u8, self.makercode, ascii.isUpperAscii))
+        if (!utils.all(u8, header.makercode, ascii.isUpperAscii))
             return error.InvalidMakercode;
-        if (self.fixed_value != 0x96)
+        if (header.fixed_value != 0x96)
             return error.InvalidFixedValue;
 
-        if (!utils.all(u8, self.reserved1, ascii.isZero))
+        if (!utils.all(u8, header.reserved1, ascii.isZero))
             return error.InvalidReserved1;
-        if (!utils.all(u8, self.reserved2, ascii.isZero))
+        if (!utils.all(u8, header.reserved2, ascii.isZero))
             return error.InvalidReserved2;
     }
 };

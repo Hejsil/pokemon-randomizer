@@ -82,8 +82,8 @@ pub const Generation = enum(u8) {
     VI  = 6,
     VII = 7,
 
-    pub fn hasPhysicalSpecialSplit(self: Generation) bool {
-        return u8(self) > 3;
+    pub fn hasPhysicalSpecialSplit(gen: Generation) bool {
+        return u8(gen) > 3;
     }
 };
 
@@ -123,9 +123,9 @@ pub const Version = enum(u8) {
     UltraSun,
     UltraMoon,
 
-    pub fn generation(self: Version) Generation {
+    pub fn generation(version: Version) Generation {
         const V = Version;
-        return switch (self) {
+        return switch (version) {
             V.Red,  V.Blue,     V.Yellow   => Generation.I,
             V.Gold, V.Silver,   V.Crystal  => Generation.II,
             V.Ruby, V.Sapphire, V.Emerald,

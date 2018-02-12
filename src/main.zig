@@ -1,10 +1,11 @@
 const std        = @import("std");
 const gba        = @import("gba.zig");
-const nds        = @import("nds.zig");
+const nds        = @import("nds/index.zig");
 const utils      = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
 const clap       = @import("clap.zig");
 const gen3       = @import("pokemon/gen3.zig");
+const gen5       = @import("pokemon/gen5.zig");
 
 const os    = std.os;
 const debug = std.debug;
@@ -18,13 +19,10 @@ var help = false;
 var input_file  : []const u8 = "input";
 var output_file : []const u8 = "randomized";
 
-error InvalidOptions;
-error NotARom;
-
-fn setHelp(op: &randomizer.Options, str: []const u8) %void { help = true; }
-fn setInFile(op: &randomizer.Options, str: []const u8) %void { input_file = str; }
-fn setOutFile(op: &randomizer.Options, str: []const u8) %void { output_file = str; }
-fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) %void {
+fn setHelp(op: &randomizer.Options, str: []const u8) error!void { help = true; }
+fn setInFile(op: &randomizer.Options, str: []const u8) error!void { input_file = str; }
+fn setOutFile(op: &randomizer.Options, str: []const u8) error!void { output_file = str; }
+fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) !void {
     if (mem.eql(u8, str, "same")) {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -40,8 +38,8 @@ fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) %void {
     }
 }
 
-fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) %void { op.trainer.same_total_stats = true; }
-fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) %void {
+fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) error!void { op.trainer.same_total_stats = true; }
+fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) !void {
     if (mem.eql(u8, str, "none")) {
         op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
     } else if (mem.eql(u8, str, "same")) {
@@ -57,7 +55,7 @@ fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) %void {
     }
 }
 
-fn setTrainerMoves(op: &randomizer.Options, str: []const u8) %void {
+fn setTrainerMoves(op: &randomizer.Options, str: []const u8) !void {
     if (mem.eql(u8, str, "same")) {
         op.trainer.moves = randomizer.Options.Trainer.Moves.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -71,9 +69,9 @@ fn setTrainerMoves(op: &randomizer.Options, str: []const u8) %void {
     }
 }
 
-fn setTrainerIv(op: &randomizer.Options, str: []const u8) %void { op.trainer.iv = try parseGenericOption(str); }
+fn setTrainerIv(op: &randomizer.Options, str: []const u8) !void { op.trainer.iv = try parseGenericOption(str); }
 
-fn parseGenericOption(str: []const u8) %randomizer.GenericOption {
+fn parseGenericOption(str: []const u8) !randomizer.GenericOption {
     if (mem.eql(u8, str, "same")) {
         return randomizer.GenericOption.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -85,7 +83,7 @@ fn parseGenericOption(str: []const u8) %randomizer.GenericOption {
     }
 }
 
-fn setLevelModifier(op: &randomizer.Options, str: []const u8) %void {
+fn setLevelModifier(op: &randomizer.Options, str: []const u8) !void {
     const precent = try fmt.parseInt(i16, str, 10);
     op.trainer.level_modifier = (f64(precent) / 100) + 1;
 }
@@ -130,11 +128,14 @@ const program_arguments = comptime []Arg {
         .takesValue(true),
 };
 
-pub fn main() %void {
+pub fn main() !void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
-    var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
-    defer inc_allocator.deinit();
-    const allocator = &inc_allocator.allocator;
+    var direct_allocator = std.heap.DirectAllocator.init();
+    defer direct_allocator.deinit();
+    var arena = std.heap.ArenaAllocator.init(&direct_allocator.allocator);
+    defer arena.deinit();
+
+    const allocator = &arena.allocator;
 
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
@@ -153,7 +154,7 @@ pub fn main() %void {
         return;
     }
 
-    var out_file = io.File.openWrite(output_file, null) catch |err| {
+    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
         try stdout_stream.print("Couldn't open {}.\n", output_file);
         return err;
     };
@@ -161,7 +162,7 @@ pub fn main() %void {
 
 
     gba_blk: {
-        var rom_file = try io.File.openRead(input_file, null);
+        var rom_file = try os.File.openRead(allocator, input_file);
         //defer rom_file.close(); error: unreachable code
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
@@ -190,9 +191,11 @@ pub fn main() %void {
     }
 
     nds_blk: {
-        var rom_file = try io.File.openRead(input_file, null);
+        var rom_file = try os.File.openRead(allocator, input_file);
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
+
+        //var game = try gen5.Game.fromRom(nds_rom);
 
         nds_rom.writeToFile(&out_file) catch |err| {
             try stdout_stream.print("Unable to write nds to {}\n", output_file);
