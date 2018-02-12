@@ -10,7 +10,7 @@ pub const Header = packed struct {
     chunk_size: Little(u16),
     following_chunks: Little(u16),
 
-    pub fn init(file_size: u32) Header {
+    pub fn narc(file_size: u32) Header {
         return Header {
             .chunk_name       = Chunk.names.narc,
             .byte_order       = toLittle(u16(0xFFFE)),

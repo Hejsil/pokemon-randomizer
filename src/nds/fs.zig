@@ -1,6 +1,6 @@
 const std    = @import("std");
 const common = @import("common.zig");
-const narc   = @import("narc.zig");
+const formats   = @import("formats.zig");
 const little = @import("../little.zig");
 const utils  = @import("../utils.zig");
 
@@ -275,8 +275,8 @@ fn buildFolderFromFntMainEntry(
 
 fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !File {
     narc_read: {
-        const names = narc.Chunk.names;
-        const header = utils.seekToNoAllocRead(narc.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
+        const names = formats.Chunk.names;
+        const header = utils.seekToNoAllocRead(formats.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
         if (!mem.eql(u8, header.chunk_name, names.narc)) break :narc_read;
         if (header.byte_order.get() != 0xFFFE)           break :narc_read;
         if (header.chunk_size.get() != 0x0010)           break :narc_read;
@@ -285,7 +285,7 @@ fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
         // If we have a valid narc header, then we assume we are reading a narc
         // file. All error from here, are therefore bubbled up.
         const fat_chunk_start = try file.getPos();
-        const fat_header      = try utils.noAllocRead(narc.Chunk, file);
+        const fat_header      = try utils.noAllocRead(formats.Chunk, file);
         const file_count      = try utils.noAllocRead(Little(u16), file);
         const reserved        = try utils.noAllocRead(Little(u16), file);
         const fat_offet       = try file.getPos();
@@ -296,14 +296,14 @@ fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
 
         try file.seekTo(fat_chunk_end);
         const fnt_chunk_start = try file.getPos();
-        const fnt_header      = try utils.noAllocRead(narc.Chunk, file);
+        const fnt_header      = try utils.noAllocRead(formats.Chunk, file);
         const fnt_offset      = try file.getPos();
         const fnt_chunk_end   = fnt_chunk_start + fnt_header.size.get();
         if (!mem.eql(u8, fat_header.name, names.fat)) return error.InvalidChunkName;
         if (fnt_chunk_end % 0x4 != 0)                 return error.InvalidChunkSize;
 
         try file.seekTo(fnt_chunk_end);
-        const file_data_header = try utils.noAllocRead(narc.Chunk, file);
+        const file_data_header = try utils.noAllocRead(formats.Chunk, file);
         const narc_img_base    = try file.getPos();
         if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
 
@@ -372,18 +372,18 @@ pub const FSWriter = struct {
                     writer.file_offset = u32(try writer.file.getPos());
                 },
                 File.Type.Narc => |narc_fs| {
-                    const names = narc.Chunk.names;
+                    const names = formats.Chunk.names;
                     const fs_info = narc_fs.sizes();
 
                     // We write the narc header last.
-                    try writer.file.seekTo(start + @sizeOf(narc.Header));
+                    try writer.file.seekTo(start + @sizeOf(formats.Header));
                     const fat_chunk_start = try writer.file.getPos();
-                    const fat_chunk_end   = fat_chunk_start + @sizeOf(narc.Chunk) + fs_info.files * @sizeOf(FatEntry);
+                    const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + fs_info.files * @sizeOf(FatEntry);
                     const fat_chunk_size  = fat_chunk_end - fat_chunk_start;
                     try writer.file.write(
                         utils.asConstBytes(
-                            narc.Chunk,
-                            narc.Chunk {
+                            formats.Chunk,
+                            formats.Chunk {
                                 .name = names.fat,
                                 .size = toLittle(u32(fat_chunk_size)),
                             },
@@ -394,18 +394,18 @@ pub const FSWriter = struct {
 
                     try writer.file.seekTo(fat_chunk_end);
                     const fnt_chunk_start = try writer.file.getPos();
-                    const fnt_chunk_end   = common.alignAddr(fnt_chunk_start + @sizeOf(narc.Chunk) + fs_info.fnt_sub_size, u32(4));
+                    const fnt_chunk_end   = common.alignAddr(fnt_chunk_start + @sizeOf(formats.Chunk) + fs_info.fnt_sub_size, u32(4));
                     const fnt_chunk_size  = fnt_chunk_end - fnt_chunk_start;
                     try writer.file.write(
                         utils.asConstBytes(
-                            narc.Chunk,
-                            narc.Chunk {
+                            formats.Chunk,
+                            formats.Chunk {
                                 .name = names.fnt,
                                 .size = toLittle(u32(fnt_chunk_size)),
                             },
                         ));
                     const narc_fnt_offset = try writer.file.getPos();
-                    const narc_img_base = fnt_chunk_end + @sizeOf(narc.Chunk);
+                    const narc_img_base = fnt_chunk_end + @sizeOf(formats.Chunk);
 
                     // We also skip writing file_data chunk header, till after we've written
                     // the file system, as we don't know the size of the chunk otherwise.
@@ -416,8 +416,8 @@ pub const FSWriter = struct {
                     try writer.file.seekTo(fnt_chunk_end);
                     try writer.file.write(
                         utils.asConstBytes(
-                            narc.Chunk,
-                            narc.Chunk {
+                            formats.Chunk,
+                            formats.Chunk {
                                 .name = names.file_data,
                                 .size = toLittle(u32(file_data_chunk_size)),
                             },
@@ -427,8 +427,8 @@ pub const FSWriter = struct {
                     try writer.file.seekTo(start);
                     try writer.file.write(
                         utils.asConstBytes(
-                            narc.Header,
-                            narc.Header.init(narc_file_size),
+                            formats.Header,
+                            formats.Header.narc(narc_file_size),
                         ));
 
                     writer.file_offset = u32(fs_writer.file_offset);
