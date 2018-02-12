@@ -8,13 +8,6 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-
-
-
-
-
-
-
 pub const Header = packed struct {
     rom_entry_point: [4]u8,
     nintendo_logo: [156]u8,

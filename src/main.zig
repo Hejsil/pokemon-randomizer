@@ -19,9 +19,6 @@ var help = false;
 var input_file  : []const u8 = "input";
 var output_file : []const u8 = "randomized";
 
-
-
-
 fn setHelp(op: &randomizer.Options, str: []const u8) error!void { help = true; }
 fn setInFile(op: &randomizer.Options, str: []const u8) error!void { input_file = str; }
 fn setOutFile(op: &randomizer.Options, str: []const u8) error!void { output_file = str; }

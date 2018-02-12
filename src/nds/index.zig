@@ -19,27 +19,13 @@ pub const Header  = @import("header.zig").Header;
 pub const Banner  = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 pub const Rom = struct {
     header: Header,
     arm9: []u8,
 
     // After arm9, there is 12 bytes that might be a nitro footer. If the first
     // 4 bytes are == 0xDEC00621, then it's a nitro_footer.
-    // NOTE: This information was deduced from reading the source code for 
+    // NOTE: This information was deduced from reading the source code for
     //       ndstool and EveryFileExplore. http://problemkaputt.de/gbatek.htm does
     //       not seem to have this information anywhere.
     nitro_footer: [3]Little(u32),

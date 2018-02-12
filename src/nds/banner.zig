@@ -5,17 +5,6 @@ const little = @import("../little.zig");
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
-
-
-
-
-
-
-
-
-
-
-
 pub const Banner = packed struct {
     pub const Version = enum(u2) {
         Original                  = 0x01,
@@ -49,7 +38,7 @@ pub const Banner = packed struct {
     //title_korean:   [0x100]u8,
 
     // TODO: Banner is actually a variable size structure.
-    //       "original Icon/Title structure rounded to 200h-byte sector boundary (ie. A00h bytes for Version 1 or 2)," 
+    //       "original Icon/Title structure rounded to 200h-byte sector boundary (ie. A00h bytes for Version 1 or 2),"
     //       "however, later DSi carts are having a size entry at CartHdr[208h] (usually 23C0h)."
     //reserved2: [0x800]u8,
 

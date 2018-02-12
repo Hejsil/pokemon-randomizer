@@ -8,7 +8,6 @@ const io    = std.io;
 
 const assert = debug.assert;
 
-
 // TODO: Missing a few convinient features
 //     * Short arguments that doesn't take values should probably be able to be
 //       chain like many linux programs: "rm -rf"
@@ -62,11 +61,6 @@ pub fn Arg(comptime T: type) type { return struct {
         return res;
     }
 };}
-
-
-
-
-
 
 pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) !T {
     var result = *defaults;

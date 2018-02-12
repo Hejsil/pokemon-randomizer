@@ -1,9 +1,6 @@
 const nds = @import("../nds/index.zig");
 
-
-
 pub const Game = struct {
-
     base_stats: &nds.fs.File,
 
     pub fn fromRom(rom: &nds.Rom) !Game {

@@ -14,40 +14,6 @@ const toLittle = little.toLittle;
 const Little   = little.Little;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 pub const crc_modbus = comptime blk: {
     @setEvalBranchQuota(crc.crcspec_init_backward_cycles);
     break :blk crc.CrcSpec(u16).init(0x8005, 0xFFFF, 0x0000, true, true);
