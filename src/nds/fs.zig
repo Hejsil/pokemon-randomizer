@@ -232,7 +232,7 @@ fn buildFolderFromFntMainEntry(
 
                 const entry = fat[file_id];
                 const current_pos = try file.getPos();
-                const sub_file = try readFile(file, allocator, entry, img_base, name);
+                const sub_file = try readFile(file, allocator, entry, img_base, child_name);
 
                 try file.seekTo(current_pos);
                 try files.append(sub_file);
