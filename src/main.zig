@@ -132,7 +132,10 @@ pub fn main() !void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
     var direct_allocator = std.heap.DirectAllocator.init();
     defer direct_allocator.deinit();
-    const allocator = &direct_allocator.allocator;
+    var arena = std.heap.ArenaAllocator.init(&direct_allocator.allocator);
+    defer arena.deinit();
+
+    const allocator = &arena.allocator;
 
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
