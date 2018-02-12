@@ -21,11 +21,10 @@ Here are the different build commands:
 * `zig build test` runs all tests.
 * `zig build` builds everything and runs all tests.
 
-Note, that right now, tests are broken. See `build.zig` TODO.
-
 ## Useful Links
 
 Useful documentation of the Pokémon data and Rom file structure.
+
 * [BW2 File System](https://projectpokemon.org/docs/gen-5/b2w2-file-system-r8/)
 * [HGSS File System](https://projectpokemon.org/docs/gen-4/hgss-file-system-r21/)
 * [Gameboy Advance / Nintendo DS / DSi - Technical Info](http://problemkaputt.de/gbatek.htm)
