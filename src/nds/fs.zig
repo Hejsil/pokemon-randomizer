@@ -453,13 +453,8 @@ pub const FSWriter = struct {
                 writer.file_offset = u32(try writer.file.getPos());
             },
             File.Type.Narc => |narc_fs| {
-                const no_fnt = mem.eql(u8, narc_fs.name, no_fnt_fs_name);
                 const names = formats.Chunk.names;
-                const fs_info = blk: {
-                    var res =  narc_fs.sizes();
-                    if (no_fnt) res.fnt_sub_size = @sizeOf(FntMainEntry);
-                    break :blk res;
-                };
+                const fs_info = narc_fs.sizes();
 
                 // We write the narc header last.
                 try writer.file.seekTo(start + @sizeOf(formats.Header));
@@ -495,29 +490,9 @@ pub const FSWriter = struct {
 
                 // We also skip writing file_data chunk header, till after we've written
                 // the file system, as we don't know the size of the chunk otherwise.
-                const file_offset = if (no_fnt) blk: {
-                    try writer.file.seekTo(fnt_chunk_start + @sizeOf(formats.Chunk));
-                    try writer.file.write(
-                        utils.asConstBytes(
-                            FntMainEntry,
-                            FntMainEntry {
-                                .offset_to_subtable        = toLittle(u32(0x4)),
-                                .first_file_id_in_subtable = toLittle(u16(0)),
-                                .parent_id                 = toLittle(u16(1)),
-                            },
-                        ));
-
-                    var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
-                    for (narc_fs.files) |f| {
-                        try fs_writer.writeFile(f, u32(narc_fat_offset), u32(narc_img_base));
-                    }
-
-                    break :blk fs_writer.file_offset;
-                } else blk: {
-                    var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
-                    try fs_writer.writeFileSystem(narc_fs, u32(narc_fnt_offset), u32(narc_fat_offset), u32(narc_img_base), fs_info.folders);
-                    break :blk fs_writer.file_offset;
-                };
+                var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
+                try fs_writer.writeFileSystem(narc_fs, u32(narc_fnt_offset), u32(narc_fat_offset), u32(narc_img_base), fs_info.folders);
+                const file_offset = fs_writer.file_offset;
 
                 const file_data_chunk_size = file_offset - fnt_chunk_end;
                 try writer.file.seekTo(fnt_chunk_end);
