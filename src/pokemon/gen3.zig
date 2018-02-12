@@ -7,6 +7,7 @@ const common = @import("common.zig");
 const mem   = std.mem;
 const debug = std.debug;
 const io    = std.io;
+const os    = std.os;
 
 const assert = debug.assert;
 const u9     = @IntType(false, 9);
@@ -216,7 +217,7 @@ pub const Game = struct {
     items: []Item,
     tms: []Little(u16),
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) !&Game {
+    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !&Game {
         var file_out_stream = io.FileInStream.init(file);
         var out_stream = &file_out_stream.stream;
 

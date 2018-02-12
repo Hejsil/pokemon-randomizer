@@ -130,9 +130,9 @@ const program_arguments = comptime []Arg {
 
 pub fn main() !void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
-    var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
-    defer inc_allocator.deinit();
-    const allocator = &inc_allocator.allocator;
+    var direct_allocator = std.heap.DirectAllocator.init();
+    defer direct_allocator.deinit();
+    const allocator = &direct_allocator.allocator;
 
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
@@ -151,7 +151,7 @@ pub fn main() !void {
         return;
     }
 
-    var out_file = io.File.openWrite(output_file, null) catch |err| {
+    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
         try stdout_stream.print("Couldn't open {}.\n", output_file);
         return err;
     };
@@ -159,7 +159,7 @@ pub fn main() !void {
 
 
     gba_blk: {
-        var rom_file = try io.File.openRead(input_file, null);
+        var rom_file = try os.File.openRead(allocator, input_file);
         //defer rom_file.close(); error: unreachable code
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
@@ -188,7 +188,7 @@ pub fn main() !void {
     }
 
     nds_blk: {
-        var rom_file = try io.File.openRead(input_file, null);
+        var rom_file = try os.File.openRead(allocator, input_file);
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
 

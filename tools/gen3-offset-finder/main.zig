@@ -12,9 +12,9 @@ const io    = std.io;
 
 pub fn main() !void {
     // TODO: Use Zig's own general purpose allocator... When it has one.
-    var inc_allocator = try std.heap.IncrementingAllocator.init(1024 * 1024 * 1024);
-    defer inc_allocator.deinit();
-    const allocator = &inc_allocator.allocator;
+    var direct_allocator = std.heap.DirectAllocator.init();
+    defer direct_allocator.deinit();
+    const allocator = &direct_allocator.allocator;
 
     var stdout = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout);
@@ -28,7 +28,7 @@ pub fn main() !void {
         return error.NoFileInArguments;
     }
 
-    var file = io.File.openRead(args[1], null) catch |err| {
+    var file = os.File.openRead(allocator, args[1]) catch |err| {
         try stdout_stream.print("Couldn't open {}.\n", args[1]);
         return err;
     };

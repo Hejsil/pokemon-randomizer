@@ -6,6 +6,7 @@ const little = @import("../little.zig");
 
 const io  = std.io;
 const mem = std.mem;
+const os  = std.os;
 
 const toLittle = little.toLittle;
 const Little   = little.Little;
@@ -21,7 +22,7 @@ pub const Overlay = packed struct {
     reserved: [4]u8,
 };
 
-pub fn readFiles(file: &io.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) ![][]u8 {
+pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) ![][]u8 {
     var results = std.ArrayList([]u8).init(allocator);
     try results.ensureCapacity(overlay_table.len);
     errdefer {
@@ -52,11 +53,11 @@ pub fn freeFiles(files: [][]u8, allocator: &mem.Allocator) void {
 }
 
 pub const Writer = struct {
-    file: &io.File,
+    file: &os.File,
     file_offset: u32,
     file_id: u16,
 
-    fn init(file: &io.File, file_offset: u32, start_file_id: u16) Writer {
+    fn init(file: &os.File, file_offset: u32, start_file_id: u16) Writer {
         return Writer {
             .file = file,
             .file_offset = file_offset,

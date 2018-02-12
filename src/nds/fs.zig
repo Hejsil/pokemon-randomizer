@@ -7,6 +7,7 @@ const utils  = @import("../utils.zig");
 const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
+const os    = std.os;
 
 const assert = debug.assert;
 
@@ -165,7 +166,7 @@ pub const FatEntry = packed struct {
 
 // TODO: We can't infer errors for recursive functions. We therefore have to specify the error set. For now, we just use error, but
 //       we probably want something more specific
-pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) error!Folder {
+pub fn read(file: &os.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) error!Folder {
     const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
     const fnt_main_table = try utils.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
     defer allocator.free(fnt_main_table);
@@ -173,9 +174,6 @@ pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_of
     if (!utils.between(usize, fnt_main_table.len, 1, 4096)) return error.InvalidFntMainTableSize;
     const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, file_count);
     defer allocator.free(fat);
-
-    const root_name = try mem.dupe(allocator, u8, "");
-    errdefer allocator.free(root_name);
 
     return buildFolderFromFntMainEntry(
         file,
@@ -185,13 +183,13 @@ pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_of
         fnt_main_table[0],
         fnt_offset,
         img_base,
-        root_name
+        ""
     );
 }
 
 // TODO: More specific error set
 fn buildFolderFromFntMainEntry(
-    file: &io.File,
+    file: &os.File,
     allocator: &mem.Allocator,
     fat: []const FatEntry,
     fnt_main_table: []const FntMainEntry,
@@ -273,7 +271,7 @@ fn buildFolderFromFntMainEntry(
 }
 
 // TODO: More specific error
-fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) error!File {
+fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) error!File {
     narc_read: {
         const names = formats.Chunk.names;
         const header = utils.seekToNoAllocRead(formats.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
@@ -325,10 +323,7 @@ fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
             }
 
             for (fat) |entry| {
-                const file_name = try mem.dupe(allocator, u8, "");
-                errdefer allocator.free(file_name);
-
-                const sub_file = try readFile(file, allocator, entry, narc_img_base, file_name);
+                const sub_file = try readFile(file, allocator, entry, narc_img_base, "");
                 errdefer sub_file.destroy(allocator);
 
                 try files.append(sub_file);
@@ -337,16 +332,13 @@ fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
             const folder_name = try mem.dupe(allocator, u8, no_fnt_fs_name);
             errdefer allocator.free(folder_name);
 
-            const sub_folders = try allocator.alloc(Folder, 0);
-            errdefer allocator.free(sub_folders);
-
             return File {
                 .name = name,
                 .@"type" = File.Type {
                     .Narc = Folder {
                         .name = folder_name,
                         .files = files.toOwnedSlice(),
-                        .folders = sub_folders,
+                        .folders = []Folder{},
                     },
                 },
             };
@@ -367,13 +359,13 @@ fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
 }
 
 pub const FSWriter = struct {
-    file: &io.File,
+    file: &os.File,
     file_offset: u32,
     fnt_sub_offset: u32,
     file_id: u16,
     folder_id: u16,
 
-    fn init(file: &io.File, file_offset: u32, start_file_id: u16) FSWriter {
+    fn init(file: &os.File, file_offset: u32, start_file_id: u16) FSWriter {
         return FSWriter {
             .file = file,
             .file_offset = file_offset,

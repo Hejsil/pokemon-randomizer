@@ -7,6 +7,7 @@ const little  = @import("../little.zig");
 const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
+const os    = std.os;
 
 const assert = debug.assert;
 
@@ -41,7 +42,7 @@ pub const Rom = struct {
     banner: Banner,
     root: fs.Folder,
 
-    pub fn fromFile(file: &io.File, allocator: &mem.Allocator) !&Rom {
+    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !&Rom {
         var result = try allocator.create(Rom);
         errdefer allocator.destroy(result);
 
@@ -92,7 +93,7 @@ pub const Rom = struct {
         return result;
     }
 
-    pub fn writeToFile(rom: &Rom, file: &io.File) !void {
+    pub fn writeToFile(rom: &Rom, file: &os.File) !void {
         try rom.banner.validate();
 
         const header = &rom.header;
