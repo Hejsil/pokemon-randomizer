@@ -13,6 +13,8 @@ const assert = debug.assert;
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
+const no_fnt_fs_name = "no_fnt_fs";
+
 pub const File = struct {
     name: []u8,
     @"type": Type,
@@ -172,7 +174,7 @@ pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_of
     const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, file_count);
     defer allocator.free(fat);
 
-    const root_name = try allocator.alloc(u8, 0);
+    const root_name = try mem.dupe(allocator, u8, "");
     errdefer allocator.free(root_name);
 
     return buildFolderFromFntMainEntry(
@@ -270,7 +272,8 @@ fn buildFolderFromFntMainEntry(
     };
 }
 
-fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !File {
+// TODO: More specific error
+fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) error!File {
     narc_read: {
         const names = formats.Chunk.names;
         const header = utils.seekToNoAllocRead(formats.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
@@ -296,19 +299,64 @@ fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
         const fnt_header      = try utils.noAllocRead(formats.Chunk, file);
         const fnt_offset      = try file.getPos();
         const fnt_chunk_end   = fnt_chunk_start + fnt_header.size.get();
-        if (!mem.eql(u8, fat_header.name, names.fat)) return error.InvalidChunkName;
-        if (fnt_chunk_end % 0x4 != 0)                 return error.InvalidChunkSize;
+        if (!mem.eql(u8, fnt_header.name, names.fnt))                               return error.InvalidChunkName;
+        if (fnt_chunk_end % 0x4 != 0)                                               return error.InvalidChunkSize;
+        if (fnt_header.size.get() < @sizeOf(formats.Chunk) + @sizeOf(FntMainEntry)) return error.InvalidChunkSize;
+
+        const root_fnt = try utils.noAllocRead(FntMainEntry, file);
 
         try file.seekTo(fnt_chunk_end);
         const file_data_header = try utils.noAllocRead(formats.Chunk, file);
         const narc_img_base    = try file.getPos();
         if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
 
-        const narc_fs = try read(file, allocator, fnt_offset, fat_offet, file_count.get(), narc_img_base);
-        return File {
-            .name = name,
-            .@"type" = File.Type { .Narc = narc_fs, },
-        };
+        // If the root_fnt's offset points into it self, then there doesn't exist an
+        // fnt sub table and files don't have names. We therefore can't use our normal
+        // read function, as it relies on the fnt sub table to build the file system.
+        if (root_fnt.offset_to_subtable.get() < @sizeOf(FntMainEntry)) {
+            const fat = try utils.seekToAllocAndRead(FatEntry, file, allocator, fat_offet, file_count.get());
+            defer allocator.free(fat);
+
+            var files = std.ArrayList(File).init(allocator);
+            try files.ensureCapacity(file_count.get());
+            errdefer {
+                for (files.toSlice()) |f| f.destroy(allocator);
+                files.deinit();
+            }
+
+            for (fat) |entry| {
+                const file_name = try mem.dupe(allocator, u8, "");
+                errdefer allocator.free(file_name);
+
+                const sub_file = try readFile(file, allocator, entry, narc_img_base, file_name);
+                errdefer sub_file.destroy(allocator);
+
+                try files.append(sub_file);
+            }
+
+            const folder_name = try mem.dupe(allocator, u8, no_fnt_fs_name);
+            errdefer allocator.free(folder_name);
+
+            const sub_folders = try allocator.alloc(Folder, 0);
+            errdefer allocator.free(sub_folders);
+
+            return File {
+                .name = name,
+                .@"type" = File.Type {
+                    .Narc = Folder {
+                        .name = folder_name,
+                        .files = files.toOwnedSlice(),
+                        .folders = sub_folders,
+                    },
+                },
+            };
+        } else {
+            const narc_fs = try read(file, allocator, fnt_offset, fat_offet, file_count.get(), narc_img_base);
+            return File {
+                .name = name,
+                .@"type" = File.Type { .Narc = narc_fs, },
+            };
+        }
     }
 
     const data = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get() + img_base, fat_entry.getSize());
@@ -359,88 +407,7 @@ pub const FSWriter = struct {
             try writer.file.write(f.name);
             writer.fnt_sub_offset = u32(try writer.file.getPos());
 
-            // Write file content
-            const start = common.alignAddr(writer.file_offset, u32(0x200));
-            try writer.file.seekTo(start);
-
-            switch (f.@"type") {
-                File.Type.Binary => |data| {
-                    try writer.file.write(data);
-                    writer.file_offset = u32(try writer.file.getPos());
-                },
-                File.Type.Narc => |narc_fs| {
-                    const names = formats.Chunk.names;
-                    const fs_info = narc_fs.sizes();
-
-                    // We write the narc header last.
-                    try writer.file.seekTo(start + @sizeOf(formats.Header));
-                    const fat_chunk_start = try writer.file.getPos();
-                    const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + fs_info.files * @sizeOf(FatEntry);
-                    const fat_chunk_size  = fat_chunk_end - fat_chunk_start;
-                    try writer.file.write(
-                        utils.asConstBytes(
-                            formats.Chunk,
-                            formats.Chunk {
-                                .name = names.fat,
-                                .size = toLittle(u32(fat_chunk_size)),
-                            },
-                        ));
-                    try writer.file.write(toLittle(u16(fs_info.files)).bytes);
-                    try writer.file.write([2]u8{ 0x00, 0x00 });
-                    const narc_fat_offset = try writer.file.getPos();
-
-                    try writer.file.seekTo(fat_chunk_end);
-                    const fnt_chunk_start = try writer.file.getPos();
-                    const fnt_chunk_end   = common.alignAddr(fnt_chunk_start + @sizeOf(formats.Chunk) + fs_info.fnt_sub_size, u32(4));
-                    const fnt_chunk_size  = fnt_chunk_end - fnt_chunk_start;
-                    try writer.file.write(
-                        utils.asConstBytes(
-                            formats.Chunk,
-                            formats.Chunk {
-                                .name = names.fnt,
-                                .size = toLittle(u32(fnt_chunk_size)),
-                            },
-                        ));
-                    const narc_fnt_offset = try writer.file.getPos();
-                    const narc_img_base = fnt_chunk_end + @sizeOf(formats.Chunk);
-
-                    // We also skip writing file_data chunk header, till after we've written
-                    // the file system, as we don't know the size of the chunk otherwise.
-                    var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
-                    try fs_writer.writeFileSystem(narc_fs, u32(narc_fnt_offset), u32(narc_fat_offset), u32(narc_img_base), fs_info.folders);
-
-                    const file_data_chunk_size = fs_writer.file_offset - fnt_chunk_end;
-                    try writer.file.seekTo(fnt_chunk_end);
-                    try writer.file.write(
-                        utils.asConstBytes(
-                            formats.Chunk,
-                            formats.Chunk {
-                                .name = names.file_data,
-                                .size = toLittle(u32(file_data_chunk_size)),
-                            },
-                        ));
-
-                    const narc_file_size = fs_writer.file_offset - start;
-                    try writer.file.seekTo(start);
-                    try writer.file.write(
-                        utils.asConstBytes(
-                            formats.Header,
-                            formats.Header.narc(narc_file_size),
-                        ));
-
-                    writer.file_offset = u32(fs_writer.file_offset);
-                },
-            }
-
-            const size = writer.file_offset - start;
-
-            // Write offsets to fat
-            try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * writer.file_id);
-            try writer.file.write(
-                utils.asConstBytes(
-                    FatEntry,
-                    FatEntry.init(u32(start - img_base), u32(size))
-                ));
+            try writer.writeFile(f, fat_offset, img_base);
             writer.file_id += 1;
         }
 
@@ -481,5 +448,120 @@ pub const FSWriter = struct {
         try writer.file.write([]u8 { 0x00 });
         curr_sub_offset = u32(try writer.file.getPos());
         assert(curr_sub_offset == assert_end);
+    }
+
+    // TODO: More specific error set
+    fn writeFile(writer: &FSWriter, file: &const File, fat_offset: u32, img_base: u32) error!void {
+        // Write file content
+        const start = common.alignAddr(writer.file_offset, u32(0x200));
+        try writer.file.seekTo(start);
+
+        switch (file.@"type") {
+            File.Type.Binary => |data| {
+                try writer.file.write(data);
+                writer.file_offset = u32(try writer.file.getPos());
+            },
+            File.Type.Narc => |narc_fs| {
+                const no_fnt = mem.eql(u8, narc_fs.name, no_fnt_fs_name);
+                const names = formats.Chunk.names;
+                const fs_info = blk: {
+                    var res =  narc_fs.sizes();
+                    if (no_fnt) res.fnt_sub_size = @sizeOf(FntMainEntry);
+                    break :blk res;
+                };
+
+                // We write the narc header last.
+                try writer.file.seekTo(start + @sizeOf(formats.Header));
+                const fat_chunk_start = try writer.file.getPos();
+                const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + fs_info.files * @sizeOf(FatEntry);
+                const fat_chunk_size  = fat_chunk_end - fat_chunk_start;
+                try writer.file.write(
+                    utils.asConstBytes(
+                        formats.Chunk,
+                        formats.Chunk {
+                            .name = names.fat,
+                            .size = toLittle(u32(fat_chunk_size)),
+                        },
+                    ));
+                try writer.file.write(toLittle(u16(fs_info.files)).bytes);
+                try writer.file.write([2]u8{ 0x00, 0x00 });
+                const narc_fat_offset = try writer.file.getPos();
+
+                try writer.file.seekTo(fat_chunk_end);
+                const fnt_chunk_start = try writer.file.getPos();
+                const fnt_chunk_end   = common.alignAddr(fnt_chunk_start + @sizeOf(formats.Chunk) + fs_info.fnt_sub_size, u32(4));
+                const fnt_chunk_size  = fnt_chunk_end - fnt_chunk_start;
+                try writer.file.write(
+                    utils.asConstBytes(
+                        formats.Chunk,
+                        formats.Chunk {
+                            .name = names.fnt,
+                            .size = toLittle(u32(fnt_chunk_size)),
+                        },
+                    ));
+                const narc_fnt_offset = try writer.file.getPos();
+                const narc_img_base = fnt_chunk_end + @sizeOf(formats.Chunk);
+
+                // We also skip writing file_data chunk header, till after we've written
+                // the file system, as we don't know the size of the chunk otherwise.
+
+                // Some games
+                const file_offset = if (no_fnt) blk: {
+                    try writer.file.seekTo(fnt_chunk_start + @sizeOf(formats.Chunk));
+                    try writer.file.write(
+                        utils.asConstBytes(
+                            FntMainEntry,
+                            FntMainEntry {
+                                // Point to
+                                .offset_to_subtable        = toLittle(u32(0x4)),
+                                .first_file_id_in_subtable = toLittle(u16(0)),
+                                .parent_id                 = toLittle(u16(1)),
+                            },
+                        ));
+
+                    var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
+                    for (narc_fs.files) |f| {
+                        try fs_writer.writeFile(f, u32(narc_fat_offset), u32(narc_img_base));
+                    }
+
+                    break :blk fs_writer.file_offset;
+                } else blk: {
+                    var fs_writer = FSWriter.init(writer.file, u32(narc_img_base), 0);
+                    try fs_writer.writeFileSystem(narc_fs, u32(narc_fnt_offset), u32(narc_fat_offset), u32(narc_img_base), fs_info.folders);
+                    break :blk fs_writer.file_offset;
+                };
+
+                const file_data_chunk_size = file_offset - fnt_chunk_end;
+                try writer.file.seekTo(fnt_chunk_end);
+                try writer.file.write(
+                    utils.asConstBytes(
+                        formats.Chunk,
+                        formats.Chunk {
+                            .name = names.file_data,
+                            .size = toLittle(u32(file_data_chunk_size)),
+                        },
+                    ));
+
+                const narc_file_size = file_offset - start;
+                try writer.file.seekTo(start);
+                try writer.file.write(
+                    utils.asConstBytes(
+                        formats.Header,
+                        formats.Header.narc(narc_file_size),
+                    ));
+
+                writer.file_offset = u32(file_offset);
+            },
+        }
+
+        const size = writer.file_offset - start;
+
+        // Write offsets to fat
+        try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * writer.file_id);
+        try writer.file.write(
+            utils.asConstBytes(
+                FatEntry,
+                FatEntry.init(u32(start - img_base), u32(size))
+            ));
     }
 };
