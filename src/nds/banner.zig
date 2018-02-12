@@ -47,26 +47,26 @@ pub const Banner = packed struct {
     //icon_animation_palette: [0x100]u8,
     //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
 
-    pub fn validate(self: &const Banner) !void {
-        if (u2(self.version) == 0)
+    pub fn validate(banner: &const Banner) !void {
+        if (u2(banner.version) == 0)
             return error.InvalidVersion;
-        if (self.version_padding != 0)
+        if (banner.version_padding != 0)
             return error.InvalidVersionPadding;
-        if (self.has_animated_dsi_icon_padding != 0)
+        if (banner.has_animated_dsi_icon_padding != 0)
             return error.InvalidHasAnimatedDsiIconPadding;
 
-        if (!utils.all(u8, self.reserved1, ascii.isZero))
+        if (!utils.all(u8, banner.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
-        //if (!utils.all(u8, self.reserved2, ascii.isZero))
+        //if (!utils.all(u8, banner.reserved2, ascii.isZero))
         //    return error.InvalidReserved2;
 
-        //if (!self.has_animated_dsi_icon) {
-        //    if (!utils.all(u8, self.icon_animation_bitmap, is0xFF))
+        //if (!banner.has_animated_dsi_icon) {
+        //    if (!utils.all(u8, banner.icon_animation_bitmap, is0xFF))
         //        return error.InvalidIconAnimationBitmap;
-        //    if (!utils.all(u8, self.icon_animation_palette, is0xFF))
+        //    if (!utils.all(u8, banner.icon_animation_palette, is0xFF))
         //        return error.InvalidIconAnimationPalette;
-        //    if (!utils.all(u8, self.icon_animation_sequence, is0xFF))
+        //    if (!utils.all(u8, banner.icon_animation_sequence, is0xFF))
         //        return error.InvalidIconAnimationSequence;
         //}
     }

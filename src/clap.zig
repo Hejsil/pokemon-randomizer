@@ -36,28 +36,28 @@ pub fn Arg(comptime T: type) type { return struct {
         };
     }
 
-    pub fn help(self: &const Self, str: []const u8) Self {
-        var res = *self; res.help_message = str;
+    pub fn help(arg: &const Self, str: []const u8) Self {
+        var res = *arg; res.help_message = str;
         return res;
     }
 
-    pub fn short(self: &const Self, char: u8) Self {
-        var res = *self; res.short_arg = char;
+    pub fn short(arg: &const Self, char: u8) Self {
+        var res = *arg; res.short_arg = char;
         return res;
     }
 
-    pub fn long(self: &const Self, str: []const u8) Self {
-        var res = *self; res.long_arg = str;
+    pub fn long(arg: &const Self, str: []const u8) Self {
+        var res = *arg; res.long_arg = str;
         return res;
     }
 
-    pub fn takesValue(self: &const Self, b: bool) Self {
-        var res = *self; res.takes_value = b;
+    pub fn takesValue(arg: &const Self, b: bool) Self {
+        var res = *arg; res.takes_value = b;
         return res;
     }
 
-    pub fn kind(self: &const Self, k: Kind) Self {
-        var res = *self; res.arg_kind = k;
+    pub fn kind(arg: &const Self, k: Kind) Self {
+        var res = *arg; res.arg_kind = k;
         return res;
     }
 };}
@@ -225,16 +225,16 @@ test "clap.parse.Example" {
 
         r: u8, g: u8, b: u8,
 
-        fn rFromStr(self: &Self, str: []const u8) !void {
-            self.r = try fmt.parseInt(u8, str, 10);
+        fn rFromStr(color: &Self, str: []const u8) !void {
+            color.r = try fmt.parseInt(u8, str, 10);
         }
 
-        fn gFromStr(self: &Self, str: []const u8) !void {
-            self.g = try fmt.parseInt(u8, str, 10);
+        fn gFromStr(color: &Self, str: []const u8) !void {
+            color.g = try fmt.parseInt(u8, str, 10);
         }
 
-        fn bFromStr(self: &Self, str: []const u8) !void {
-            self.b = try fmt.parseInt(u8, str, 10);
+        fn bFromStr(color: &Self, str: []const u8) !void {
+            color.b = try fmt.parseInt(u8, str, 10);
         }
     };
 

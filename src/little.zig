@@ -22,12 +22,12 @@ pub fn Little(comptime Int: type) type {
             return res;
         }
 
-        pub fn set(self: &Self, v: Int) void {
-            mem.writeInt(self.bytes[0..], v, builtin.Endian.Little);
+        pub fn set(little: &Self, v: Int) void {
+            mem.writeInt(little.bytes[0..], v, builtin.Endian.Little);
         }
 
-        pub fn get(self: &const Self) Int {
-            return mem.readIntLE(Int, self.bytes);
+        pub fn get(little: &const Self) Int {
+            return mem.readIntLE(Int, little.bytes);
         }
     };
 }

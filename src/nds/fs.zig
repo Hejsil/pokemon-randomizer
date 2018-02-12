@@ -156,12 +156,12 @@ pub const FatEntry = packed struct {
         };
     }
 
-    fn getSize(self: &const FatEntry) usize {
-        return self.end.get() - self.start.get();
+    fn getSize(entry: &const FatEntry) usize {
+        return entry.end.get() - entry.start.get();
     }
 };
 
-// TODO: We can infer errors for recursive functions. We therefore have to specify the error set. For now, we just use error, but
+// TODO: We can't infer errors for recursive functions. We therefore have to specify the error set. For now, we just use error, but
 //       we probably want something more specific
 pub fn read(file: &io.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) error!Folder {
     const fnt_first = try utils.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
@@ -269,9 +269,6 @@ fn buildFolderFromFntMainEntry(
         .files   = files.toOwnedSlice()
     };
 }
-
-
-
 
 fn readFile(file: &io.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !File {
     narc_read: {

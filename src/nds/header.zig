@@ -202,111 +202,111 @@ pub const Header = packed struct {
 
     signature_across_header_entries: [0x80]u8,
 
-    pub fn isDsi(self: &const Header) bool {
-        return (self.unitcode & 0x02) != 0;
+    pub fn isDsi(header: &const Header) bool {
+        return (header.unitcode & 0x02) != 0;
     }
 
     pub fn calcChecksum(header: &const Header) u16 {
         return crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]);
     }
 
-    pub fn validate(self: &const Header) !void {
-        if (self.header_checksum.get() != self.calcChecksum())
+    pub fn validate(header: &const Header) !void {
+        if (header.header_checksum.get() != header.calcChecksum())
             return error.InvalidHeaderChecksum;
 
-        if (!utils.all(u8, self.game_title, isUpperAsciiOrZero))
+        if (!utils.all(u8, header.game_title, isUpperAsciiOrZero))
             return error.InvalidGameTitle;
-        if (!utils.all(u8, self.gamecode, ascii.isUpperAscii))
+        if (!utils.all(u8, header.gamecode, ascii.isUpperAscii))
             return error.InvalidGamecode;
-        if (!utils.all(u8, self.makercode, ascii.isUpperAscii))
+        if (!utils.all(u8, header.makercode, ascii.isUpperAscii))
             return error.InvalidMakercode;
-        if (self.unitcode > 0x03)
+        if (header.unitcode > 0x03)
             return error.InvalidUnitcode;
-        if (self.encryption_seed_select > 0x07)
+        if (header.encryption_seed_select > 0x07)
             return error.InvalidEncryptionSeedSelect;
 
-        if (!utils.all(u8, self.reserved1, ascii.isZero))
+        if (!utils.all(u8, header.reserved1, ascii.isZero))
             return error.InvalidReserved1;
 
         // It seems that arm9 (secure area) is always at 0x4000
         // http://problemkaputt.de/gbatek.htm#dscartridgesecurearea
-        if (self.arm9_rom_offset.get() != 0x4000)
+        if (header.arm9_rom_offset.get() != 0x4000)
             return error.InvalidArm9RomOffset;
-        if (!utils.between(u32, self.arm9_entry_address.get(), 0x2000000, 0x23BFE00))
+        if (!utils.between(u32, header.arm9_entry_address.get(), 0x2000000, 0x23BFE00))
             return error.InvalidArm9EntryAddress;
-        if (!utils.between(u32, self.arm9_ram_address.get(), 0x2000000, 0x23BFE00))
+        if (!utils.between(u32, header.arm9_ram_address.get(), 0x2000000, 0x23BFE00))
             return error.InvalidArm9RamAddress;
-        if (self.arm9_size.get() > 0x3BFE00)
+        if (header.arm9_size.get() > 0x3BFE00)
             return error.InvalidArm9Size;
 
-        if (self.arm7_rom_offset.get() < 0x8000)
+        if (header.arm7_rom_offset.get() < 0x8000)
             return error.InvalidArm7RomOffset;
-        if (!utils.between(u32, self.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
-            !utils.between(u32, self.arm7_entry_address.get(), 0x37F8000, 0x3807E00))
+        if (!utils.between(u32, header.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
+            !utils.between(u32, header.arm7_entry_address.get(), 0x37F8000, 0x3807E00))
             return error.InvalidArm7EntryAddress;
-        if (!utils.between(u32, self.arm7_ram_address.get(), 0x2000000, 0x23BFE00) and
-            !utils.between(u32, self.arm7_ram_address.get(), 0x37F8000, 0x3807E00))
+        if (!utils.between(u32, header.arm7_ram_address.get(), 0x2000000, 0x23BFE00) and
+            !utils.between(u32, header.arm7_ram_address.get(), 0x37F8000, 0x3807E00))
             return error.InvalidArm7RamAddress;
-        if (self.arm7_size.get() > 0x3BFE00)
+        if (header.arm7_size.get() > 0x3BFE00)
             return error.InvalidArm7Size;
 
-        if (utils.between(u32, self.banner_offset.get(), 0x1, 0x7FFF))
+        if (utils.between(u32, header.banner_offset.get(), 0x1, 0x7FFF))
             return error.InvalidIconTitleOffset;
 
-        if (self.secure_area_delay.get() != 0x051E and self.secure_area_delay.get() != 0x0D7E)
+        if (header.secure_area_delay.get() != 0x051E and header.secure_area_delay.get() != 0x0D7E)
             return error.InvalidSecureAreaDelay;
 
-        if (self.rom_header_size.get() != 0x4000)
+        if (header.rom_header_size.get() != 0x4000)
             return error.InvalidRomHeaderSize;
 
-        if (self.isDsi()) {
+        if (header.isDsi()) {
             const dsi_reserved = []u8 {
                 0xB8, 0xD0, 0x04, 0x00,
                 0x44, 0x05, 0x00, 0x00,
                 0x16, 0x00, 0x16, 0x00
             };
 
-            if (!mem.eql(u8, self.reserved3[0..12], dsi_reserved))
+            if (!mem.eql(u8, header.reserved3[0..12], dsi_reserved))
                 return error.InvalidReserved3;
-            if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
+            if (!utils.all(u8, header.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         } else {
-            if (!utils.all(u8, self.reserved3[12..], ascii.isZero))
+            if (!utils.all(u8, header.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         }
 
-        if (!utils.all(u8, self.reserved4, ascii.isZero))
+        if (!utils.all(u8, header.reserved4, ascii.isZero))
             return error.InvalidReserved4;
-        if (!utils.all(u8, self.reserved5, ascii.isZero))
+        if (!utils.all(u8, header.reserved5, ascii.isZero))
             return error.InvalidReserved5;
 
-        if (self.isDsi()) {
-            if (!utils.all(u8, self.reserved6, ascii.isZero))
+        if (header.isDsi()) {
+            if (!utils.all(u8, header.reserved6, ascii.isZero))
                 return error.InvalidReserved6;
-            if (!utils.all(u8, self.reserved7, ascii.isZero))
+            if (!utils.all(u8, header.reserved7, ascii.isZero))
                 return error.InvalidReserved7;
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
             //       Does that mean that it also always 0x4000?
-            if (self.digest_ntr_region_offset.get() != 0x4000)
+            if (header.digest_ntr_region_offset.get() != 0x4000)
                 return error.InvalidDigestNtrRegionOffset;
-            if (!mem.eql(u8, self.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
+            if (!mem.eql(u8, header.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
-            if (!utils.all(u8, self.reserved9, ascii.isZero))
+            if (!utils.all(u8, header.reserved9, ascii.isZero))
                 return error.InvalidReserved9;
-            if (!mem.eql(u8, self.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
+            if (!mem.eql(u8, header.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
                 return error.InvalidReserved10;
-            if (!mem.eql(u8, self.reserved11, []u8 { 0x2C, 0x05, 0x00, 0x00 }))
+            if (!mem.eql(u8, header.reserved11, []u8 { 0x2C, 0x05, 0x00, 0x00 }))
                 return error.InvalidReserved11;
-            if (!mem.eql(u8, self.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
+            if (!mem.eql(u8, header.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
                 return error.InvalidTitleIdRest;
-            if (!utils.all(u8, self.reserved12, ascii.isZero))
+            if (!utils.all(u8, header.reserved12, ascii.isZero))
                 return error.InvalidReserved12;
-            if (!utils.all(u8, self.reserved16, ascii.isZero))
+            if (!utils.all(u8, header.reserved16, ascii.isZero))
                 return error.InvalidReserved16;
-            if (!utils.all(u8, self.reserved17, ascii.isZero))
+            if (!utils.all(u8, header.reserved17, ascii.isZero))
                 return error.InvalidReserved17;
-            if (!utils.all(u8, self.reserved18, ascii.isZero))
+            if (!utils.all(u8, header.reserved18, ascii.isZero))
                 return error.InvalidReserved18;
         }
     }
