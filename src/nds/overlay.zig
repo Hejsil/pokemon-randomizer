@@ -1,8 +1,8 @@
 const std    = @import("std");
 const fs     = @import("fs.zig");
 const common = @import("common.zig");
-const utils  = @import("../utils.zig");
 const little = @import("../little.zig");
+const utils  = @import("../utils/index.zig");
 
 const io  = std.io;
 const mem = std.mem;
@@ -38,9 +38,9 @@ pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Ove
 
         var fat_entry : fs.FatEntry = undefined;
         try file.seekTo(fat_offset + offset);
-        try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
+        try stream.readNoEof(utils.asBytes(fat_entry));
 
-        const overay_file = try utils.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
+        const overay_file = try utils.file.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get(), fat_entry.getSize());
         try results.append(overay_file);
     }
 
@@ -70,7 +70,7 @@ pub const Writer = struct {
             const overlay_file = overlay_files[i];
             const fat_entry = fs.FatEntry.init(common.alignAddr(writer.file_offset, u32(0x200)), u32(overlay_file.len));
             try writer.file.seekTo(fat_offset + (writer.file_id * @sizeOf(fs.FatEntry)));
-            try writer.file.write(utils.asConstBytes(fs.FatEntry, fat_entry));
+            try writer.file.write(utils.asBytes(fat_entry));
 
             try writer.file.seekTo(fat_entry.start.get());
             try writer.file.write(overlay_file);

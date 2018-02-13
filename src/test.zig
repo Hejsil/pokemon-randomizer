@@ -6,5 +6,6 @@ test "" {
     _ = @import("gba.zig");
     _ = @import("little.zig");
     _ = @import("randomizer.zig");
-    _ = @import("utils.zig");
+    _ = @import("utils/index.zig");
+    _ = @import("utils/index.zig");
 }

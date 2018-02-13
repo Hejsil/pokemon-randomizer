@@ -1,8 +1,8 @@
 const std     = @import("std");
 const common  = @import("common.zig");
 const overlay = @import("overlay.zig");
-const utils   = @import("../utils.zig");
 const little  = @import("../little.zig");
+const utils   = @import("../utils/index.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
@@ -46,17 +46,17 @@ pub const Rom = struct {
         var result = try allocator.create(Rom);
         errdefer allocator.destroy(result);
 
-        result.header = try utils.noAllocRead(Header, file);
+        result.header = try utils.file.noAllocRead(Header, file);
         try result.header.validate();
 
-        result.arm9 = try utils.seekToAllocAndRead(u8, file, allocator, result.header.arm9_rom_offset.get(), result.header.arm9_size.get());
+        result.arm9 = try utils.file.seekToAllocAndRead(u8, file, allocator, result.header.arm9_rom_offset.get(), result.header.arm9_size.get());
         errdefer allocator.free(result.arm9);
-        result.nitro_footer = try utils.noAllocRead([3]Little(u32), file);
+        result.nitro_footer = try utils.file.noAllocRead([3]Little(u32), file);
 
-        result.arm7 = try utils.seekToAllocAndRead(u8, file, allocator, result.header.arm7_rom_offset.get(), result.header.arm7_size.get());
+        result.arm7 = try utils.file.seekToAllocAndRead(u8, file, allocator, result.header.arm7_rom_offset.get(), result.header.arm7_size.get());
         errdefer allocator.free(result.arm7);
 
-        result.arm9_overlay_table = try utils.seekToAllocAndRead(
+        result.arm9_overlay_table = try utils.file.seekToAllocAndRead(
             Overlay,
             file,
             allocator,
@@ -66,7 +66,7 @@ pub const Rom = struct {
         result.arm9_overlay_files = try overlay.readFiles(file, allocator, result.arm9_overlay_table, result.header.fat_offset.get());
         errdefer overlay.freeFiles(result.arm9_overlay_files, allocator);
 
-        result.arm7_overlay_table = try utils.seekToAllocAndRead(
+        result.arm7_overlay_table = try utils.file.seekToAllocAndRead(
             Overlay,
             file,
             allocator,
@@ -77,7 +77,7 @@ pub const Rom = struct {
         errdefer overlay.freeFiles(result.arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
-        result.banner = try utils.seekToNoAllocRead(Banner, file, result.header.banner_offset.get());
+        result.banner = try utils.file.seekToNoAllocRead(Banner, file, result.header.banner_offset.get());
         try result.banner.validate();
         if (result.header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
 
@@ -142,7 +142,7 @@ pub const Rom = struct {
 
         try header.validate();
         try file.seekTo(0x00);
-        try file.write(utils.asBytes(Header, header));
+        try file.write(utils.asBytes(header));
         try file.seekTo(header.arm9_rom_offset.get());
         try file.write(rom.arm9);
         if (rom.hasNitroFooter()) {
@@ -156,7 +156,7 @@ pub const Rom = struct {
         try file.seekTo(header.arm7_overlay_offset.get());
         try file.write(([]u8)(rom.arm7_overlay_table));
         try file.seekTo(header.banner_offset.get());
-        try file.write(utils.asBytes(Banner, &rom.banner));
+        try file.write(utils.asBytes(rom.banner));
     }
 
     fn hasNitroFooter(rom: &const Rom) bool {

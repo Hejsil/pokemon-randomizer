@@ -1,13 +1,14 @@
 const std    = @import("std");
 const gba    = @import("../gba.zig");
 const little = @import("../little.zig");
-const utils  = @import("../utils.zig");
+const utils  = @import("../utils/index.zig");
 const common = @import("common.zig");
 
 const mem   = std.mem;
 const debug = std.debug;
 const io    = std.io;
 const os    = std.os;
+const slice = utils.slice;
 
 const assert = debug.assert;
 const u9     = @IntType(false, 9);
@@ -168,7 +169,7 @@ const Offset = struct {
     start: usize,
     end: usize,
 
-    fn slice(offset: &const Offset, comptime T: type, data: []u8) []T {
+    fn getSlice(offset: &const Offset, comptime T: type, data: []u8) []T {
         return ([]T)(data[offset.start..offset.end]);
     }
 };
@@ -221,7 +222,7 @@ pub const Game = struct {
         var file_out_stream = io.FileInStream.init(file);
         var out_stream = &file_out_stream.stream;
 
-        const header = try utils.noAllocRead(gba.Header, file);
+        const header = try utils.file.noAllocRead(gba.Header, file);
         try header.validate();
         try file.seekTo(0);
 
@@ -236,15 +237,15 @@ pub const Game = struct {
             .offsets                    = offsets,
             .data                       = rom,
             .header                     = @ptrCast(&gba.Header, &rom[0]),
-            .trainers                   = offsets.trainers.slice(Trainer, rom),
-            .moves                      = offsets.moves.slice(Move, rom),
-            .tm_hm_learnset             = offsets.tm_hm_learnset.slice(Little(u64), rom),
-            .base_stats                 = offsets.base_stats.slice(BasePokemon, rom),
-            .evolution_table            = offsets.evolution_table.slice([5]Evolution, rom),
-            .level_up_learnset_pointers = offsets.level_up_learnset_pointers.slice(Little(u32), rom),
-            .hms                        = offsets.hms.slice(Little(u16), rom),
-            .items                      = offsets.items.slice(Item, rom),
-            .tms                        = offsets.tms.slice(Little(u16), rom),
+            .trainers                   = offsets.trainers.getSlice(Trainer, rom),
+            .moves                      = offsets.moves.getSlice(Move, rom),
+            .tm_hm_learnset             = offsets.tm_hm_learnset.getSlice(Little(u64), rom),
+            .base_stats                 = offsets.base_stats.getSlice(BasePokemon, rom),
+            .evolution_table            = offsets.evolution_table.getSlice([5]Evolution, rom),
+            .level_up_learnset_pointers = offsets.level_up_learnset_pointers.getSlice(Little(u32), rom),
+            .hms                        = offsets.hms.getSlice(Little(u16), rom),
+            .items                      = offsets.items.getSlice(Item, rom),
+            .tms                        = offsets.tms.getSlice(Little(u16), rom),
         };
 
         return res;
@@ -313,16 +314,16 @@ pub const Game = struct {
     }
 
     pub fn validateData(game: &const Game) !void {
-        if (!mem.eql(u8, bulbasaur_fingerprint, utils.asConstBytes(BasePokemon, game.base_stats[1])))
+        if (!mem.eql(u8, bulbasaur_fingerprint, utils.asBytes(game.base_stats[1])))
             return error.NoBulbasaurFound;
     }
 
     pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
-        return utils.ptrAt(BasePokemon, game.base_stats, index);
+        return slice.ptrAtOrNull(game.base_stats, index);
     }
 
     pub fn getTrainer(game: &const Game, index: usize) ?&Trainer {
-        return utils.ptrAt(Trainer, game.trainers, index);
+        return slice.ptrAtOrNull(game.trainers, index);
     }
 
     pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) ?&PartyMemberBase {
@@ -344,16 +345,16 @@ pub const Game = struct {
         if (data.len < party_end) return null;
 
         const party = ([]TMember)(data[offset..party_end]);
-        const pokemon = utils.ptrAt(TMember, party, index) ?? return null;
+        const pokemon = utils.slice.ptrAtOrNull(party, index) ?? return null;
         return &pokemon.base;
     }
 
-    pub fn getMove(game: &const Game, index: usize) ?&Move { return utils.ptrAt(Move, game.moves, index); }
+    pub fn getMove(game: &const Game, index: usize) ?&Move { return utils.slice.ptrAtOrNull(game.moves, index); }
     pub fn getMoveCount(game: &const Game) usize { return game.moves.len; }
 
     pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
         const offset = blk: {
-            const res = utils.itemAt(Little(u32), game.level_up_learnset_pointers, species) ?? return null;
+            const res = utils.slice.atOrNull(game.level_up_learnset_pointers, species) ?? return null;
             if (res.get() < 0x8000000) return null;
             break :blk res.get() - 0x8000000;
         };
@@ -377,6 +378,6 @@ pub const Game = struct {
     pub fn getHms(game: &const Game) []Little(u16) { return game.hms; }
 
     pub fn getTmHmLearnset(game: &const Game, species: usize) ?&Little(u64) {
-        return utils.ptrAt(Little(u64), game.tm_hm_learnset, species);
+        return utils.slice.ptrAtOrNull(game.tm_hm_learnset, species);
     }
 };

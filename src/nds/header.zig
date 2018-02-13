@@ -1,12 +1,13 @@
 const std    = @import("std");
 const crc    = @import("crc");
 const ascii  = @import("../ascii.zig");
-const utils  = @import("../utils.zig");
 const little = @import("../little.zig");
+const utils  = @import("../utils/index.zig");
 
 const debug = std.debug;
 const mem   = std.mem;
 const io    = std.io;
+const slice = utils.slice;
 
 const assert = debug.assert;
 
@@ -207,50 +208,50 @@ pub const Header = packed struct {
     }
 
     pub fn calcChecksum(header: &const Header) u16 {
-        return crc_modbus.checksum(utils.asConstBytes(Header, header)[0..0x15E]);
+        return crc_modbus.checksum(utils.asBytes(header)[0..0x15E]);
     }
 
     pub fn validate(header: &const Header) !void {
         if (header.header_checksum.get() != header.calcChecksum())
             return error.InvalidHeaderChecksum;
 
-        if (!utils.all(u8, header.game_title, isUpperAsciiOrZero))
+        if (!slice.all(header.game_title[0..], isUpperAsciiOrZero))
             return error.InvalidGameTitle;
-        if (!utils.all(u8, header.gamecode, ascii.isUpperAscii))
+        if (!slice.all(header.gamecode[0..], ascii.isUpperAscii))
             return error.InvalidGamecode;
-        if (!utils.all(u8, header.makercode, ascii.isUpperAscii))
+        if (!slice.all(header.makercode[0..], ascii.isUpperAscii))
             return error.InvalidMakercode;
         if (header.unitcode > 0x03)
             return error.InvalidUnitcode;
         if (header.encryption_seed_select > 0x07)
             return error.InvalidEncryptionSeedSelect;
 
-        if (!utils.all(u8, header.reserved1, ascii.isZero))
+        if (!slice.all(header.reserved1[0..], ascii.isZero))
             return error.InvalidReserved1;
 
         // It seems that arm9 (secure area) is always at 0x4000
         // http://problemkaputt.de/gbatek.htm#dscartridgesecurearea
         if (header.arm9_rom_offset.get() != 0x4000)
             return error.InvalidArm9RomOffset;
-        if (!utils.between(u32, header.arm9_entry_address.get(), 0x2000000, 0x23BFE00))
+        if (!(0x2000000 <= header.arm9_entry_address.get() and header.arm9_entry_address.get() <= 0x23BFE00))
             return error.InvalidArm9EntryAddress;
-        if (!utils.between(u32, header.arm9_ram_address.get(), 0x2000000, 0x23BFE00))
+        if (!(0x2000000 <= header.arm9_ram_address.get() and header.arm9_ram_address.get() <= 0x23BFE00))
             return error.InvalidArm9RamAddress;
         if (header.arm9_size.get() > 0x3BFE00)
             return error.InvalidArm9Size;
 
         if (header.arm7_rom_offset.get() < 0x8000)
             return error.InvalidArm7RomOffset;
-        if (!utils.between(u32, header.arm7_entry_address.get(), 0x2000000, 0x23BFE00) and
-            !utils.between(u32, header.arm7_entry_address.get(), 0x37F8000, 0x3807E00))
+        if (!(0x2000000 <= header.arm7_entry_address.get() and header.arm7_entry_address.get() <= 0x23BFE00) and
+            !(0x37F8000 <= header.arm7_entry_address.get() and  header.arm7_entry_address.get() <= 0x3807E00))
             return error.InvalidArm7EntryAddress;
-        if (!utils.between(u32, header.arm7_ram_address.get(), 0x2000000, 0x23BFE00) and
-            !utils.between(u32, header.arm7_ram_address.get(), 0x37F8000, 0x3807E00))
+        if (!(0x2000000 <= header.arm7_ram_address.get() and header.arm7_ram_address.get() <= 0x23BFE00) and
+            !(0x37F8000 <= header.arm7_ram_address.get() and header.arm7_ram_address.get() <= 0x3807E00))
             return error.InvalidArm7RamAddress;
         if (header.arm7_size.get() > 0x3BFE00)
             return error.InvalidArm7Size;
 
-        if (utils.between(u32, header.banner_offset.get(), 0x1, 0x7FFF))
+        if ((0x1 <= header.banner_offset.get() and header.banner_offset.get() <= 0x7FFF))
             return error.InvalidIconTitleOffset;
 
         if (header.secure_area_delay.get() != 0x051E and header.secure_area_delay.get() != 0x0D7E)
@@ -268,22 +269,22 @@ pub const Header = packed struct {
 
             if (!mem.eql(u8, header.reserved3[0..12], dsi_reserved))
                 return error.InvalidReserved3;
-            if (!utils.all(u8, header.reserved3[12..], ascii.isZero))
+            if (!slice.all(header.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         } else {
-            if (!utils.all(u8, header.reserved3[12..], ascii.isZero))
+            if (!slice.all(header.reserved3[12..], ascii.isZero))
                 return error.InvalidReserved3;
         }
 
-        if (!utils.all(u8, header.reserved4, ascii.isZero))
+        if (!slice.all(header.reserved4[0..], ascii.isZero))
             return error.InvalidReserved4;
-        if (!utils.all(u8, header.reserved5, ascii.isZero))
+        if (!slice.all(header.reserved5[0..], ascii.isZero))
             return error.InvalidReserved5;
 
         if (header.isDsi()) {
-            if (!utils.all(u8, header.reserved6, ascii.isZero))
+            if (!slice.all(header.reserved6[0..], ascii.isZero))
                 return error.InvalidReserved6;
-            if (!utils.all(u8, header.reserved7, ascii.isZero))
+            if (!slice.all(header.reserved7[0..], ascii.isZero))
                 return error.InvalidReserved7;
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
@@ -292,7 +293,7 @@ pub const Header = packed struct {
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, header.reserved8, []u8 { 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
-            if (!utils.all(u8, header.reserved9, ascii.isZero))
+            if (!slice.all(header.reserved9[0..], ascii.isZero))
                 return error.InvalidReserved9;
             if (!mem.eql(u8, header.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
                 return error.InvalidReserved10;
@@ -300,18 +301,18 @@ pub const Header = packed struct {
                 return error.InvalidReserved11;
             if (!mem.eql(u8, header.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
                 return error.InvalidTitleIdRest;
-            if (!utils.all(u8, header.reserved12, ascii.isZero))
+            if (!slice.all(header.reserved12[0..], ascii.isZero))
                 return error.InvalidReserved12;
-            if (!utils.all(u8, header.reserved16, ascii.isZero))
+            if (!slice.all(header.reserved16[0..], ascii.isZero))
                 return error.InvalidReserved16;
-            if (!utils.all(u8, header.reserved17, ascii.isZero))
+            if (!slice.all(header.reserved17[0..], ascii.isZero))
                 return error.InvalidReserved17;
-            if (!utils.all(u8, header.reserved18, ascii.isZero))
+            if (!slice.all(header.reserved18[0..], ascii.isZero))
                 return error.InvalidReserved18;
         }
     }
 
-    fn isUpperAsciiOrZero(char: u8) bool {
-        return ascii.isUpperAscii(char) or char == 0;
+    fn isUpperAsciiOrZero(char: &const u8) bool {
+        return ascii.isUpperAscii(char) or *char == 0;
     }
 };

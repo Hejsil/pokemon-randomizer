@@ -1,61 +1,16 @@
 const std = @import("std");
+const utils = @import("index.zig");
 
 const io  = std.io;
 const os  = std.os;
 const mem = std.mem;
-
-pub fn asConstBytes(comptime T: type, value: &const T) []const u8 {
-    return ([]const u8)(value[0..1]);
-}
-
-pub fn asBytes(comptime T: type, value: &T) []u8 {
-    return ([]u8)(value[0..1]);
-}
-
-// TODO: Let's see what the answer is for this issue: https://github.com/zig-lang/zig/issues/670
-pub fn all(comptime T: type, slice: []const T, predicate: fn(T) bool) bool {
-    for (slice) |v| {
-        if (!predicate(v)) return false;
-    }
-
-    return true;
-}
-
-pub fn between(comptime T: type, v: T, min: T, max: T) bool {
-    return min <= v and v <= max;
-}
-
-pub fn first(comptime T: type, slice: []const T) ?T {
-    return itemAt(T, slice, 0);
-}
-
-pub fn itemAt(comptime T: type, slice: []const T, index: usize) ?T {
-    const ptr = constPtrAt(T, slice, index) ?? return null;
-    return *ptr;
-}
-
-pub fn ptrAt(comptime T: type, slice: []T, index: usize) ?&T {
-    if (slice.len <= index) {
-        return null;
-    } else {
-        return &slice[index];
-    }
-}
-
-pub fn constPtrAt(comptime T: type, slice: []const T, index: usize) ?&const T {
-    if (slice.len <= index) {
-        return null;
-    } else {
-        return &slice[index];
-    }
-}
 
 pub fn noAllocRead(comptime T: type, file: &os.File) !T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
     var result : T = undefined;
-    try stream.readNoEof(asBytes(T, &result));
+    try stream.readNoEof(utils.asBytes(&result));
 
     return result;
 }

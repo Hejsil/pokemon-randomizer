@@ -1,6 +1,6 @@
 const ascii  = @import("../ascii.zig");
-const utils  = @import("../utils.zig");
 const little = @import("../little.zig");
+const utils  = @import("../utils/index.zig");
 
 const toLittle = little.toLittle;
 const Little   = little.Little;
@@ -55,7 +55,7 @@ pub const Banner = packed struct {
         if (banner.has_animated_dsi_icon_padding != 0)
             return error.InvalidHasAnimatedDsiIconPadding;
 
-        if (!utils.all(u8, banner.reserved1, ascii.isZero))
+        if (!utils.slice.all(banner.reserved1[0..], ascii.isZero))
             return error.InvalidReserved1;
 
         //if (!utils.all(u8, banner.reserved2, ascii.isZero))
