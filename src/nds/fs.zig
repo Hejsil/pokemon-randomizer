@@ -14,8 +14,6 @@ const assert = debug.assert;
 const toLittle = little.toLittle;
 const Little   = little.Little;
 
-const no_fnt_fs_name = "no_fnt_fs";
-
 pub const File = struct {
     name: []u8,
     @"type": Type,
@@ -329,14 +327,11 @@ fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
                 try files.append(sub_file);
             }
 
-            const folder_name = try mem.dupe(allocator, u8, no_fnt_fs_name);
-            errdefer allocator.free(folder_name);
-
             return File {
                 .name = name,
                 .@"type" = File.Type {
                     .Narc = Folder {
-                        .name = folder_name,
+                        .name = "",
                         .files = files.toOwnedSlice(),
                         .folders = []Folder{},
                     },
