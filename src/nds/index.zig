@@ -42,55 +42,63 @@ pub const Rom = struct {
     banner: Banner,
     root: fs.Folder,
 
-    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !&Rom {
-        var result = try allocator.create(Rom);
-        errdefer allocator.destroy(result);
+    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Rom {
+        const header = try utils.file.noAllocRead(Header, file);
+        try header.validate();
 
-        result.header = try utils.file.noAllocRead(Header, file);
-        try result.header.validate();
+        const arm9 = try utils.file.seekToAllocAndRead(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        errdefer allocator.free(arm9);
+        const nitro_footer = try utils.file.noAllocRead([3]Little(u32), file);
 
-        result.arm9 = try utils.file.seekToAllocAndRead(u8, file, allocator, result.header.arm9_rom_offset.get(), result.header.arm9_size.get());
-        errdefer allocator.free(result.arm9);
-        result.nitro_footer = try utils.file.noAllocRead([3]Little(u32), file);
+        const arm7 = try utils.file.seekToAllocAndRead(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        errdefer allocator.free(arm7);
 
-        result.arm7 = try utils.file.seekToAllocAndRead(u8, file, allocator, result.header.arm7_rom_offset.get(), result.header.arm7_size.get());
-        errdefer allocator.free(result.arm7);
-
-        result.arm9_overlay_table = try utils.file.seekToAllocAndRead(
+        const arm9_overlay_table = try utils.file.seekToAllocAndRead(
             Overlay,
             file,
             allocator,
-            result.header.arm9_overlay_offset.get(),
-            result.header.arm9_overlay_size.get() / @sizeOf(Overlay));
-        errdefer allocator.free(result.arm9_overlay_table);
-        result.arm9_overlay_files = try overlay.readFiles(file, allocator, result.arm9_overlay_table, result.header.fat_offset.get());
-        errdefer overlay.freeFiles(result.arm9_overlay_files, allocator);
+            header.arm9_overlay_offset.get(),
+            header.arm9_overlay_size.get() / @sizeOf(Overlay));
+        errdefer allocator.free(arm9_overlay_table);
+        const arm9_overlay_files = try overlay.readFiles(file, allocator, arm9_overlay_table, header.fat_offset.get());
+        errdefer overlay.freeFiles(arm9_overlay_files, allocator);
 
-        result.arm7_overlay_table = try utils.file.seekToAllocAndRead(
+        const arm7_overlay_table = try utils.file.seekToAllocAndRead(
             Overlay,
             file,
             allocator,
-            result.header.arm7_overlay_offset.get(),
-            result.header.arm7_overlay_size.get() / @sizeOf(Overlay));
-        errdefer allocator.free(result.arm7_overlay_table);
-        result.arm7_overlay_files = try overlay.readFiles(file, allocator, result.arm7_overlay_table, result.header.fat_offset.get());
-        errdefer overlay.freeFiles(result.arm7_overlay_files, allocator);
+            header.arm7_overlay_offset.get(),
+            header.arm7_overlay_size.get() / @sizeOf(Overlay));
+        errdefer allocator.free(arm7_overlay_table);
+        const arm7_overlay_files = try overlay.readFiles(file, allocator, arm7_overlay_table, header.fat_offset.get());
+        errdefer overlay.freeFiles(arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
-        result.banner = try utils.file.seekToNoAllocRead(Banner, file, result.header.banner_offset.get());
-        try result.banner.validate();
-        if (result.header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
+        const banner = try utils.file.seekToNoAllocRead(Banner, file, header.banner_offset.get());
+        try banner.validate();
+        if (header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
 
-        result.root = try fs.read(
+        const root = try fs.read(
             file,
             allocator,
-            result.header.fnt_offset.get(),
-            result.header.fat_offset.get(),
-            result.header.fat_size.get() / @sizeOf(fs.FatEntry),
+            header.fnt_offset.get(),
+            header.fat_offset.get(),
+            header.fat_size.get() / @sizeOf(fs.FatEntry),
             0);
-        errdefer result.root.destroy(allocator);
+        errdefer root.destroy(allocator);
 
-        return result;
+        return Rom {
+            .header = header,
+            .arm9 = arm9,
+            .nitro_footer = nitro_footer,
+            .arm7 = arm7,
+            .arm9_overlay_table = arm9_overlay_table,
+            .arm9_overlay_files = arm9_overlay_files,
+            .arm7_overlay_table = arm7_overlay_table,
+            .arm7_overlay_files = arm7_overlay_files,
+            .banner = banner,
+            .root = root,
+        };
     }
 
     pub fn writeToFile(rom: &Rom, file: &os.File) !void {
@@ -171,6 +179,5 @@ pub const Rom = struct {
         overlay.freeFiles(rom.arm9_overlay_files, allocator);
         overlay.freeFiles(rom.arm7_overlay_files, allocator);
         rom.root.destroy(allocator);
-        allocator.destroy(rom);
     }
 };
