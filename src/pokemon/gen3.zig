@@ -218,7 +218,7 @@ pub const Game = struct {
     items: []Item,
     tms: []Little(u16),
 
-    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !&Game {
+    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Game {
         var file_out_stream = io.FileInStream.init(file);
         var out_stream = &file_out_stream.stream;
 
@@ -232,8 +232,7 @@ pub const Game = struct {
 
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
-        var res = try allocator.create(Game);
-        *res = Game {
+        return Game {
             .offsets                    = offsets,
             .data                       = rom,
             .header                     = @ptrCast(&gba.Header, &rom[0]),
@@ -247,8 +246,6 @@ pub const Game = struct {
             .items                      = offsets.items.getSlice(Item, rom),
             .tms                        = offsets.tms.getSlice(Little(u16), rom),
         };
-
-        return res;
     }
 
     pub fn writeToStream(game: &const Game, out_stream: var) !void {
@@ -258,7 +255,6 @@ pub const Game = struct {
 
     pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
         allocator.free(game.data);
-        allocator.destroy(game);
     }
 
     // TODO: When we are able to allocate at comptime, construct a HashMap
