@@ -452,7 +452,7 @@ pub const FSWriter = struct {
                 // We write the narc header last.
                 try writer.file.seekTo(start + @sizeOf(formats.Header));
                 const fat_chunk_start = try writer.file.getPos();
-                const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + 0x4 + fs_info.files * @sizeOf(FatEntry);
+                const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + 0x4 + usize(fs_info.files) * @sizeOf(FatEntry);
                 const fat_chunk_size  = fat_chunk_end - fat_chunk_start;
                 try writer.file.write(
                     utils.asBytes(
@@ -506,7 +506,7 @@ pub const FSWriter = struct {
         const size = writer.file_offset - start;
 
         // Write offsets to fat
-        try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * writer.file_id);
+        try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * usize(writer.file_id));
         try writer.file.write(utils.asBytes(FatEntry.init(u32(start - img_base), u32(size))));
         writer.file_id += 1;
     }

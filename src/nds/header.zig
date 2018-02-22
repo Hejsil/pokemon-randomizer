@@ -260,21 +260,8 @@ pub const Header = packed struct {
         if (header.rom_header_size.get() != 0x4000)
             return error.InvalidRomHeaderSize;
 
-        if (header.isDsi()) {
-            const dsi_reserved = []u8 {
-                0xB8, 0xD0, 0x04, 0x00,
-                0x44, 0x05, 0x00, 0x00,
-                0x16, 0x00, 0x16, 0x00
-            };
-
-            if (!mem.eql(u8, header.reserved3[0..12], dsi_reserved))
-                return error.InvalidReserved3;
-            if (!slice.all(header.reserved3[12..], ascii.isZero))
-                return error.InvalidReserved3;
-        } else {
-            if (!slice.all(header.reserved3[12..], ascii.isZero))
-                return error.InvalidReserved3;
-        }
+        if (!slice.all(header.reserved3[12..], ascii.isZero))
+            return error.InvalidReserved3;
 
         if (!slice.all(header.reserved4[0..], ascii.isZero))
             return error.InvalidReserved4;
@@ -295,10 +282,6 @@ pub const Header = packed struct {
                 return error.InvalidReserved8;
             if (!slice.all(header.reserved9[0..], ascii.isZero))
                 return error.InvalidReserved9;
-            if (!mem.eql(u8, header.reserved10, []u8 { 0x84, 0xD0, 0x04, 0x00 }))
-                return error.InvalidReserved10;
-            if (!mem.eql(u8, header.reserved11, []u8 { 0x2C, 0x05, 0x00, 0x00 }))
-                return error.InvalidReserved11;
             if (!mem.eql(u8, header.title_id_rest, []u8 { 0x00, 0x03, 0x00 }))
                 return error.InvalidTitleIdRest;
             if (!slice.all(header.reserved12[0..], ascii.isZero))
