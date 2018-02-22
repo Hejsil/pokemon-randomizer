@@ -24,16 +24,14 @@ pub const BasePokemon = packed struct {
     sp_attack:  u8,
     sp_defense: u8,
 
-    type1: common.Type,
-    type2: common.Type,
+    types: [2]common.Type,
 
     catch_rate:     u8,
     base_exp_yield: u8,
 
     ev_yield: common.EvYield,
 
-    item1: Little(u16),
-    item2: Little(u16),
+    items: [2]Little(u16),
 
     gender_ratio:    u8,
     egg_cycles:      u8,
@@ -46,9 +44,7 @@ pub const BasePokemon = packed struct {
     egg_group2: common.EggGroup,
     egg_group2_pad: u4,
 
-    abillity1: u8,
-    abillity2: u8,
-
+    abilities: [2]u8,
     safari_zone_rate: u8,
 
     color: common.Color,

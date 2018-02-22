@@ -195,7 +195,7 @@ pub fn main() !void {
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
 
-        //var game = try gen5.Game.fromRom(nds_rom);
+        var game = try gen5.Game.fromRom(&nds_rom);
 
         nds_rom.writeToFile(&out_file) catch |err| {
             try stdout_stream.print("Unable to write nds to {}\n", output_file);

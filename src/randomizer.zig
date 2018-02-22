@@ -143,10 +143,11 @@ pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocat
         }
     }
 
-    var pokemon_count : u16 = 0;
-    while (game.getBasePokemon(pokemon_count)) |pokemon| : (pokemon_count += 1) {
-        try pokemons_by_type[u8(pokemon.type1)].append(pokemon_count);
-        try pokemons_by_type[u8(pokemon.type2)].append(pokemon_count);
+    var species : u16 = 0;
+    while (game.getBasePokemon(species)) |pokemon| : (species += 1) {
+        for (pokemon.types) |t| {
+            try pokemons_by_type[u8(t)].append(species);
+        }
     }
 
     try randomizeTrainers(game, pokemons_by_type[0..], options.trainer, random, allocator);
@@ -160,8 +161,8 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
             else => common.Type.Unknown,
         };
 
-        var pokemon_index : usize = 0;
-        while (game.getTrainerPokemon(trainer, pokemon_index)) |trainer_pokemon| : (pokemon_index += 1) {
+        var species : usize = 0;
+        while (game.getTrainerPokemon(trainer, species)) |trainer_pokemon| : (species += 1) {
             // TODO: Handle when a trainers Pokémon does not point on a valid species.
             //                                                                         VVVVVVVVVVV
             const curr_pokemon = game.getBasePokemon(trainer_pokemon.species.get()) ?? unreachable;
@@ -179,18 +180,19 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
                 },
                 Options.Trainer.Pokemon.SameType => {
                     const pokemon_type = blk: {
-                        if (curr_pokemon.type1 == common.Type.Unknown) {
-                            if (curr_pokemon.type2 == common.Type.Unknown) {
+                        // TODO: Rewrite to work with Pokémons that can have N types
+                        if (curr_pokemon.types[0] == common.Type.Unknown) {
+                            if (curr_pokemon.types[1] == common.Type.Unknown) {
                                 break :blk randomType(@typeOf(*game), random);
                             } else {
-                                break :blk curr_pokemon.type2;
+                                break :blk curr_pokemon.types[1];
                             }
                         }
-                        if (curr_pokemon.type2 == common.Type.Unknown)
+                        if (curr_pokemon.types[1] == common.Type.Unknown)
                             break :blk randomType(@typeOf(*game), random);
 
                         const roll = random.float(f32);
-                        break :blk if (roll < 0.80) curr_pokemon.type1 else curr_pokemon.type2;
+                        break :blk if (roll < 0.80) curr_pokemon.types[0] else curr_pokemon.types[1];
                     };
 
                     const pokemons = pokemons_by_type[u8(pokemon_type)].toSliceConst();
@@ -361,8 +363,9 @@ fn randomizeTrainerPokemonMoves(game: var, trainer_pokemon: var, option: &const 
                         break :pokemon_moves_loop;
                     };
 
-                    const move_stab    = if (move.@"type"         == pokemon.type1 or move.@"type"         == pokemon.type2) f32(1.5) else f32(1.0);
-                    const learned_stab = if (learned_move.@"type" == pokemon.type1 or learned_move.@"type" == pokemon.type2) f32(1.5) else f32(1.0);
+                    // TODO: Rewrite to work with Pokémons that can have N types
+                    const move_stab    = if (move.@"type"         == pokemon.types[0] or move.@"type"         == pokemon.types[1]) f32(1.5) else f32(1.0);
+                    const learned_stab = if (learned_move.@"type" == pokemon.types[0] or learned_move.@"type" == pokemon.types[1]) f32(1.5) else f32(1.0);
                     const move_power    = f32(move.power) * move_stab;
                     const learned_power = f32(learned_move.power) * learned_stab;
 
