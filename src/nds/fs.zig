@@ -165,12 +165,12 @@ pub const FatEntry = packed struct {
 // TODO: We can't infer errors for recursive functions. We therefore have to specify the error set. For now, we just use error, but
 //       we probably want something more specific
 pub fn read(file: &os.File, allocator: &mem.Allocator, fnt_offset: usize, fat_offset: usize, file_count: usize, img_base: usize) error!Folder {
-    const fnt_first = try utils.file.seekToNoAllocRead(FntMainEntry, file, fnt_offset);
-    const fnt_main_table = try utils.file.seekToAllocAndRead(FntMainEntry, file, allocator, fnt_offset, fnt_first.parent_id.get());
+    const fnt_first = try utils.file.seekToRead(file, fnt_offset, FntMainEntry);
+    const fnt_main_table = try utils.file.seekToAllocRead(file, fnt_offset, allocator, FntMainEntry, fnt_first.parent_id.get());
     defer allocator.free(fnt_main_table);
 
     if (!( 1 <=  fnt_main_table.len and  fnt_main_table.len <=  4096)) return error.InvalidFntMainTableSize;
-    const fat = try utils.file.seekToAllocAndRead(FatEntry, file, allocator, fat_offset, file_count);
+    const fat = try utils.file.seekToAllocRead(file, fat_offset, allocator, FatEntry, file_count);
     defer allocator.free(fat);
 
     return buildFolderFromFntMainEntry(
@@ -212,7 +212,7 @@ fn buildFolderFromFntMainEntry(
     var file_id = fnt_entry.first_file_id_in_subtable.get();
     while (true) {
         const Kind = enum(u8) { File = 0x00, Folder = 0x80 };
-        const type_length = try utils.file.noAllocRead(u8, file);
+        const type_length = try utils.file.read(file, u8);
 
         if (type_length == 0x80) return error.InvalidSubTableTypeLength;
         if (type_length == 0x00) break;
@@ -221,7 +221,7 @@ fn buildFolderFromFntMainEntry(
         const kind = Kind((type_length & 0x80));
         assert(kind == Kind.File or kind == Kind.Folder);
 
-        const child_name = try utils.file.allocAndRead(u8, file, allocator, lenght);
+        const child_name = try utils.file.allocRead(file, allocator, u8, lenght);
         errdefer allocator.free(child_name);
 
         switch (kind) {
@@ -238,7 +238,7 @@ fn buildFolderFromFntMainEntry(
                 file_id += 1;
             },
             Kind.Folder => {
-                const id = try utils.file.noAllocRead(Little(u16), file);
+                const id = try utils.file.read(file, Little(u16));
                 if (!( 0xF001 <=  id.get() and  id.get() <=  0xFFFF)) return error.InvalidSubDirectoryId;
                 if (fnt_main_table.len <= id.get() & 0x0FFF)       return error.InvalidSubDirectoryId;
 
@@ -272,7 +272,7 @@ fn buildFolderFromFntMainEntry(
 fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) error!File {
     narc_read: {
         const names = formats.Chunk.names;
-        const header = utils.file.seekToNoAllocRead(formats.Header, file, fat_entry.start.get() + img_base) catch break :narc_read;
+        const header = utils.file.seekToRead(file, fat_entry.start.get() + img_base, formats.Header) catch break :narc_read;
         if (!mem.eql(u8, header.chunk_name, names.narc)) break :narc_read;
         if (header.byte_order.get() != 0xFFFE)           break :narc_read;
         if (header.chunk_size.get() != 0x0010)           break :narc_read;
@@ -281,9 +281,9 @@ fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
         // If we have a valid narc header, then we assume we are reading a narc
         // file. All error from here, are therefore bubbled up.
         const fat_chunk_start = try file.getPos();
-        const fat_header      = try utils.file.noAllocRead(formats.Chunk, file);
-        const file_count      = try utils.file.noAllocRead(Little(u16), file);
-        const reserved        = try utils.file.noAllocRead(Little(u16), file);
+        const fat_header      = try utils.file.read(file, formats.Chunk);
+        const file_count      = try utils.file.read(file, Little(u16));
+        const reserved        = try utils.file.read(file, Little(u16));
         const fat_offet       = try file.getPos();
         const fat_chunk_end   = fat_chunk_start + fat_header.size.get();
         if (!mem.eql(u8, fat_header.name, names.fat))                            return error.InvalidChunkName;
@@ -292,17 +292,17 @@ fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
 
         try file.seekTo(fat_chunk_end);
         const fnt_chunk_start = try file.getPos();
-        const fnt_header      = try utils.file.noAllocRead(formats.Chunk, file);
+        const fnt_header      = try utils.file.read(file, formats.Chunk);
         const fnt_offset      = try file.getPos();
         const fnt_chunk_end   = fnt_chunk_start + fnt_header.size.get();
         if (!mem.eql(u8, fnt_header.name, names.fnt))                               return error.InvalidChunkName;
         if (fnt_chunk_end % 0x4 != 0)                                               return error.InvalidChunkSize;
         if (fnt_header.size.get() < @sizeOf(formats.Chunk) + @sizeOf(FntMainEntry)) return error.InvalidChunkSize;
 
-        const root_fnt = try utils.file.noAllocRead(FntMainEntry, file);
+        const root_fnt = try utils.file.read(file, FntMainEntry);
 
         try file.seekTo(fnt_chunk_end);
-        const file_data_header = try utils.file.noAllocRead(formats.Chunk, file);
+        const file_data_header = try utils.file.read(file, formats.Chunk);
         const narc_img_base    = try file.getPos();
         if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
 
@@ -310,7 +310,7 @@ fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
         // fnt sub table and files don't have names. We therefore can't use our normal
         // read function, as it relies on the fnt sub table to build the file system.
         if (root_fnt.offset_to_subtable.get() < @sizeOf(FntMainEntry)) {
-            const fat = try utils.file.seekToAllocAndRead(FatEntry, file, allocator, fat_offet, file_count.get());
+            const fat = try utils.file.seekToAllocRead(file, fat_offet, allocator, FatEntry, file_count.get());
             defer allocator.free(fat);
 
             var files = std.ArrayList(File).init(allocator);
@@ -346,7 +346,7 @@ fn readFile(file: &os.File, allocator: &mem.Allocator, fat_entry: &const FatEntr
         }
     }
 
-    const data = try utils.file.seekToAllocAndRead(u8, file, allocator, fat_entry.start.get() + img_base, fat_entry.getSize());
+    const data = try utils.file.seekToAllocRead(file, fat_entry.start.get() + img_base, allocator, u8, fat_entry.getSize());
     return File {
         .name = name,
         .@"type" = File.Type { .Binary = data, },

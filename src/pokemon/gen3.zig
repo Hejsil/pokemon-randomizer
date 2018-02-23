@@ -218,7 +218,7 @@ pub const Game = struct {
         var file_out_stream = io.FileInStream.init(file);
         var out_stream = &file_out_stream.stream;
 
-        const header = try utils.file.noAllocRead(gba.Header, file);
+        const header = try utils.file.read(file, gba.Header);
         try header.validate();
         try file.seekTo(0);
 

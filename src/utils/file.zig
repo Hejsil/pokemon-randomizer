@@ -5,7 +5,7 @@ const io  = std.io;
 const os  = std.os;
 const mem = std.mem;
 
-pub fn noAllocRead(comptime T: type, file: &os.File) !T {
+pub fn read(file: &os.File, comptime T: type) !T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
@@ -15,17 +15,17 @@ pub fn noAllocRead(comptime T: type, file: &os.File) !T {
     return result;
 }
 
-pub fn seekToNoAllocRead(comptime T: type, file: &os.File, offset: usize) !T {
+pub fn seekToRead(file: &os.File, offset: usize, comptime T: type) !T {
     try file.seekTo(offset);
-    return noAllocRead(T, file);
+    return read(file, T);
 }
 
-pub fn seekToAllocAndRead(comptime T: type, file: &os.File, allocator: &mem.Allocator, offset: usize, size: usize) ![]T {
+pub fn seekToAllocRead(file: &os.File, offset: usize, allocator: &mem.Allocator, comptime T: type, size: usize) ![]T {
     try file.seekTo(offset);
-    return allocAndRead(T, file, allocator, size);
+    return allocRead(file, allocator, T, size);
 }
 
-pub fn allocAndRead(comptime T: type, file: &os.File, allocator: &mem.Allocator, size: usize) ![]T {
+pub fn allocRead(file: &os.File, allocator: &mem.Allocator, comptime T: type, size: usize) ![]T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
@@ -33,16 +33,15 @@ pub fn allocAndRead(comptime T: type, file: &os.File, allocator: &mem.Allocator,
     errdefer allocator.free(data);
 
     try stream.readNoEof(([]u8)(data));
-
     return data;
 }
 
-pub fn seekToCreateAndRead(comptime T: type, file: &os.File, allocator: &mem.Allocator, offset: usize) !&T {
-    const res = try seekToAllocAndRead(T, file, allocator, offset, 1);
+pub fn seekToCreateRead(file: &os.File, offset: usize, allocator: &mem.Allocator, comptime T: type) !&T {
+    const res = try seekToAllocRead(T, file, allocator, offset, 1);
     return &res[0];
 }
 
-pub fn createAndRead(comptime T: type, file: &os.File, allocator: &mem.Allocator) !&T {
-    const res = try allocAndRead(T, file, allocator, 1);
+pub fn createRead(file: &os.File, allocator: &mem.Allocator, comptime T: type) !&T {
+    const res = try allocRead(T, file, allocator, 1);
     return &res[0];
 }

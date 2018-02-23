@@ -43,38 +43,38 @@ pub const Rom = struct {
     root: fs.Folder,
 
     pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Rom {
-        const header = try utils.file.noAllocRead(Header, file);
+        const header = try utils.file.read(file, Header);
         try header.validate();
 
-        const arm9 = try utils.file.seekToAllocAndRead(u8, file, allocator, header.arm9_rom_offset.get(), header.arm9_size.get());
+        const arm9 = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
         errdefer allocator.free(arm9);
-        const nitro_footer = try utils.file.noAllocRead([3]Little(u32), file);
+        const nitro_footer = try utils.file.read(file, [3]Little(u32));
 
-        const arm7 = try utils.file.seekToAllocAndRead(u8, file, allocator, header.arm7_rom_offset.get(), header.arm7_size.get());
+        const arm7 = try utils.file.seekToAllocRead(file, header.arm7_rom_offset.get(), allocator, u8, header.arm7_size.get());
         errdefer allocator.free(arm7);
 
-        const arm9_overlay_table = try utils.file.seekToAllocAndRead(
-            Overlay,
+        const arm9_overlay_table = try utils.file.seekToAllocRead(
             file,
-            allocator,
             header.arm9_overlay_offset.get(),
+            allocator,
+            Overlay,
             header.arm9_overlay_size.get() / @sizeOf(Overlay));
         errdefer allocator.free(arm9_overlay_table);
         const arm9_overlay_files = try overlay.readFiles(file, allocator, arm9_overlay_table, header.fat_offset.get());
         errdefer overlay.freeFiles(arm9_overlay_files, allocator);
 
-        const arm7_overlay_table = try utils.file.seekToAllocAndRead(
-            Overlay,
+        const arm7_overlay_table = try utils.file.seekToAllocRead(
             file,
-            allocator,
             header.arm7_overlay_offset.get(),
+            allocator,
+            Overlay,
             header.arm7_overlay_size.get() / @sizeOf(Overlay));
         errdefer allocator.free(arm7_overlay_table);
         const arm7_overlay_files = try overlay.readFiles(file, allocator, arm7_overlay_table, header.fat_offset.get());
         errdefer overlay.freeFiles(arm7_overlay_files, allocator);
 
         // TODO: On dsi, this can be of different sizes
-        const banner = try utils.file.seekToNoAllocRead(Banner, file, header.banner_offset.get());
+        const banner = try utils.file.seekToRead(file, header.banner_offset.get(), Banner);
         try banner.validate();
         if (header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
 
