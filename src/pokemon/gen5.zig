@@ -128,27 +128,38 @@ pub const Game = struct {
         }
     }
 
-    fn getBinaryAs(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
+    fn getBinaryAsPtr(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
+        return utils.slice.ptrAtOrNull(getBinary(files, index) ?? return null, index);
+    }
+
+    fn getBinary(files: []nds.fs.File, index: usize) ?[]u8 {
         const file = utils.slice.atOrNull(files, index) ?? return null;
 
         switch (file.@"type") {
-            nds.fs.File.Type.Binary => |data| {
-                return utils.slice.ptrAtOrNull(([]T)(data), index);
-            },
-            nds.fs.File.Type.Narc => return null,
+            nds.fs.File.Type.Binary => |data| return data,
+            nds.fs.File.Type.Narc   =>        return null,
         }
     }
 
     pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
-        return getBinaryAs(BasePokemon, game.base_stats, index);
+        return getBinaryAsPtr(BasePokemon, game.base_stats, index);
     }
 
     pub fn getTrainer(game: &const Game, index: usize) ?&Trainer {
-        return getBinaryAs(Trainer, game.trainer_data, index);
+        return getBinaryAsPtr(Trainer, game.trainer_data, index);
     }
 
-    pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) ?&PartyMember {
-        unreachable;
+    pub fn getTrainerPokemon(game: &const Game, trainer_index: usize, party_member_index: usize) ?&PartyMember {
+        const trainer = getTrainer(game, trainer_index) ?? return null;
+        const trainer_party_data = getBinary(game.trainer_pokemons, trainer_index) ?? return null;
+
+        return switch (trainer.party_type) {
+            PartyType.Standard  => utils.slice.ptrAtOrNull(([]PartyMember)(trainer_party_data), index),
+            PartyType.WithMoves => utils.slice.ptrAtOrNull(([]PartyMemberWithMoves)(trainer_party_data), index),
+            PartyType.WithHeld  => utils.slice.ptrAtOrNull(([]PartyMemberWithHeld)(trainer_party_data), index),
+            PartyType.WithBoth  => utils.slice.ptrAtOrNull(([]PartyMemberWithBoth)(trainer_party_data), index),
+            else => null,
+        };
     }
 
     pub fn getMove(game: &const Game, index: usize) ?&Move {

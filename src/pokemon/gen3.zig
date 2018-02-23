@@ -318,16 +318,17 @@ pub const Game = struct {
         return slice.ptrAtOrNull(game.trainers, index);
     }
 
-    pub fn getTrainerPokemon(game: &const Game, trainer: &const Trainer, index: usize) ?&PartyMemberBase {
+    pub fn getTrainerPokemon(game: &const Game, trainer_index: usize, party_member_index: usize) ?&PartyMemberBase {
+        const trainer = getTrainer(game, trainer_index) ?? return null;
         if (trainer.party_offset.get() < 0x8000000) return null;
 
         const offset = trainer.party_offset.get() - 0x8000000;
 
         return switch (trainer.party_type) {
-            PartyType.Standard =>  getBasePartyMember(PartyMember, game.data, index, offset, trainer.party_size.get()),
-            PartyType.WithMoves => getBasePartyMember(PartyMemberWithMoves, game.data, index, offset, trainer.party_size.get()),
-            PartyType.WithHeld =>  getBasePartyMember(PartyMemberWithHeld, game.data, index, offset, trainer.party_size.get()),
-            PartyType.WithBoth =>  getBasePartyMember(PartyMemberWithBoth, game.data, index, offset, trainer.party_size.get()),
+            PartyType.Standard =>  getBasePartyMember(PartyMember,          game.data, party_member_index, offset, trainer.party_size.get()),
+            PartyType.WithMoves => getBasePartyMember(PartyMemberWithMoves, game.data, party_member_index, offset, trainer.party_size.get()),
+            PartyType.WithHeld =>  getBasePartyMember(PartyMemberWithHeld,  game.data, party_member_index, offset, trainer.party_size.get()),
+            PartyType.WithBoth =>  getBasePartyMember(PartyMemberWithBoth,  game.data, party_member_index, offset, trainer.party_size.get()),
             else => null,
         };
     }

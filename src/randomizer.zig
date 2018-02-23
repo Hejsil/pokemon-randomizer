@@ -162,7 +162,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
         };
 
         var species : usize = 0;
-        while (game.getTrainerPokemon(trainer, species)) |trainer_pokemon| : (species += 1) {
+        while (game.getTrainerPokemon(trainer_id, species)) |trainer_pokemon| : (species += 1) {
             // TODO: Handle when a trainers Pokémon does not point on a valid species.
             //                                                                         VVVVVVVVVVV
             const curr_pokemon = game.getBasePokemon(trainer_pokemon.species.get()) ?? unreachable;
