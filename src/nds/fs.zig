@@ -437,7 +437,7 @@ pub const FSWriter = struct {
     // TODO: More specific error set
     fn writeFile(writer: &FSWriter, file: &const File, fat_offset: u32, img_base: u32) error!void {
         // Write file content
-        const start = common.alignAddr(writer.file_offset, u32(0x200));
+        const start = common.@"align"(writer.file_offset, u32(0x200));
         try writer.file.seekTo(start);
 
         switch (file.@"type") {
@@ -467,7 +467,7 @@ pub const FSWriter = struct {
 
                 try writer.file.seekTo(fat_chunk_end);
                 const fnt_chunk_start = try writer.file.getPos();
-                const fnt_chunk_end   = common.alignAddr(fnt_chunk_start + @sizeOf(formats.Chunk) + fs_info.fnt_sub_size, u32(4));
+                const fnt_chunk_end   = common.@"align"(fnt_chunk_start + @sizeOf(formats.Chunk) + fs_info.fnt_sub_size, u32(4));
                 const fnt_chunk_size  = fnt_chunk_end - fnt_chunk_start;
                 try writer.file.write(
                     utils.asBytes(

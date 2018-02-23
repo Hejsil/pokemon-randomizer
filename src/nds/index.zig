@@ -118,15 +118,15 @@ pub const Rom = struct {
             header.arm9_overlay_offset = toLittle(header.arm9_overlay_offset.get() + @sizeOf(@typeOf(rom.nitro_footer)));
         }
 
-        header.arm7_rom_offset     = toLittle(common.alignAddr(header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), u32(0x200)));
+        header.arm7_rom_offset     = toLittle(common.@"align"(header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), u32(0x200)));
         header.arm7_size           = toLittle(u32(rom.arm7.len));
         header.arm7_overlay_offset = toLittle(header.arm7_rom_offset.get() + header.arm7_size.get());
         header.arm7_overlay_size   = toLittle(u32(rom.arm7_overlay_table.len * @sizeOf(Overlay)));
-        header.banner_offset       = toLittle(common.alignAddr(header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), u32(0x200)));
+        header.banner_offset       = toLittle(common.@"align"(header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), u32(0x200)));
         header.banner_size         = toLittle(u32(@sizeOf(Banner)));
-        header.fnt_offset          = toLittle(common.alignAddr(header.banner_offset.get() + header.banner_size.get(), u32(0x200)));
+        header.fnt_offset          = toLittle(common.@"align"(header.banner_offset.get() + header.banner_size.get(), u32(0x200)));
         header.fnt_size            = toLittle(u32(fs_info.folders * @sizeOf(fs.FntMainEntry) + fs_info.fnt_sub_size));
-        header.fat_offset          = toLittle(common.alignAddr(header.fnt_offset.get() + header.fnt_size.get(), u32(0x200)));
+        header.fat_offset          = toLittle(common.@"align"(header.fnt_offset.get() + header.fnt_size.get(), u32(0x200)));
         header.fat_size            = toLittle(u32((fs_info.files + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
         const file_offset = header.fat_offset.get() + header.fat_size.get();
@@ -137,7 +137,7 @@ pub const Rom = struct {
         var fs_writer = fs.FSWriter.init(file, overlay_writer.file_offset, overlay_writer.file_id);
         try fs_writer.writeFileSystem(rom.root, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
 
-        header.total_used_rom_size = toLittle( common.alignAddr(fs_writer.file_offset, u32(4)));
+        header.total_used_rom_size = toLittle( common.@"align"(fs_writer.file_offset, u32(4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
