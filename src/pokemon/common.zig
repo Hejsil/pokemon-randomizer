@@ -20,6 +20,12 @@ pub const Type = enum(u8) {
     Fairy    = 0x12,
 };
 
+pub const MoveCategory = packed struct {
+    Status   = 0x00,
+    Physical = 0x01,
+    Special  = 0x02,
+};
+
 pub const GrowthRate = enum(u8) {
     MediumFast  = 0x00,
     Erratic     = 0x01,

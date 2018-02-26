@@ -104,8 +104,36 @@ pub const Trainer = packed struct {
     post_battle_item: Little(u16),
 };
 
+// https://projectpokemon.org/home/forums/topic/14212-bw-move-data/?do=findComment&comment=123606
+pub const Move = packed struct {
+    @"type": common.Type,
+    effect_category: u8,
+    category: common.MoveCategory,
+    power: u8,
+    accuracy: u8,
+    pp: u8,
+    priority: u8,
+    hits: u8,
+    min_hits: u4,
+    max_hits: u4,
+    crit_chance: u8,
+    flinch: u8,
+    effect: Little(u16),
+    target_hp: u8,
+    user_hp: u8,
+    target: u8,
+    stats_affected: [3]u8,
+    stats_affected_magnetude: [3]u8,
+    stats_affected_chance: [3]u8,
+
+    // TODO: Figure out if this is actually how the last fields are layed out.
+    padding: [2]u8,
+    flags: Little(u16),
+};
+
 pub const Game = struct {
     base_stats: []nds.fs.File,
+    moves: []nds.fs.File,
     trainer_data: []nds.fs.File,
     trainer_pokemons: []nds.fs.File,
 
@@ -114,13 +142,14 @@ pub const Game = struct {
 
         return Game {
             .base_stats       = getNarcFiles(root, "a/0/1/6") ?? return error.Err,
+            .moves            = getNarcFiles(root, "a/0/2/1") ?? return error.Err,
             .trainer_data     = getNarcFiles(root, "a/0/9/1") ?? return error.Err,
             .trainer_pokemons = getNarcFiles(root, "a/0/9/2") ?? return error.Err,
         };
     }
 
     fn getNarcFiles(folder: &const nds.fs.Folder, path: []const u8) ?[]nds.fs.File {
-        const file = folder.getFile("a/0/1/6") ?? return null;
+        const file = folder.getFile(path) ?? return null;
 
         switch (file.@"type") {
             nds.fs.File.Type.Binary => return null,
@@ -163,11 +192,11 @@ pub const Game = struct {
     }
 
     pub fn getMove(game: &const Game, index: usize) ?&Move {
-        unreachable;
+        return getBinaryAsPtr(Move, game.moves, index);
     }
 
     pub fn getMoveCount(game: &const Game) usize {
-        unreachable;
+        return game.moves.len;
      }
 
     pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
