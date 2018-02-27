@@ -114,29 +114,11 @@ pub const Options = struct {
 };
 
 pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) !void {
-    // TODO: When we can get the max value of enums, fix this code:
-    //                     VVVVVVVVVVVVVVVVVVVVV
-    var pokemons_by_type = [u8(common.Type.Fairy) + 1]std.ArrayList(u16) {
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-        std.ArrayList(u16).init(allocator),
-    };
+    var pokemons_by_type : [@memberCount(common.Type)]std.ArrayList(u16) = undefined;
+
+    for (pokemons_by_type) |*list| {
+        *list = std.ArrayList(u16).init(allocator);
+    }
     defer {
         for (pokemons_by_type) |*list| {
             list.deinit();
