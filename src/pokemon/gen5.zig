@@ -131,9 +131,15 @@ pub const Move = packed struct {
     flags: Little(u16),
 };
 
+pub const LevelUpMove = packed struct {
+    move_id: Little(u16),
+    level: Little(u16),
+};
+
 pub const Game = struct {
     base_stats: []nds.fs.File,
     moves: []nds.fs.File,
+    level_up_moves: []nds.fs.File,
     trainer_data: []nds.fs.File,
     trainer_pokemons: []nds.fs.File,
 
@@ -142,6 +148,7 @@ pub const Game = struct {
 
         return Game {
             .base_stats       = getNarcFiles(root, "a/0/1/6") ?? return error.Err,
+            .level_up_moves   = getNarcFiles(root, "a/0/1/8") ?? return error.Err,
             .moves            = getNarcFiles(root, "a/0/2/1") ?? return error.Err,
             .trainer_data     = getNarcFiles(root, "a/0/9/1") ?? return error.Err,
             .trainer_pokemons = getNarcFiles(root, "a/0/9/2") ?? return error.Err,
@@ -158,7 +165,8 @@ pub const Game = struct {
     }
 
     fn getBinaryAsPtr(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
-        return utils.slice.ptrAtOrNull(getBinary(files, index) ?? return null, index);
+        const data = getBinary(files, index) ?? return null;
+        return utils.slice.ptrAtOrNull(([]T)(data), index);
     }
 
     fn getBinary(files: []nds.fs.File, index: usize) ?[]u8 {
@@ -200,7 +208,18 @@ pub const Game = struct {
      }
 
     pub fn getLevelupMoves(game: &const Game, species: usize) ?[]LevelUpMove {
-        unreachable;
+        const level_up_moves = ([]LevelUpMove)(getBinary(game.level_up_moves, index) ?? return null);
+
+        // Even though each level up move have it's own file, level up moves still
+        // end with 0xFFFF 0xFFFF.
+        for (level_up_moves) |level_up_moves, index| {
+            if (level_up_moves.move_id.get() == 0xFFFF and level_up_moves.level.get() == 0xFFFF)
+                return level_up_moves[0..index];
+        }
+
+        // In the case where we don't find the end 0xFFFF 0xFFFF, we just
+        // return the level up moves, and assume things are correct.
+        return level_up_moves;
     }
 
     pub fn getTms(game: &const Game) []Little(u16) {
