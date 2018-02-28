@@ -164,7 +164,7 @@ pub const Game = struct {
         }
     }
 
-    fn getBinaryAsPtr(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
+    fn getFileAsType(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
         const data = getBinary(files, index) ?? return null;
         return utils.slice.ptrAtOrNull(([]T)(data), index);
     }
@@ -179,11 +179,11 @@ pub const Game = struct {
     }
 
     pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
-        return getBinaryAsPtr(BasePokemon, game.base_stats, index);
+        return getFileAsType(BasePokemon, game.base_stats, index);
     }
 
     pub fn getTrainer(game: &const Game, index: usize) ?&Trainer {
-        return getBinaryAsPtr(Trainer, game.trainer_data, index);
+        return getFileAsType(Trainer, game.trainer_data, index);
     }
 
     pub fn getTrainerPokemon(game: &const Game, trainer_index: usize, party_member_index: usize) ?&PartyMember {
@@ -200,7 +200,7 @@ pub const Game = struct {
     }
 
     pub fn getMove(game: &const Game, index: usize) ?&Move {
-        return getBinaryAsPtr(Move, game.moves, index);
+        return getFileAsType(Move, game.moves, index);
     }
 
     pub fn getMoveCount(game: &const Game) usize {

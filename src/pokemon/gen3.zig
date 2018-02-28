@@ -165,8 +165,8 @@ const Offset = struct {
     start: usize,
     end: usize,
 
-    fn getSlice(offset: &const Offset, comptime T: type, data: []u8) []T {
-        return ([]T)(data[offset.start..offset.end]);
+    fn getSlice(offset: &const Offset, comptime ElementType: type, data: []u8) []ElementType {
+        return ([]ElementType)(data[offset.start..offset.end]);
     }
 };
 

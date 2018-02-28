@@ -32,7 +32,7 @@ pub fn Little(comptime Int: type) type {
     };
 }
 
-pub fn add(comptime T: type, l: &const Little(T), r: &const Little(T)) Little(T) {
+pub fn add(comptime UInt: type, l: &const Little(UInt), r: &const Little(UInt)) Little(UInt) {
     return toLittle(l.get() + r.get());
 }
 
