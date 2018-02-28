@@ -410,7 +410,7 @@ fn randomMoveId(game: var, random: &rand.Rand) u16 {
     while (true) {
         const move_id = random.range(u16, 0, u16(game.getMoveCount()));
 
-        // TODO: We assume, that if the id is between 0..len, then we'll never get null from this function.
+        // We assume, that if the id is between 0..len, then we'll never get null from this function.
         const move = game.getMove(move_id) ?? unreachable;
 
         // A move with 0 pp is useless, so we will assume it's a dummy move.

@@ -15,15 +15,15 @@ pub fn Little(comptime Int: type) type {
         const Self = this;
         bytes: [@sizeOf(Int)]u8,
 
-        pub fn init(v: Int) Self {
+        pub fn init(value: Int) Self {
             var res : Self = undefined;
-            res.set(v);
+            res.set(value);
 
             return res;
         }
 
-        pub fn set(little: &Self, v: Int) void {
-            mem.writeInt(little.bytes[0..], v, builtin.Endian.Little);
+        pub fn set(little: &Self, value: Int) void {
+            mem.writeInt(little.bytes[0..], value, builtin.Endian.Little);
         }
 
         pub fn get(little: &const Self) Int {
@@ -36,8 +36,8 @@ pub fn add(comptime UInt: type, l: &const Little(UInt), r: &const Little(UInt)) 
     return toLittle(l.get() + r.get());
 }
 
-pub fn toLittle(v: var) Little(@typeOf(v)) {
-    return Little(@typeOf(v)).init(v);
+pub fn toLittle(value: var) Little(@typeOf(value)) {
+    return Little(@typeOf(value)).init(value);
 }
 
 test "little.Little" {

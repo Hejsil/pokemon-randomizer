@@ -15,6 +15,7 @@ const rand  = std.rand;
 const fmt   = std.fmt;
 const path  = os.path;
 
+// TODO: put into struct. There is no reason this should be global.
 var help = false;
 var input_file  : []const u8 = "input";
 var output_file : []const u8 = "randomized";
