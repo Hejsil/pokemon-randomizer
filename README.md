@@ -5,6 +5,40 @@ A Pokémon Rom randomizer tool written in Zig
 For now, this project exists for me to test out the [Zig](http://ziglang.org/)
 programming language and its features.
 
+## Supported games
+
+* :heavy_check_mark: means that the game is implemented in code and is completable without any major issues.
+* :white_check_mark: means that the game is implemented in code but haven't been tested.
+
+|             | U | E | J | F | S | G | I | K |
+|-------------|---|---|---|---|---|---|---|---|
+| Red         |   |   |   |   |   |   |   |   |
+| Blue        |   |   |   |   |   |   |   |   |
+| Green       |   |   |   |   |   |   |   |   |
+| Yellow      |   |   |   |   |   |   |   |   |
+| Gold        |   |   |   |   |   |   |   |   |
+|             |   |   |   |   |   |   |   |   |
+| Gold        |   |   |   |   |   |   |   |   |
+| Silver      |   |   |   |   |   |   |   |   |
+| Crystal     |   |   |   |   |   |   |   |   |
+|             |   |   |   |   |   |   |   |   |
+| Ruby        |   |   |   |   |   |   |   |   |
+| Sapphire    |   |   |   |   |   |   |   |   |
+| Emerald     |   |   |   |   |   |   |   |   |
+| Fire Red    |   |   |   |   |   |   |   |   |
+| Leaf Green  |   |   |   |   |   |   |   |   |
+|             |   |   |   |   |   |   |   |   |
+| Diamon      |   |   |   |   |   |   |   |   |
+| Pearl       |   |   |   |   |   |   |   |   |
+| Platinum    |   |   |   |   |   |   |   |   |
+| Heart Gold  |   |   |   |   |   |   |   |   |
+| Soul Silver |   |   |   |   |   |   |   |   |
+|             |   |   |   |   |   |   |   |   |
+| Black       |   |   |   |   |   |   |   |   |
+| White       |   |   |   |   |   |   |   |   |
+| Black 2     |   |   |   |   |   |   |   |   |
+| White 2     |   |   |   |   |   |   |   |   |
+
 ## Build
 
 The randomizer relies on libraries which are included as git submodules. You,
