@@ -8,36 +8,36 @@ programming language and its features.
 ## Supported games
 
 * :heavy_check_mark: means that the game is implemented in code and is completable without any major issues.
-* :white_check_mark: means that the game is implemented in code but haven't been tested.
+* :heavy_minus_sign: means that the game is implemented in code but haven't been tested.
 
-|             | U | E | J | F | S | G | I | K |
-|-------------|---|---|---|---|---|---|---|---|
-| Red         |   |   |   |   |   |   |   |   |
-| Blue        |   |   |   |   |   |   |   |   |
-| Green       |   |   |   |   |   |   |   |   |
-| Yellow      |   |   |   |   |   |   |   |   |
-| Gold        |   |   |   |   |   |   |   |   |
-|             |   |   |   |   |   |   |   |   |
-| Gold        |   |   |   |   |   |   |   |   |
-| Silver      |   |   |   |   |   |   |   |   |
-| Crystal     |   |   |   |   |   |   |   |   |
-|             |   |   |   |   |   |   |   |   |
-| Ruby        |   |   |   |   |   |   |   |   |
-| Sapphire    |   |   |   |   |   |   |   |   |
-| Emerald     |   |   |   |   |   |   |   |   |
-| Fire Red    |   |   |   |   |   |   |   |   |
-| Leaf Green  |   |   |   |   |   |   |   |   |
-|             |   |   |   |   |   |   |   |   |
-| Diamon      |   |   |   |   |   |   |   |   |
-| Pearl       |   |   |   |   |   |   |   |   |
-| Platinum    |   |   |   |   |   |   |   |   |
-| Heart Gold  |   |   |   |   |   |   |   |   |
-| Soul Silver |   |   |   |   |   |   |   |   |
-|             |   |   |   |   |   |   |   |   |
-| Black       |   |   |   |   |   |   |   |   |
-| White       |   |   |   |   |   |   |   |   |
-| Black 2     |   |   |   |   |   |   |   |   |
-| White 2     |   |   |   |   |   |   |   |   |
+|             | U                  | E | J | F | S | G | I | K |
+|-------------|--------------------|---|---|---|---|---|---|---|
+| Red         |                    |   |   |   |   |   |   |   |
+| Blue        |                    |   |   |   |   |   |   |   |
+| Green       |                    |   |   |   |   |   |   |   |
+| Yellow      |                    |   |   |   |   |   |   |   |
+| Gold        |                    |   |   |   |   |   |   |   |
+|             |                    |   |   |   |   |   |   |   |
+| Gold        |                    |   |   |   |   |   |   |   |
+| Silver      |                    |   |   |   |   |   |   |   |
+| Crystal     |                    |   |   |   |   |   |   |   |
+|             |                    |   |   |   |   |   |   |   |
+| Ruby        | :heavy_minus_sign: |   |   |   |   |   |   |   |
+| Sapphire    | :heavy_minus_sign: |   |   |   |   |   |   |   |
+| Emerald     | :heavy_check_mark: |   |   |   |   |   |   |   |
+| Fire Red    |                    |   |   |   |   |   |   |   |
+| Leaf Green  |                    |   |   |   |   |   |   |   |
+|             |                    |   |   |   |   |   |   |   |
+| Diamon      |                    |   |   |   |   |   |   |   |
+| Pearl       |                    |   |   |   |   |   |   |   |
+| Platinum    |                    |   |   |   |   |   |   |   |
+| Heart Gold  |                    |   |   |   |   |   |   |   |
+| Soul Silver |                    |   |   |   |   |   |   |   |
+|             |                    |   |   |   |   |   |   |   |
+| Black       |                    |   |   |   |   |   |   |   |
+| White       |                    |   |   |   |   |   |   |   |
+| Black 2     |                    |   |   |   |   |   |   |   |
+| White 2     |                    |   |   |   |   |   |   |   |
 
 ## Build
 
