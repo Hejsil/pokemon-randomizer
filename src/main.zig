@@ -198,7 +198,7 @@ pub fn main() !void {
 
         var game = try gen5.Game.fromRom(&nds_rom);
 
-        nds_rom.writeToFile(&out_file) catch |err| {
+        nds_rom.writeToFile(&out_file, allocator) catch |err| {
             try stdout_stream.print("Unable to write nds to {}\n", output_file);
             return err;
         };

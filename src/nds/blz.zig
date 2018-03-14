@@ -24,43 +24,46 @@ const math = std.math;
 const threshold = 2;
 const default_mask = 0x80;
 
+// TODO: Figure out if it's possible to make these encode and decode functions use streams.
 pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
     const Lengths = struct {
-        enc: u32,
-        dec: u32,
-        pak: u32,
-        raw: u32,
-    }
+        enc: usize,
+        dec: usize,
+        pak: usize,
+        raw: usize,
+    };
 
     if (data.len < 8) return error.BadHeader;
 
     const inc_len = mem.readIntLE(u32, data[data.len - 4..]);
-    const lengths = if (inc_len == 0) blk: {
-        break :blk Lengths {
-            .enc = 0,
-            .dec = data.len,
-            .pak = 0,
-            .raw = data.len,
-        };
-    } else {
-        const hdr_len = data[data.len - 5];
-        if (hdr_len < 8 or hdr_len > 0xB) return error.BadHeaderLength;
-        if (data.len <= hdr_len)          return error.BadLength;
+    const lengths = blk: {
+        if (inc_len == 0) {
+            break :blk Lengths {
+                .enc = 0,
+                .dec = data.len,
+                .pak = 0,
+                .raw = data.len,
+            };
+        } else {
+            const hdr_len = data[data.len - 5];
+            if (hdr_len < 8 or hdr_len > 0xB) return error.BadHeaderLength;
+            if (data.len <= hdr_len)          return error.BadLength;
 
-        const enc_len = mem.readIntLE(u32, data[data.len - 8..]) & 0x00FFFFFF;
-        const dec_len = try math.sub(u32, data.len, enc_len);
-        const pak_len = try math.sub(u32, enc_len, hdr_len);
-        const raw_len = dec_len + enc_len + inc_len;
+            const enc_len = mem.readIntLE(usize, data[data.len - 8..]) & 0x00FFFFFF;
+            const dec_len = try math.sub(usize, data.len, enc_len);
+            const pak_len = try math.sub(usize, enc_len, hdr_len);
+            const raw_len = dec_len + enc_len + inc_len;
 
-        if (raw_len > 0x00FFFFFF) return error.BadLength;
+            if (raw_len > 0x00FFFFFF) return error.BadLength;
 
-        const res = Lengths {
-            .enc = enc_len,
-            .dec = dec_len,
-            .pak = pak_len,
-            .raw = raw_len,
-        };
-    }
+            break :blk Lengths {
+                .enc = enc_len,
+                .dec = dec_len,
+                .pak = pak_len,
+                .raw = raw_len,
+            };
+        }
+    };
 
 
     const result = try allocator.alloc(u8, lengths.raw);
@@ -75,8 +78,8 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
     const pak_end = lengths.dec + lengths.pak;
     var pak = lengths.dec;
     var raw = lengths.dec;
-    var mask = u32(0);
-    var flags = u32(0);
+    var mask = usize(0);
+    var flags = usize(0);
 
     while (raw < lengths.raw) {
         mask = mask >> 1;
@@ -91,22 +94,22 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
         if (flags & mask == 0) {
             if (pak == pak_end) break;
 
-            raw_buffer[raw] = pak_buffer[pak];
+            result[raw] = pak_buffer[pak];
             raw += 1;
             pak += 1;
         } else {
             if (pak + 1 >= pak_end) break;
 
-            const pos = (u32(pak_buffer[pak]) << 8) | pak_buffer[pak + 1];
+            const pos = (usize(pak_buffer[pak]) << 8) | pak_buffer[pak + 1];
             pak += 2;
 
             const len = (pos >> 12) + threshold + 1;
             if (raw + len > lengths.raw) return error.WrongDecodedLength;
 
             const new_pos = (pos & 0xFFF) + 3;
-            var i = 0;
+            var i = usize(0);
             while (i < len) : (i += 1) {
-                raw_buffer[raw] = raw_buffer[raw - new_pos];
+                result[raw] = result[raw - new_pos];
                 raw += 1;
             }
         }
@@ -115,8 +118,8 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     if (raw != lengths.raw) return error.UnexpectedEnd;
 
-    invert(raw_buffer, lengths.dec, lengths.raw - lengths.dec);
-    return raw_buffer[0..raw];
+    invert(result, lengths.dec, lengths.raw - lengths.dec);
+    return result[0..raw];
 }
 
 pub const Mode = enum {
@@ -124,17 +127,17 @@ pub const Mode = enum {
     Best
 };
 
-pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
-    var pak_tmp = u32(0);
+pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
+    var pak_tmp = usize(0);
     var raw_tmp = data.len;
     var pak_len = data.len + ((data.len + 7) / 8) + 11;
-    var pos_best = u32(0);
-    var pos_next = u32(0);
-    var pos_post = u32(0);
-    var pak = u32(0);
-    var raw = u32(0);
-    var mask = u32(0);
-    var flag = u32(0);
+    var pos_best = usize(0);
+    var pos_next = usize(0);
+    var pos_post = usize(0);
+    var pak = usize(0);
+    var raw = usize(0);
+    var mask = usize(0);
+    var flag = usize(0);
     var raw_end = blk: {
         var res = data.len;
         if (false) { // TODO: if (arm9)
@@ -142,7 +145,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
         }
 
         break :blk res;
-    }:
+    };
 
     const result = try allocator.alloc(u8, pak_len);
     const raw_buffer = try allocator.alloc(u8, data.len + 3);
@@ -192,8 +195,8 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
         if (len_best > threshold) {
             raw += len_best;
             result[flag] |= 1;
-            result[pak] = ((len_best - (threshold + 1)) << 4) | ((pos_best - 3) >> 8);
-            result[pak + 1] = (pos_best - 3) & 0xFF;
+            result[pak] = @truncate(u8, ((len_best - (threshold + 1)) << 4) | ((pos_best - 3) >> 8));
+            result[pak + 1] = @truncate(u8, (pos_best - 3));
             pak += 2;
         } else {
             result[pak] = raw_buffer[raw];
@@ -201,7 +204,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
             raw += 1;
         }
 
-        if (pak + data.len - raw) < pak_tmp + raw_tmp) {
+        if (pak + data.len - raw < pak_tmp + raw_tmp) {
             pak_tmp = pak;
             raw_tmp = data.len - raw;
         }
@@ -215,7 +218,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
     pak_len = pak;
 
     invert(raw_buffer, 0, data.len);
-    invert(pak_buffer, 0, pak_len);
+    invert(result, 0, pak_len);
 
     if (pak_tmp == 0 or data.len + 4 < ((pak_tmp + raw_tmp + 3) & 0xFFFFFFFC) + 8) {
         pak = 0;
@@ -238,7 +241,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
 
         return result[0..pak];
     } else {
-        const new_result = allocator.alloc(u8, raw_tmp + pak_tmp + 11);
+        const new_result = try allocator.alloc(u8, raw_tmp + pak_tmp + 11);
         mem.copy(u8, new_result[0..raw_tmp], raw_buffer[0..raw_tmp]);
         mem.copy(u8, new_result[raw_tmp..pak_tmp], result[pak_len - pak_tmp..]);
         allocator.free(result);
@@ -247,7 +250,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
 
         const enc_len = pak_tmp;
         const inc_len = data.len - pak_tmp - raw_tmp;
-        var hdr_len = 8;
+        var hdr_len = usize(8);
 
         while ((pak & 3) != 0) {
             new_result[pak] = 0xFF;
@@ -266,13 +269,18 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) []u8 {
     }
 }
 
-fn search(p: u32, data: []const u8, raw: u32, raw_end: u32) (struct { l: u32, p: u32 }) {
+const SearchResult = struct {
+    l: usize,
+    p: usize,
+};
+
+fn search(p: usize, data: []const u8, raw: usize, raw_end: usize) SearchResult {
     var new_p = p;
-    var l = u32(threshold);
-    var max = math.max(raw, u32(0x1002));
-    var pos = 3;
+    var l = usize(threshold);
+    var max = math.max(raw, usize(0x1002));
+    var pos = usize(3);
     while (pos <= max) : (pos += 1) {
-        var len = 0;
+        var len = usize(0);
         while (len < 0x12) : (len += 1) {
             if (raw + len == raw_end) break;
             if (len >= pos) break;
@@ -282,17 +290,17 @@ fn search(p: u32, data: []const u8, raw: u32, raw_end: u32) (struct { l: u32, p:
         if (len > l) {
             new_p = pos;
             l = len;
-            if (l == 0x12) brek
+            if (l == 0x12) break;
         }
     }
 
-    return @typeOf(this).ReturnType {
+    return SearchResult {
         .l = l,
         .p = new_p,
     };
 }
 
-fn invert(data: []u8, offset: u32, length: u32) void {
+fn invert(data: []u8, offset: usize, length: usize) void {
     var bottom = offset + length - 1;
     var off = offset;
 

@@ -1,6 +1,7 @@
 const std     = @import("std");
 const common  = @import("common.zig");
 const overlay = @import("overlay.zig");
+const blz     = @import("blz.zig");
 const little  = @import("../little.zig");
 const utils   = @import("../utils/index.zig");
 
@@ -46,7 +47,12 @@ pub const Rom = struct {
         const header = try utils.file.read(file, Header);
         try header.validate();
 
-        const arm9 = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
+        const arm9 = blk: {
+            const raw = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
+            // defer allocator.free(raw); TODO: error: unreachable code
+
+            break :blk try blz.decode(raw, allocator);
+        };
         errdefer allocator.free(arm9);
         const nitro_footer = try utils.file.read(file, [3]Little(u32));
 
@@ -101,7 +107,7 @@ pub const Rom = struct {
         };
     }
 
-    pub fn writeToFile(rom: &Rom, file: &os.File) !void {
+    pub fn writeToFile(rom: &Rom, file: &os.File, allocator: &mem.Allocator) !void {
         try rom.banner.validate();
 
         const header = &rom.header;
@@ -152,7 +158,12 @@ pub const Rom = struct {
         try file.seekTo(0x00);
         try file.write(utils.asBytes(header));
         try file.seekTo(header.arm9_rom_offset.get());
-        try file.write(rom.arm9);
+        try file.write(blk: {
+            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, allocator);
+            // defer allocator.free(encoded);
+
+            break :blk encoded;
+        });
         if (rom.hasNitroFooter()) {
             try file.write(([]u8)(rom.nitro_footer[0..]));
         }
