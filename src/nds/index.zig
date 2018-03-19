@@ -1,7 +1,7 @@
 const std     = @import("std");
+const blz     = @import("blz");
 const common  = @import("common.zig");
 const overlay = @import("overlay.zig");
-const blz     = @import("blz.zig");
 const little  = @import("../little.zig");
 const utils   = @import("../utils/index.zig");
 

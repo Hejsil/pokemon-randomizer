@@ -4,6 +4,7 @@ pub fn build(b: &Builder) void {
     const randomizer_step = b.step("randomizer", "Build randomizer");
     const randomizer = b.addExecutable("randomizer", "src/main.zig");
     randomizer.addPackagePath("crc", "lib/zig-crc/crc.zig");
+    randomizer.addPackagePath("blz", "lib/blz/blz.zig");
     randomizer_step.dependOn(&randomizer.step);
 
     const tools_step = b.step("tools", "Build tools");
