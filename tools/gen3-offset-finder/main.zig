@@ -1,14 +1,19 @@
-const std = @import("std");
-const gba = @import("gba");
+const std     = @import("std");
+const gba     = @import("gba");
+const utils   = @import("utils");
+const little  = @import("little");
+const pokemon = @import("pokemon");
 
-const os    = std.os;
-const debug = std.debug;
-const mem   = std.mem;
-const io    = std.io;
+const os     = std.os;
+const debug  = std.debug;
+const mem    = std.mem;
+const math   = std.math;
+const io     = std.io;
+const gen3   = pokemon.gen3;
+const common = pokemon.common;
 
-
-
-
+const Little = little.Little;
+const toLittle = little.toLittle;
 
 pub fn main() !void {
     var direct_allocator = std.heap.DirectAllocator.init();
@@ -49,76 +54,150 @@ pub fn main() !void {
     } else if (mem.eql(u8, header.game_title, "POKEMON SAPP")) blk: {
         break :blk Version.Shappire;
     } else {
+        try stdout_stream.print("Unknown generation 3 game.\n");
         return error.UnknownPokemonVersion;
     };
 
     const data = try stream.readAllAlloc(allocator, @maxValue(usize));
     defer allocator.free(data);
 
+    const ignored_trainer_fields = [][]const u8 { "party_offset" };
     const trainers = switch (version) {
-        // https://github.com/pret/pokeemerald/blob/master/data/trainers.inc
-        Version.Emerald => findOffsetUsingPattern(u8, data,
-            []?u8 {
-                // Dummy trainer bytes
-                0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, null, null, null,
-                null, // The 4 last bytes of trainers are an offset to their party. This is
-                      // not at all the same across games, so we wildcard it.
-
-                // SAWYER_1 trainer bytes
-                0x00, 0x02, 0x0b, 0x00, 0xcd, 0xbb, 0xd1, 0xd3, 0xbf, 0xcc, 0xff, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, null, null, null,
-                null,
+        Version.Emerald => findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
+            []gen3.Trainer {
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0,
+                    .encounter_music = 0,
+                    .trainer_picture = 0,
+                    .name = "\xFF\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(0)),
+                    .party_size = toLittle(u32(0)),
+                    .party_offset = undefined,
+                },
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0x02,
+                    .encounter_music = 0x0b,
+                    .trainer_picture = 0,
+                    // SAWYER
+                    .name = "\xCD\xBB\xD1\xD3\xBF\xCC\xFF\x00\x00\x00\x00\x00",
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(7)),
+                    .party_size = toLittle(u32(1)),
+                    .party_offset = undefined,
+                },
             },
-            []?u8 {
-                // MAY_16 trainer bytes
-                0x00, 0x41, 0x80, 0x5c, 0xc7, 0xbb, 0xd3, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, null, null, null,
-                null,
+            []gen3.Trainer {
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0x41,
+                    .encounter_music = 0x80,
+                    .trainer_picture = 0x5c,
+                    // MAY
+                    .name = "\xC7\xBB\xD3\xFF\x00\x00\x00\x00\x00\x00\x00\x00",
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(0)),
+                    .party_size = toLittle(u32(1)),
+                    .party_offset = undefined,
+                },
             }),
         // https://github.com/pret/pokeruby/blob/master/data/trainers.inc
-        Version.Ruby, Version.Shappire => findOffsetUsingPattern(u8, data,
-            []?u8 {
-                // Dummy trainer bytes
-                0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, null, null, null,
-                null,
-
-                // ARCHIE_1 trainer bytes
-                0x00, 0x02, 0x06, 0x46, 0xbb, 0xcc, 0xbd, 0xc2, 0xc3, 0xbf, 0xff, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x16, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, null, null, null,
-                null,
+        Version.Ruby, Version.Shappire => findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
+            []gen3.Trainer {
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0,
+                    .encounter_music = 0,
+                    .trainer_picture = 0,
+                    .name = "\xFF\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(0)),
+                    .party_size = toLittle(u32(0)),
+                    .party_offset = undefined,
+                },
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0x02,
+                    .encounter_music = 0x06,
+                    .trainer_picture = 0x46,
+                    // ARCHIE
+                    .name = "\xBB\xCC\xBD\xC2\xC3\xBF\xFF\x00\x00\x00\x00\x00",
+                    .items = []Little(u16) { toLittle(u16(0x16)), toLittle(u16(0x16)), toLittle(u16(0)), toLittle(u16(0)) },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(7)),
+                    .party_size = toLittle(u32(2)),
+                    .party_offset = undefined,
+                },
             },
-            []?u8 {
-                // EUGENE trainer bytes
-                0x00, 0x21, 0x0B, 0x06, 0xbd, 0xc6, 0xbb, 0xcf, 0xbe, 0xbf, 0xff, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, null, null, null,
-                null,
+            []gen3.Trainer {
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0x21,
+                    .encounter_music = 0x0B,
+                    .trainer_picture = 0x06,
+                    // EUGENE
+                    .name = "\xBD\xC6\xBB\xCF\xBE\xBF\xFF\x00\x00\x00\x00\x00",
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(1)),
+                    .party_size = toLittle(u32(4)),
+                    .party_offset = undefined,
+                },
             }),
-        else => unreachable,
+        // TODO:
+        else => null,
     } ?? {
         try stdout_stream.print("Unable to find trainers offset.\n");
         return error.UnableToFindOffset;
     };
 
     // https://github.com/pret/pokeemerald/blob/master/data/battle_moves.inc
-    const moves = findOffset(u8, data,
-        []u8 {
-            // Dummy bytes
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-            // Pound bytes
-            0x00, 0x28, 0x00, 0x64, 0x23, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00,
+    const moves = findOffsetOfStructArray(gen3.Move, [][]const u8 { }, data,
+        []gen3.Move {
+            // Dummy
+            gen3.Move {
+                .effect = 0,
+                .power = 0,
+                .@"type" = common.Type.Normal,
+                .accuracy = 0,
+                .pp = 0,
+                .side_effect_chance = 0,
+                .target = 0,
+                .priority = 0,
+                .flags = toLittle(u32(0)),
+            },
+            // Pound
+            gen3.Move {
+                .effect = 0,
+                .power = 40,
+                .@"type" = common.Type.Normal,
+                .accuracy = 100,
+                .pp = 35,
+                .side_effect_chance = 0,
+                .target = 0,
+                .priority = 0,
+                .flags = toLittle(u32(0x33)),
+            },
         },
-        []u8 {
-            // Psycho Boost bytes
-            0xcc, 0x8c, 0x0e, 0x5a, 0x05, 0x64, 0x00, 0x00, 0x32, 0x00, 0x00, 0x00,
+        // Psycho Boost
+        []gen3.Move {
+            gen3.Move {
+                .effect = 204,
+                .power = 140,
+                .@"type" = common.Type.Psychic,
+                .accuracy = 90,
+                .pp = 5,
+                .side_effect_chance = 100,
+                .target = 0,
+                .priority = 0,
+                .flags = toLittle(u32(0x32)),
+            },
         }) ?? {
         try stdout_stream.print("Unable to find moves offset.\n");
         return error.UnableToFindOffset;
@@ -142,50 +221,213 @@ pub fn main() !void {
         return error.UnableToFindOffset;
     };
 
-    const base_stats = findOffset(u8, data,
-        []u8 {
-            // Dummy mon bytes
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    const base_stats = findOffsetOfStructArray(gen3.BasePokemon, [][]const u8 { "padding", "egg_group1_pad", "egg_group2_pad" }, data,
+        []gen3.BasePokemon {
+            // Dummy
+            gen3.BasePokemon {
+                .hp         = 0,
+                .attack     = 0,
+                .defense    = 0,
+                .speed      = 0,
+                .sp_attack  = 0,
+                .sp_defense = 0,
 
-            // Bulbasaur bytes
-            0x2D, 0x31, 0x31, 0x2D, 0x41, 0x41, 0x0C, 0x03, 0x2D, 0x40, 0x00, 0x01, 0x00, 0x00,
-            0x00, 0x00, 0x1F, 0x14, 0x46, 0x03, 0x01, 0x07, 0x41, 0x00, 0x00, 0x03, 0x00, 0x00,
+                .types = []common.Type { common.Type.Normal, common.Type.Normal },
+
+                .catch_rate     = 0,
+                .base_exp_yield = 0,
+
+                .ev_yield = common.EvYield {
+                    .hp         = 0,
+                    .attack     = 0,
+                    .defense    = 0,
+                    .speed      = 0,
+                    .sp_attack  = 0,
+                    .sp_defense = 0,
+                    .padding    = 0,
+                },
+
+                .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)) },
+
+                .gender_ratio    = 0,
+                .egg_cycles      = 0,
+                .base_friendship = 0,
+
+                .growth_rate = common.GrowthRate.MediumFast,
+
+                .egg_group1 = common.EggGroup.Invalid,
+                .egg_group1_pad = undefined,
+                .egg_group2 = common.EggGroup.Invalid,
+                .egg_group2_pad = undefined,
+
+                .abilities = []u8 { 0, 0 },
+                .safari_zone_rate = 0,
+
+                .color = common.Color.Red,
+                .flip = false,
+
+                .padding = undefined
+            },
+            // Bulbasaur
+            gen3.BasePokemon {
+                .hp         = 45,
+                .attack     = 49,
+                .defense    = 49,
+                .speed      = 45,
+                .sp_attack  = 65,
+                .sp_defense = 65,
+
+                .types = []common.Type { common.Type.Grass, common.Type.Poison },
+
+                .catch_rate     = 45,
+                .base_exp_yield = 64,
+
+                .ev_yield = common.EvYield {
+                    .hp         = 0,
+                    .attack     = 0,
+                    .defense    = 0,
+                    .speed      = 0,
+                    .sp_attack  = 1,
+                    .sp_defense = 0,
+                    .padding    = 0,
+                },
+
+                .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)) },
+
+                .gender_ratio    = comptime percentFemale(12.5),
+                .egg_cycles      = 20,
+                .base_friendship = 70,
+
+                .growth_rate = common.GrowthRate.MediumSlow,
+
+                .egg_group1 = common.EggGroup.Monster,
+                .egg_group1_pad = undefined,
+                .egg_group2 = common.EggGroup.Grass,
+                .egg_group2_pad = undefined,
+
+                .abilities = []u8 { 65, 0 },
+                .safari_zone_rate = 0,
+
+                .color = common.Color.Green,
+                .flip = false,
+
+                .padding = undefined
+            },
         },
-        []u8 {
-            // Chimecho bytes
-            0x41, 0x32, 0x46, 0x41, 0x5f, 0x50, 0x0e, 0x0e, 0x2d, 0x93, 0x00, 0x05, 0x00, 0x00,
-            0x00, 0x00, 0x7f, 0x19, 0x46, 0x04, 0x0b, 0x0b, 0x1a, 0x00, 0x00, 0x01, 0x00, 0x00,
+        []gen3.BasePokemon {
+            // Chimecho
+            gen3.BasePokemon {
+                .hp         = 65,
+                .attack     = 50,
+                .defense    = 70,
+                .speed      = 65,
+                .sp_attack  = 95,
+                .sp_defense = 80,
+
+                .types = []common.Type { common.Type.Psychic, common.Type.Psychic },
+
+                .catch_rate     = 45,
+                .base_exp_yield = 147,
+
+                .ev_yield = common.EvYield {
+                    .hp         = 0,
+                    .attack     = 0,
+                    .defense    = 0,
+                    .speed      = 0,
+                    .sp_attack  = 1,
+                    .sp_defense = 1,
+                    .padding    = 0,
+                },
+
+                .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)) },
+
+                .gender_ratio    = comptime percentFemale(50),
+                .egg_cycles      = 25,
+                .base_friendship = 70,
+
+                .growth_rate = common.GrowthRate.Fast,
+
+                .egg_group1 = common.EggGroup.Amorphous,
+                .egg_group1_pad = undefined,
+                .egg_group2 = common.EggGroup.Amorphous,
+                .egg_group2_pad = undefined,
+
+                .abilities = []u8 { 26, 0 },
+                .safari_zone_rate = 0,
+
+                .color = common.Color.Blue,
+                .flip = false,
+
+                .padding = undefined
+            },
         }) ?? {
         try stdout_stream.print("Unable to find base_stats offset.\n");
         return error.UnableToFindOffset;
     };
 
-    const zero_evo = []u8 { 0x00 } ** 8;
-    const zero_evo_table = zero_evo ** 5;
-    const evolution_table = findOffset(u8, data,
-        // Dummy mon
-        zero_evo_table ++
+    const unused_evo = gen3.Evolution {
+        .@"type" = gen3.EvolutionType.Unused,
+        .param = toLittle(u16(0)),
+        .target = toLittle(u16(0)),
+        .padding = undefined,
+    };
+    const evolution_table = findOffsetOfStructArray(gen3.Evolution, [][]const u8 { "padding" }, data,
+        []gen3.Evolution {
+            // Dummy
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
 
-        // Bulbasaur
-        []u8 { 0x04, 0x00, 0x10, 0x00, 0x02, 0x00, 0x00, 0x00, } ++
-        zero_evo ** 4 ++
+            // Bulbasaur
+            gen3.Evolution {
+                .@"type" = gen3.EvolutionType.LevelUp,
+                .param = toLittle(u16(16)),
+                .target = toLittle(u16(2)),
+                .padding = undefined,
+            },
+            unused_evo, unused_evo, unused_evo, unused_evo,
 
-        // Ivysaur
-        []u8 { 0x04, 0x00, 0x20, 0x00, 0x03, 0x00, 0x00, 0x00, } ++
-        zero_evo ** 4,
-        // ---------------------------------------------------------------------
-        // Beldum
-        []u8 { 0x04, 0x00, 0x14, 0x00, 0x8F, 0x01, 0x00, 0x00, } ++
-        zero_evo ** 4 ++
+            // Ivysaur
+            gen3.Evolution {
+                .@"type" = gen3.EvolutionType.LevelUp,
+                .param = toLittle(u16(32)),
+                .target = toLittle(u16(3)),
+                .padding = undefined,
+            },
+            unused_evo, unused_evo, unused_evo, unused_evo,
+        },
+        []gen3.Evolution {
+            // Beldum
+            gen3.Evolution {
+                .@"type" = gen3.EvolutionType.LevelUp,
+                .param = toLittle(u16(20)),
+                .target = toLittle(u16(399)),
+                .padding = undefined,
+            },
+            unused_evo, unused_evo, unused_evo, unused_evo,
 
-        // Metang
-        []u8 { 0x04, 0x00, 0x2D, 0x00, 0x90, 0x01, 0x00, 0x00, } ++
-        zero_evo ** 4 ++
+            // Metang
+            gen3.Evolution {
+                .@"type" = gen3.EvolutionType.LevelUp,
+                .param = toLittle(u16(45)),
+                .target = toLittle(u16(400)),
+                .padding = undefined,
+            },
+            unused_evo, unused_evo, unused_evo, unused_evo,
 
-        // Metagross, Regirock, Regice, Registeel, Kyogre, Groudon, Rayquaza
-        // Latias, Latios, Jirachi, Deoxys, Chimecho
-        zero_evo_table ** 12) ?? {
+            // Metagross, Regirock, Regice, Registeel, Kyogre, Groudon, Rayquaza
+            // Latias, Latios, Jirachi, Deoxys, Chimecho
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+            unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+        }) ?? {
         try stdout_stream.print("Unable to find evolution_table offset.\n");
         return error.UnableToFindOffset;
     };
@@ -271,61 +513,6 @@ pub fn main() !void {
         return error.UnableToFindOffset;
     };
     const hms_offsets = Offset { .start = hms_start, .end = hms_start + hms.len };
-    // TODO:
-    // tms
-
-    const items = switch (version) {
-        Version.Emerald => findOffsetUsingPattern(u8, data,
-        []?u8 {
-            // ????????
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-            // MASTER BALL
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x01, 0x00,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x02, 0x00, null, null, null, null,
-            0x02, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-        },
-        []?u8 {
-            // MAGMA EMBLEM
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x77, 0x01,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x01, 0x01, 0x05, 0x04, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-            // OLD SEA MAP
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x78, 0x01,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x01, 0x01, 0x05, 0x04, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-        }),
-        Version.Ruby, Version.Shappire => findOffsetUsingPattern(u8, data,
-        []?u8 {
-            // ????????
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-            // MASTER BALL
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x01, 0x00,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x02, 0x00, null, null, null, null,
-            0x02, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-        },
-        []?u8 {
-            // HM08
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x5A, 0x01,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x01, 0x00, 0x03, 0x01, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-            // ????????
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-            // ????????
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x01, 0x04, null, null, null, null,
-            0x00, 0x00, 0x00, 0x00, null, null, null, null, 0x00, 0x00, 0x00, 0x00,
-        }),
-        else => unreachable,
-    } ?? {
-        try stdout_stream.print("Unable to find items offset.\n");
-        return error.UnableToFindOffset;
-    };
 
     // TODO: Pokémon Emerald have 2 tm tables. I'll figure out some hack for that
     //       if it turns out that both tables are actually used. For now, I'll
@@ -346,6 +533,179 @@ pub fn main() !void {
     };
     const tms_offsets = Offset { .start = tms_start, .end = tms_start + tms.len };
 
+    // TODO: Are item names the same across languages? (Probably not)
+    const ignored_item_fields = [][]const u8 { "name", "description_offset", "field_use_func", "battle_use_func" };
+    const items = switch (version) {
+        Version.Emerald => findOffsetOfStructArray(gen3.Item, ignored_item_fields, data,
+        []gen3.Item {
+            // ????????
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 1,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            // MASTER BALL
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(1)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 2,
+                .@"type"            = 0,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(2)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+        },
+        []gen3.Item {
+            // MAGMA EMBLEM
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0x177)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 1,
+                .unknown            = 1,
+                .pocked             = 5,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            // OLD SEA MAP
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0x178)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 1,
+                .unknown            = 1,
+                .pocked             = 5,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+        }),
+        Version.Ruby, Version.Shappire => findOffsetOfStructArray(gen3.Item, ignored_item_fields, data,
+        []gen3.Item {
+            // ????????
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 1,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            // MASTER BALL
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(1)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 2,
+                .@"type"            = 0,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(2)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+        },
+        []gen3.Item {
+            // HM08
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0x15A)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 1,
+                .unknown            = 0,
+                .pocked             = 3,
+                .@"type"            = 1,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            // ????????
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 1,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            // ????????
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 1,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+        }),
+        // TODO:
+        else => null,
+    } ?? {
+        try stdout_stream.print("Unable to find items offset.\n");
+        return error.UnableToFindOffset;
+    };
+
     try stdout_stream.print("game_title: {}\n", header.game_title);
     try stdout_stream.print("gamecode: {}\n", header.gamecode);
     try stdout_stream.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", trainers.start, trainers.end);
@@ -355,12 +715,16 @@ pub fn main() !void {
     try stdout_stream.print(".evolution_table            = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", evolution_table.start, evolution_table.end);
     try stdout_stream.print(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", level_up_learnset_pointers.start, level_up_learnset_pointers.end);
     try stdout_stream.print(".hms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", hms_offsets.start, hms_offsets.end);
-    try stdout_stream.print(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", items.start, items.end);
     try stdout_stream.print(".tms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", tms_offsets.start, tms_offsets.end);
+    try stdout_stream.print(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", items.start, items.end);
 }
 
 fn asConstBytes(comptime T: type, value: &const T) []const u8 {
     return ([]const u8)(value[0..1]);
+}
+
+fn percentFemale(percent: f64) u8 {
+    return u8(math.min(f64(254), (percent * 255) / 100));
 }
 
 const Version = enum {
@@ -371,6 +735,66 @@ const Offset = struct {
     start: usize,
     end: usize,
 };
+
+fn findOffsetOfStructArray(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start: []const Struct, end: []const Struct) ?Offset {
+    const start_index = indexOfStructsInBytes(Struct, ignored_fields, data, 0, start) ?? return null;
+    const end_index = indexOfStructsInBytes(Struct, ignored_fields, data, start_index, end) ?? return null;
+
+    return Offset {
+        .start = start_index,
+        .end = end_index + end.len * @sizeOf(Struct),
+    };
+}
+
+fn indexOfStructsInBytes(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start_index: usize, structs: []const Struct) ?usize {
+    const structs_len_in_bytes = structs.len * @sizeOf(Struct);
+    if (data.len < structs_len_in_bytes) return null;
+
+    var i : usize = start_index;
+    var end = data.len - structs_len_in_bytes;
+    while (i <= end) : (i += 1) {
+        if (structsMatchesBytes(Struct, ignored_fields, data[i..i + structs_len_in_bytes], structs)) {
+            return i;
+        }
+    }
+
+    return null;
+}
+
+fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, structs: []const Struct) bool {
+    const structs_len_in_bytes = structs.len * @sizeOf(Struct);
+    if (data.len != structs_len_in_bytes) return false;
+
+    for (structs) |s, s_i| {
+        const data_bytes = data[s_i * @sizeOf(Struct)..];
+        const s_bytes = utils.asBytes(s);
+
+        comptime var i = 0;
+        comptime var byte_offset = 0;
+        inline while (i < @memberCount(Struct)) : (i += 1) {
+            const member_name = @memberName(Struct, i)[0..];
+            if (comptime contains([]const u8, ignored_fields, member_name, strEql)) continue;
+
+            const member_start = @offsetOf(Struct, member_name);
+            const member_end = @sizeOf(@memberType(Struct, i)) + member_start;
+            if (!mem.eql(u8, data_bytes[member_start..member_end], s_bytes[member_start..member_end])) return false;
+        }
+    }
+
+    return true;
+}
+
+fn strEql(a: &const []const u8, b: &const []const u8) bool {
+    return mem.eql(u8, *a, *b);
+}
+
+fn contains(comptime T: type, items: []const T, value: &const T, eql: fn(&const T, &const T) bool) bool {
+    for (items) |item| {
+        if (eql(item, value)) return true;
+    }
+
+    return false;
+}
 
 /// Finds the start and end index based on a start and end pattern.
 fn findOffsetUsingPattern(comptime T: type, data: []const T, start: []const ?T, end: []const ?T) ?Offset {

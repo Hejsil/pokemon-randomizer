@@ -265,8 +265,8 @@ pub const Game = struct {
         .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C, },
         .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC, },
         .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC, },
-        .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C, },
         .tms                        = Offset { .start = 0x0615B94, .end = 0x0615C08, },
+        .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C, },
     };
 
     // game_title: POKEMON RUBY
@@ -279,8 +279,8 @@ pub const Game = struct {
         .evolution_table            = Offset { .start = 0x0203B80, .end = 0x0207BE0, },
         .level_up_learnset_pointers = Offset { .start = 0x0207BE0, .end = 0x0208250, },
         .hms                        = Offset { .start = 0x0208332, .end = 0x0208344, },
-        .items                      = Offset { .start = 0x03C5580, .end = 0x03C917C, },
         .tms                        = Offset { .start = 0x037651C, .end = 0x0376590, },
+        .items                      = Offset { .start = 0x03C5580, .end = 0x03C917C, },
     };
 
     // game_title: POKEMON SAPP
@@ -293,8 +293,8 @@ pub const Game = struct {
         .evolution_table            = Offset { .start = 0x0203B10, .end = 0x0207B70, },
         .level_up_learnset_pointers = Offset { .start = 0x0207B70, .end = 0x02081E0, },
         .hms                        = Offset { .start = 0x02082C2, .end = 0x02082D4, },
-        .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
         .tms                        = Offset { .start = 0x03764AC, .end = 0x0376520, },
+        .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
     };
 
     fn getOffsets(header: &const gba.Header) !&const Offsets {

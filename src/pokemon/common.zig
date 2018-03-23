@@ -36,6 +36,7 @@ pub const GrowthRate = enum(u8) {
 };
 
 pub const EggGroup = enum(u4) {
+    Invalid      = 0x00, // TODO: Figure out if there is a 0x00 egg group
     Monster      = 0x01,
     Water1       = 0x02,
     Bug          = 0x03,
