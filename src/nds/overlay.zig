@@ -70,7 +70,7 @@ pub const Writer = struct {
             const overlay_file = overlay_files[i];
             const fat_entry = fs.FatEntry.init(common.@"align"(writer.file_offset, u32(0x200)), u32(overlay_file.len));
             try writer.file.seekTo(fat_offset + (writer.file_id * @sizeOf(fs.FatEntry)));
-            try writer.file.write(utils.asBytes(fat_entry));
+            try writer.file.write(utils.toBytes(fs.FatEntry, fat_entry));
 
             try writer.file.seekTo(fat_entry.start.get());
             try writer.file.write(overlay_file);

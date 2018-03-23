@@ -767,7 +767,7 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
 
     for (structs) |s, s_i| {
         const data_bytes = data[s_i * @sizeOf(Struct)..];
-        const s_bytes = utils.asBytes(s);
+        const s_bytes = utils.toBytes(Struct, s);
 
         comptime var i = 0;
         comptime var byte_offset = 0;

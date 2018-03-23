@@ -23,17 +23,26 @@ fn ByteSliceFromPtr(comptime T: type) type {
     }
 }
 
-pub fn asBytes(value: var) blk: { break :blk comptime ByteSliceFromPtr(@typeOf(value)); } {
-    const Slice = comptime ByteSliceFromPtr(@typeOf(value));
-    return Slice(value[0..1]);
+/// Returns a mutable byte slice of ::value.
+pub fn asBytes(value: var) []u8 {
+    return ([]u8)(value[0..1]);
+}
+
+/// Converts ::value to a byte array of size @sizeOf(::T).
+pub fn toBytes(comptime T: type, value: &const T) [@sizeOf(T)]u8 {
+    var res : [@sizeOf(T)]u8 = undefined;
+    mem.copy(u8, res[0..], ([]const u8)(value[0..1]));
+    return res;
 }
 
 test "utils.asBytes" {
     const Str = packed struct { a: u8, b: u8 };
-    const constStr = Str{ .a = 0x01, .b = 0x02 };
     var str = Str{ .a = 0x01, .b = 0x02 };
-    debug.assert(mem.eql(u8, []u8 { 0x01, 0x02 }, asBytes(constStr)));
     debug.assert(mem.eql(u8, []u8 { 0x01, 0x02 }, asBytes(str)));
-    debug.assert(@typeOf(asBytes(constStr)) == []const u8);
-    debug.assert(@typeOf(asBytes(str)) == []u8);
+}
+
+test "utils.toBytes" {
+    const Str = packed struct { a: u8, b: u8 };
+    const str = Str{ .a = 0x01, .b = 0x02 };
+    debug.assert(mem.eql(u8, []u8 { 0x01, 0x02 }, toBytes(Str, str)));
 }

@@ -374,7 +374,8 @@ pub const FSWriter = struct {
     fn writeFileSystem(writer: &FSWriter, root: &const Folder, fnt_offset: u32, fat_offset: u32, img_base: u32, folder_count: u16) error!void {
         writer.fnt_sub_offset = fnt_offset + folder_count * @sizeOf(FntMainEntry);
         try writer.file.seekTo(fnt_offset);
-        try writer.file.write(utils.asBytes(
+        try writer.file.write(utils.toBytes(
+            FntMainEntry,
             FntMainEntry {
                 .offset_to_subtable        = Little(u32).init(writer.fnt_sub_offset - fnt_offset),
                 .first_file_id_in_subtable = Little(u16).init(writer.file_id),
@@ -413,12 +414,13 @@ pub const FSWriter = struct {
             try writer.file.seekTo(curr_sub_offset);
             try writer.file.write([]u8 { u8(f.name.len + 0x80) });
             try writer.file.write(f.name);
-            try writer.file.write(utils.asBytes(Little(u16).init(writer.folder_id)));
+            try writer.file.write(utils.toBytes(Little(u16), Little(u16).init(writer.folder_id)));
             curr_sub_offset = u32(try writer.file.getPos());
 
             const main_offset = fnt_offset + @sizeOf(FntMainEntry) * (writer.folder_id & 0x0FFF);
             try writer.file.seekTo(main_offset);
-            try writer.file.write(utils.asBytes(
+            try writer.file.write(utils.toBytes(
+                FntMainEntry,
                 FntMainEntry {
                     .offset_to_subtable        = Little(u32).init(writer.fnt_sub_offset - fnt_offset),
                     .first_file_id_in_subtable = Little(u16).init(writer.file_id),
@@ -455,7 +457,8 @@ pub const FSWriter = struct {
                 const fat_chunk_end   = fat_chunk_start + @sizeOf(formats.Chunk) + 0x4 + usize(fs_info.files) * @sizeOf(FatEntry);
                 const fat_chunk_size  = fat_chunk_end - fat_chunk_start;
                 try writer.file.write(
-                    utils.asBytes(
+                    utils.toBytes(
+                        formats.Chunk,
                         formats.Chunk {
                             .name = names.fat,
                             .size = toLittle(u32(fat_chunk_size)),
@@ -470,7 +473,8 @@ pub const FSWriter = struct {
                 const fnt_chunk_end   = common.@"align"(fnt_chunk_start + @sizeOf(formats.Chunk) + fs_info.fnt_sub_size, u32(4));
                 const fnt_chunk_size  = fnt_chunk_end - fnt_chunk_start;
                 try writer.file.write(
-                    utils.asBytes(
+                    utils.toBytes(
+                        formats.Chunk,
                         formats.Chunk {
                             .name = names.fnt,
                             .size = toLittle(u32(fnt_chunk_size)),
@@ -488,7 +492,8 @@ pub const FSWriter = struct {
                 const file_data_chunk_size = file_offset - fnt_chunk_end;
                 try writer.file.seekTo(fnt_chunk_end);
                 try writer.file.write(
-                    utils.asBytes(
+                    utils.toBytes(
+                        formats.Chunk,
                         formats.Chunk {
                             .name = names.file_data,
                             .size = toLittle(u32(file_data_chunk_size)),
@@ -497,7 +502,7 @@ pub const FSWriter = struct {
 
                 const narc_file_size = file_offset - start;
                 try writer.file.seekTo(start);
-                try writer.file.write(utils.asBytes(formats.Header.narc(narc_file_size)));
+                try writer.file.write(utils.toBytes(formats.Header, formats.Header.narc(narc_file_size)));
 
                 writer.file_offset = u32(file_offset);
             },
@@ -507,7 +512,7 @@ pub const FSWriter = struct {
 
         // Write offsets to fat
         try writer.file.seekTo(fat_offset + @sizeOf(FatEntry) * usize(writer.file_id));
-        try writer.file.write(utils.asBytes(FatEntry.init(u32(start - img_base), u32(size))));
+        try writer.file.write(utils.toBytes(FatEntry, FatEntry.init(u32(start - img_base), u32(size))));
         writer.file_id += 1;
     }
 };
