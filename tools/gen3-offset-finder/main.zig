@@ -61,6 +61,7 @@ pub fn main() !void {
     const data = try stream.readAllAlloc(allocator, @maxValue(usize));
     defer allocator.free(data);
 
+    // TODO: Are trainer names the same across languages? (Probably not)
     const ignored_trainer_fields = [][]const u8 { "party_offset" };
     const trainers = switch (version) {
         Version.Emerald => findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
@@ -106,7 +107,6 @@ pub fn main() !void {
                     .party_offset = undefined,
                 },
             }),
-        // https://github.com/pret/pokeruby/blob/master/data/trainers.inc
         Version.Ruby, Version.Shappire => findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
             []gen3.Trainer {
                 gen3.Trainer {
@@ -157,7 +157,6 @@ pub fn main() !void {
         return error.UnableToFindOffset;
     };
 
-    // https://github.com/pret/pokeemerald/blob/master/data/battle_moves.inc
     const moves = findOffsetOfStructArray(gen3.Move, [][]const u8 { }, data,
         []gen3.Move {
             // Dummy
@@ -203,7 +202,6 @@ pub fn main() !void {
         return error.UnableToFindOffset;
     };
 
-    // https://github.com/pret/pokeemerald/blob/master/data/tm_hm_learnsets.inc
     const tm_hm_learnset = findOffset(u8, data,
         []u8 {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Dummy Pokémon
