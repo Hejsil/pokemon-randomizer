@@ -297,10 +297,40 @@ pub const Game = struct {
         .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
     };
 
+    // game_title: POKEMON FIRE
+    // gamecode: BPRE
+    const fire_us_offsets = Offsets {
+        .trainers                   = Offset { .start = 0x023EB38, .end = 0x0242FD0, },
+        .moves                      = Offset { .start = 0x0250C74, .end = 0x0251D18, },
+        .tm_hm_learnset             = Offset { .start = 0x0252C38, .end = 0x0253918, },
+        .base_stats                 = Offset { .start = 0x02547F4, .end = 0x0257504, },
+        .evolution_table            = Offset { .start = 0x02597C4, .end = 0x025D824, },
+        .level_up_learnset_pointers = Offset { .start = 0x025D824, .end = 0x025DE94, },
+        .hms                        = Offset { .start = 0x025E084, .end = 0x025E096, },
+        .tms                        = Offset { .start = 0x045A604, .end = 0x045A678, },
+        .items                      = Offset { .start = 0x03DB098, .end = 0x03DF0E0, },
+    };
+
+    // game_title: POKEMON LEAF
+    // gamecode: BPGE
+    const leaf_us_offsets = Offsets {
+        .trainers                   = Offset { .start = 0x023EB14, .end = 0x0242FAC, },
+        .moves                      = Offset { .start = 0x0250C50, .end = 0x0251CF4, },
+        .tm_hm_learnset             = Offset { .start = 0x0252C14, .end = 0x02538F4, },
+        .base_stats                 = Offset { .start = 0x02547D0, .end = 0x02574E0, },
+        .evolution_table            = Offset { .start = 0x02597A4, .end = 0x025D804, },
+        .level_up_learnset_pointers = Offset { .start = 0x025D804, .end = 0x025DE74, },
+        .hms                        = Offset { .start = 0x025E064, .end = 0x025E076, },
+        .tms                        = Offset { .start = 0x045A034, .end = 0x045A0A8, },
+        .items                      = Offset { .start = 0x03DAED4, .end = 0x03DEF1C, },
+    };
+
     fn getOffsets(header: &const gba.Header) !&const Offsets {
         if (mem.eql(u8, header.game_title, "POKEMON EMER")) return &emerald_us_offsets;
         if (mem.eql(u8, header.game_title, "POKEMON RUBY")) return &ruby_us_offsets;
         if (mem.eql(u8, header.game_title, "POKEMON SAPP")) return &sapphire_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON FIRE")) return &fire_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON LEAF")) return &leaf_us_offsets;
 
         return error.InvalidGen3PokemonHeader;
     }

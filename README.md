@@ -25,8 +25,8 @@ programming language and its features.
 | Ruby        | :heavy_minus_sign: |   |   |   |   |   |   |   |
 | Sapphire    | :heavy_minus_sign: |   |   |   |   |   |   |   |
 | Emerald     | :heavy_check_mark: |   |   |   |   |   |   |   |
-| Fire Red    |                    |   |   |   |   |   |   |   |
-| Leaf Green  |                    |   |   |   |   |   |   |   |
+| Fire Red    | :heavy_minus_sign: |   |   |   |   |   |   |   |
+| Leaf Green  | :heavy_minus_sign: |   |   |   |   |   |   |   |
 |             |                    |   |   |   |   |   |   |   |
 | Diamon      |                    |   |   |   |   |   |   |   |
 | Pearl       |                    |   |   |   |   |   |   |   |

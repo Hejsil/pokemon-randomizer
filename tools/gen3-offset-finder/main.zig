@@ -53,7 +53,11 @@ pub fn main() !void {
         break :blk Version.Ruby;
     } else if (mem.eql(u8, header.game_title, "POKEMON SAPP")) blk: {
         break :blk Version.Shappire;
-    } else {
+    } else if (mem.eql(u8, header.game_title, "POKEMON FIRE")) blk: {
+        break :blk Version.FireRed;
+    } else if (mem.eql(u8, header.game_title, "POKEMON LEAF")) blk: {
+        break :blk Version.LeafGreen;
+    } else blk: {
         try stdout_stream.print("Unknown generation 3 game.\n");
         return error.UnknownPokemonVersion;
     };
@@ -61,8 +65,7 @@ pub fn main() !void {
     const data = try stream.readAllAlloc(allocator, @maxValue(usize));
     defer allocator.free(data);
 
-    // TODO: Are trainer names the same across languages? (Probably not)
-    const ignored_trainer_fields = [][]const u8 { "party_offset" };
+    const ignored_trainer_fields = [][]const u8 { "party_offset", "name" };
     const trainers = switch (version) {
         Version.Emerald => findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
             []gen3.Trainer {
@@ -71,7 +74,7 @@ pub fn main() !void {
                     .class = 0,
                     .encounter_music = 0,
                     .trainer_picture = 0,
-                    .name = "\xFF\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                    .name = undefined,
                     .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
                     .is_double = toLittle(u32(0)),
                     .ai = toLittle(u32(0)),
@@ -83,8 +86,7 @@ pub fn main() !void {
                     .class = 0x02,
                     .encounter_music = 0x0b,
                     .trainer_picture = 0,
-                    // SAWYER
-                    .name = "\xCD\xBB\xD1\xD3\xBF\xCC\xFF\x00\x00\x00\x00\x00",
+                    .name = undefined,
                     .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
                     .is_double = toLittle(u32(0)),
                     .ai = toLittle(u32(7)),
@@ -98,8 +100,7 @@ pub fn main() !void {
                     .class = 0x41,
                     .encounter_music = 0x80,
                     .trainer_picture = 0x5c,
-                    // MAY
-                    .name = "\xC7\xBB\xD3\xFF\x00\x00\x00\x00\x00\x00\x00\x00",
+                    .name = undefined,
                     .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
                     .is_double = toLittle(u32(0)),
                     .ai = toLittle(u32(0)),
@@ -114,7 +115,7 @@ pub fn main() !void {
                     .class = 0,
                     .encounter_music = 0,
                     .trainer_picture = 0,
-                    .name = "\xFF\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                    .name = undefined,
                     .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
                     .is_double = toLittle(u32(0)),
                     .ai = toLittle(u32(0)),
@@ -126,8 +127,7 @@ pub fn main() !void {
                     .class = 0x02,
                     .encounter_music = 0x06,
                     .trainer_picture = 0x46,
-                    // ARCHIE
-                    .name = "\xBB\xCC\xBD\xC2\xC3\xBF\xFF\x00\x00\x00\x00\x00",
+                    .name = undefined,
                     .items = []Little(u16) { toLittle(u16(0x16)), toLittle(u16(0x16)), toLittle(u16(0)), toLittle(u16(0)) },
                     .is_double = toLittle(u32(0)),
                     .ai = toLittle(u32(7)),
@@ -141,8 +141,7 @@ pub fn main() !void {
                     .class = 0x21,
                     .encounter_music = 0x0B,
                     .trainer_picture = 0x06,
-                    // EUGENE
-                    .name = "\xBD\xC6\xBB\xCF\xBE\xBF\xFF\x00\x00\x00\x00\x00",
+                    .name = undefined,
                     .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
                     .is_double = toLittle(u32(0)),
                     .ai = toLittle(u32(1)),
@@ -150,7 +149,47 @@ pub fn main() !void {
                     .party_offset = undefined,
                 },
             }),
-        // TODO:
+        Version.FireRed, Version.LeafGreen => findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
+            []gen3.Trainer {
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 0,
+                    .encounter_music = 0,
+                    .trainer_picture = 0,
+                    .name = undefined,
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(0)),
+                    .party_size = toLittle(u32(0)),
+                    .party_offset = undefined,
+                },
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.Standard,
+                    .class = 2,
+                    .encounter_music = 6,
+                    .trainer_picture = 0,
+                    .name = undefined,
+                    .items = []Little(u16) { toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(1)),
+                    .party_size = toLittle(u32(1)),
+                    .party_offset = undefined,
+                },
+            },
+            []gen3.Trainer {
+                gen3.Trainer {
+                    .party_type = gen3.PartyType.WithBoth,
+                    .class = 90,
+                    .encounter_music = 0,
+                    .trainer_picture = 125,
+                    .name = undefined,
+                    .items = []Little(u16) { toLittle(u16(19)), toLittle(u16(19)), toLittle(u16(19)), toLittle(u16(19)), },
+                    .is_double = toLittle(u32(0)),
+                    .ai = toLittle(u32(7)),
+                    .party_size = toLittle(u32(6)),
+                    .party_offset = undefined,
+                },
+            }),
         else => null,
     } ?? {
         try stdout_stream.print("Unable to find trainers offset.\n");
@@ -531,7 +570,6 @@ pub fn main() !void {
     };
     const tms_offsets = Offset { .start = tms_start, .end = tms_start + tms.len };
 
-    // TODO: Are item names the same across languages? (Probably not)
     const ignored_item_fields = [][]const u8 { "name", "description_offset", "field_use_func", "battle_use_func" };
     const items = switch (version) {
         Version.Emerald => findOffsetOfStructArray(gen3.Item, ignored_item_fields, data,
@@ -697,13 +735,82 @@ pub fn main() !void {
                 .secondary_id       = toLittle(u32(0)),
             },
         }),
-        // TODO:
+        Version.FireRed, Version.LeafGreen => findOffsetOfStructArray(gen3.Item, ignored_item_fields, data,
+        []gen3.Item {
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(0)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 1,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(1)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 0,
+                .unknown            = 0,
+                .pocked             = 3,
+                .@"type"            = 0,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(2)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+        },
+        []gen3.Item {
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(372)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 1,
+                .unknown            = 1,
+                .pocked             = 2,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+            gen3.Item {
+                .name               = undefined,
+                .id                 = toLittle(u16(373)),
+                .price              = toLittle(u16(0)),
+                .hold_effect        = 0,
+                .hold_effect_param  = 0,
+                .description_offset = undefined,
+                .importance         = 1,
+                .unknown            = 1,
+                .pocked             = 2,
+                .@"type"            = 4,
+                .field_use_func     = undefined,
+                .battle_usage       = toLittle(u32(0)),
+                .battle_use_func    = undefined,
+                .secondary_id       = toLittle(u32(0)),
+            },
+        }),
         else => null,
     } ?? {
         try stdout_stream.print("Unable to find items offset.\n");
         return error.UnableToFindOffset;
     };
 
+    // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
     try stdout_stream.print("game_title: {}\n", header.game_title);
     try stdout_stream.print("gamecode: {}\n", header.gamecode);
     try stdout_stream.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", trainers.start, trainers.end);
