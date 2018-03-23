@@ -15,13 +15,31 @@ const common = pokemon.common;
 const Little = little.Little;
 const toLittle = little.toLittle;
 
+const Version = enum {
+    Ruby, Shappire, Emerald, FireRed, LeafGreen,
+};
+
+const Offset = struct {
+    start: usize,
+    end: usize,
+};
+
+const Offsets = struct {
+    header:                     gba.Header,
+    trainers:                   Offset,
+    moves:                      Offset,
+    tm_hm_learnset:             Offset,
+    base_stats:                 Offset,
+    evolution_table:            Offset,
+    level_up_learnset_pointers: Offset,
+    hms:                        Offset,
+    tms:                        Offset,
+    items:                      Offset,
+};
+
 pub fn main() !void {
     var direct_allocator = std.heap.DirectAllocator.init();
     defer direct_allocator.deinit();
-    var arena = std.heap.ArenaAllocator.init(&direct_allocator.allocator);
-    defer arena.deinit();
-
-    const allocator = &arena.allocator;
 
     var stdout_handle = try io.getStdOut();
     var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
@@ -31,22 +49,72 @@ pub fn main() !void {
     var stderr_file_stream = io.FileOutStream.init(&stderr_handle);
     var stderr = &stderr_file_stream.stream;
 
-    const args = try os.argsAlloc(allocator);
-    defer os.argsFree(allocator, args);
+    // NOTE: Do we want to use another allocator for arguments? Does it matter? Idk.
+    const args = try os.argsAlloc(&direct_allocator.allocator);
+    defer os.argsFree(&direct_allocator.allocator, args);
 
-    // TODO: We should probably just find offsets for all files provided
-    if (args.len != 2) {
+    if (args.len < 2) {
         try stderr.print("No file was provided.\n");
         return error.NoFileInArguments;
     }
 
-    var file = os.File.openRead(allocator, args[1]) catch |err| {
-        try stderr.print("Couldn't open {}.\n", args[1]);
-        return err;
-    };
-    defer file.close();
+    for (args[1..]) |arg| {
+        var arena = std.heap.ArenaAllocator.init(&direct_allocator.allocator);
+        defer arena.deinit();
 
-    var file_stream = io.FileInStream.init(&file);
+        const allocator = &arena.allocator;
+
+        var file = os.File.openRead(allocator, arg) catch |err| {
+            try stderr.print("Couldn't open {}.\n", arg);
+            return err;
+        };
+        defer file.close();
+
+        if (findOffsetsInFile(&file, allocator)) |offsets| {
+            // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
+            try stdout.print("game_title: {}\n", offsets.header.game_title);
+            try stdout.print("gamecode: {}\n", offsets.header.gamecode);
+            try stdout.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.trainers.start,                   offsets.trainers.end);
+            try stdout.print(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.moves.start,                      offsets.moves.end);
+            try stdout.print(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.tm_hm_learnset.start,             offsets.tm_hm_learnset.end);
+            try stdout.print(".base_stats                 = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.base_stats.start,                 offsets.base_stats.end);
+            try stdout.print(".evolution_table            = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.evolution_table.start,            offsets.evolution_table.end);
+            try stdout.print(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.level_up_learnset_pointers.start, offsets.level_up_learnset_pointers.end);
+            try stdout.print(".hms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.hms.start,                        offsets.hms.end);
+            try stdout.print(".tms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.tms.start,                        offsets.tms.end);
+            try stdout.print(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.items.start,                      offsets.items.end);
+        } else |err| {
+            // TODO: This is the starting point for error messages. They should probably be better, but at least
+            //       all errors from "findOffsetsInFile" are handled in this switch.
+            switch (err) {
+                error.UnknownPokemonVersion             => try stderr.print("Unknown generation 3 game.\n"),
+                error.UnableToFindTrainerOffset         => try stderr.print("Unable to find trainers offset.\n"),
+                error.UnableToFindMoveOffset            => try stderr.print("Unable to find moves offset.\n"),
+                error.UnableToFindTmHmLearnsetOffset    => try stderr.print("Unable to find tm_hm_learnset offset.\n"),
+                error.UnableToFindBaseStatsOffset       => try stderr.print("Unable to find base_stats offset.\n"),
+                error.UnableToFindEvolutionTableOffset  => try stderr.print("Unable to find evolution_table offset.\n"),
+                error.UnableToFindLevelUpLearnsetOffset => try stderr.print("Unable to find levelup learnset offset.\n"),
+                error.UnableToFindHmOffset              => try stderr.print("Unable to find hms offset.\n"),
+                error.UnableToFindTmOffset              => try stderr.print("Unable to find tms offset.\n"),
+                error.UnableToFindItemsOffset           => try stderr.print("Unable to find items offset.\n"),
+                error.Io                                => try stderr.print("Io.\n"),
+                error.OutOfMemory                       => try stderr.print("Ran out of memory.\n"),
+                error.BadFd                             => try stderr.print("BadFd.\n"),
+                error.Unexpected                        => try stderr.print("An unexpected error occured.\n"),
+                error.StreamTooLong                     => try stderr.print("StreamTooLong.\n"),
+                error.Unseekable                        => try stderr.print("Unseekable.\n"),
+                error.Overflow                          => try stderr.print("Overflow.\n"),
+                error.EndOfStream                       => try stderr.print("EndOfStream.\n"),
+            }
+
+            return err;
+        }
+
+    }
+}
+
+fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
+    var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
     var header : gba.Header = undefined;
     try stream.readNoEof(([]u8)((&header)[0..1]));
@@ -63,7 +131,6 @@ pub fn main() !void {
     } else if (mem.eql(u8, header.game_title, "POKEMON LEAF")) blk: {
         break :blk Version.LeafGreen;
     } else blk: {
-        try stderr.print("Unknown generation 3 game.\n");
         return error.UnknownPokemonVersion;
     };
 
@@ -197,8 +264,7 @@ pub fn main() !void {
             }),
         else => null,
     } ?? {
-        try stderr.print("Unable to find trainers offset.\n");
-        return error.UnableToFindOffset;
+        return error.UnableToFindTrainerOffset;
     };
 
     const moves = findOffsetOfStructArray(gen3.Move, [][]const u8 { }, data,
@@ -242,8 +308,7 @@ pub fn main() !void {
                 .flags = toLittle(u32(0x32)),
             },
         }) ?? {
-        try stderr.print("Unable to find moves offset.\n");
-        return error.UnableToFindOffset;
+        return error.UnableToFindMoveOffset;
     };
 
     const tm_hm_learnset = findOffset(u8, data,
@@ -259,8 +324,7 @@ pub fn main() !void {
             0x2d, 0xde, 0xbb, 0xf5, 0xc3, 0x8f, 0xe5, 0x00, // Deoxys
             0x28, 0x8e, 0x1b, 0xb4, 0x03, 0x9f, 0x41, 0x00, // Chimecho
         }) ?? {
-        try stderr.print("Unable to find tm_hm_learnset offset.\n");
-        return error.UnableToFindOffset;
+        return error.UnableToFindTmHmLearnsetOffset;
     };
 
     const base_stats = findOffsetOfStructArray(gen3.BasePokemon, [][]const u8 { "padding", "egg_group1_pad", "egg_group2_pad" }, data,
@@ -403,8 +467,7 @@ pub fn main() !void {
                 .padding = undefined
             },
         }) ?? {
-        try stderr.print("Unable to find base_stats offset.\n");
-        return error.UnableToFindOffset;
+        return error.UnableToFindBaseStatsOffset;
     };
 
     const unused_evo = gen3.Evolution {
@@ -470,62 +533,57 @@ pub fn main() !void {
             unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
             unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
         }) ?? {
-        try stderr.print("Unable to find evolution_table offset.\n");
-        return error.UnableToFindOffset;
+        return error.UnableToFindEvolutionTableOffset;
     };
 
     const level_up_learnset_pointers = blk: {
-        const bulbasaur_levelup = mem.indexOf(u8, data, []u8 {
-                0x21, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x28, 0xE6, 0x32, 0x4A, 0x40, 0xEB, 0x4E, 0x4C, 0x5C, 0xFF, 0xFF,
-            }) ?? {
-            try stderr.print("Unable to find Bulbasaur levelup learnset.\n");
-            return error.UnableToFindOffset;
+        const bulbasaur_bytes = []u8 {
+                0x21, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E,
+                0x4B, 0x28, 0xE6, 0x32, 0x4A, 0x40, 0xEB, 0x4E, 0x4C, 0x5C, 0xFF, 0xFF,
         };
+        const bulbasaur_levelup = mem.indexOf(u8, data, bulbasaur_bytes) ?? return error.UnableToFindLevelUpLearnsetOffset;
 
-        const ivysaur_levelup = mem.indexOf(u8, data, []u8 {
-                0x21, 0x02, 0x2D, 0x02, 0x49, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x2C, 0xE6, 0x3A, 0x4A, 0x4C, 0xEB, 0x5E, 0x4C, 0x70, 0xFF, 0xFF,
-            }) ?? {
-            try stderr.print("Unable to find Ivysaur levelup learnset.\n");
-            return error.UnableToFindOffset;
+        const ivysaur_bytes = []u8 {
+                0x21, 0x02, 0x2D, 0x02, 0x49, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14,
+                0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x2C, 0xE6, 0x3A, 0x4A, 0x4C, 0xEB, 0x5E,
+                0x4C, 0x70, 0xFF, 0xFF,
         };
+        const ivysaur_levelup = mem.indexOf(u8, data, ivysaur_bytes) ?? return error.UnableToFindLevelUpLearnsetOffset;
 
-        const venusaur_levelup = mem.indexOf(u8, data, []u8 {
-                0x21, 0x02, 0x2D, 0x02, 0x49, 0x02, 0x16, 0x02, 0x2D, 0x08, 0x49, 0x0E, 0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x2C, 0xE6, 0x3A, 0x4A, 0x52, 0xEB, 0x6A, 0x4C, 0x82, 0xFF, 0xFF,
-            }) ?? {
-            try stderr.print("Unable to find Venusaur levelup learnset.\n");
-            return error.UnableToFindOffset;
+        const venusaur_bytes = []u8 {
+                0x21, 0x02, 0x2D, 0x02, 0x49, 0x02, 0x16, 0x02, 0x2D, 0x08, 0x49, 0x0E,
+                0x16, 0x14, 0x4D, 0x1E, 0x4F, 0x1E, 0x4B, 0x2C, 0xE6, 0x3A, 0x4A, 0x52,
+                0xEB, 0x6A, 0x4C, 0x82, 0xFF, 0xFF,
         };
+        const venusaur_levelup = mem.indexOf(u8, data, venusaur_bytes) ?? return error.UnableToFindLevelUpLearnsetOffset;
 
-        const latios_levelup = mem.indexOf(u8, data, []u8 {
-            0x95, 0x02, 0x06, 0x0B, 0x0E, 0x15, 0xDB, 0x1E, 0xE1, 0x28, 0xB6, 0x32, 0x1F, 0x3D, 0x27, 0x47, 0x5E, 0x50, 0x69, 0x5A, 0x5D, 0x65, 0xFF, 0xFF,
-            }) ?? {
-            try stderr.print("Unable to find Latios levelup learnset.\n");
-            return error.UnableToFindOffset;
+        const latios_bytes = []u8 {
+            0x95, 0x02, 0x06, 0x0B, 0x0E, 0x15, 0xDB, 0x1E, 0xE1, 0x28, 0xB6, 0x32, 0x1F,
+            0x3D, 0x27, 0x47, 0x5E, 0x50, 0x69, 0x5A, 0x5D, 0x65, 0xFF, 0xFF,
         };
+        const latios_levelup = mem.indexOf(u8, data, latios_bytes) ?? return error.UnableToFindLevelUpLearnsetOffset;
 
-        const jirachi_levelup = mem.indexOf(u8, data, []u8 {
-                0x11, 0x03, 0x5D, 0x02, 0x9C, 0x0A, 0x81, 0x14, 0x0E, 0x1F, 0x5E, 0x28, 0x1F, 0x33, 0x9C, 0x3C, 0x26, 0x46, 0xF8, 0x50, 0x42, 0x5B, 0x61, 0x65, 0xFF, 0xFF,
-            }) ?? {
-            try stderr.print("Unable to find Jirachi levelup learnset.\n");
-            return error.UnableToFindOffset;
+        const jirachi_bytes = []u8 {
+            0x11, 0x03, 0x5D, 0x02, 0x9C, 0x0A, 0x81, 0x14, 0x0E, 0x1F, 0x5E, 0x28, 0x1F,
+            0x33, 0x9C, 0x3C, 0x26, 0x46, 0xF8, 0x50, 0x42, 0x5B, 0x61, 0x65, 0xFF, 0xFF,
         };
+        const jirachi_levelup = mem.indexOf(u8, data, jirachi_bytes) ?? return error.UnableToFindLevelUpLearnsetOffset;
 
-        const chimecho_levelup = mem.indexOf(u8, data, []u8 {
-                0x23, 0x02, 0x2D, 0x0C, 0x36, 0x13, 0x5D, 0x1C, 0x24, 0x22, 0xFD, 0x2C, 0x19, 0x33, 0x95, 0x3C, 0x26, 0x42, 0xD7, 0x4C, 0xDB, 0x52, 0x5E, 0x5C, 0xFF, 0xFF,
-            }) ?? {
-            try stderr.print("Unable to find Chimecho levelup learnset.\n");
-            return error.UnableToFindOffset;
+        const chimecho_bytes = []u8 {
+            0x23, 0x02, 0x2D, 0x0C, 0x36, 0x13, 0x5D, 0x1C, 0x24, 0x22, 0xFD, 0x2C, 0x19,
+            0x33, 0x95, 0x3C, 0x26, 0x42, 0xD7, 0x4C, 0xDB, 0x52, 0x5E, 0x5C, 0xFF, 0xFF,
         };
+        const chimecho_levelup = mem.indexOf(u8, data, chimecho_bytes) ?? return error.UnableToFindLevelUpLearnsetOffset;
 
         // Store all offsets as LE offsets (This is how they are stored on the rom,
         // and we wont to work on BE platforms too).
-        const bulbasaur_pattern = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(bulbasaur_levelup + 0x8000000))));
-        const ivysaur_pattern   = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(ivysaur_levelup   + 0x8000000))));
-        const venusaur_pattern  = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(venusaur_levelup  + 0x8000000))));
+        const bulbasaur_pattern = utils.toBytes(u32, mem.readIntLE(u32, utils.toBytes(u32, u32(bulbasaur_levelup + 0x8000000))));
+        const ivysaur_pattern   = utils.toBytes(u32, mem.readIntLE(u32, utils.toBytes(u32, u32(ivysaur_levelup   + 0x8000000))));
+        const venusaur_pattern  = utils.toBytes(u32, mem.readIntLE(u32, utils.toBytes(u32, u32(venusaur_levelup  + 0x8000000))));
 
-        const latios_pattern   = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(latios_levelup   + 0x8000000))));
-        const jirachi_pattern  = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(jirachi_levelup  + 0x8000000))));
-        const chimecho_pattern = asConstBytes(u32, mem.readIntLE(u32, asConstBytes(u32, u32(chimecho_levelup + 0x8000000))));
+        const latios_pattern   = utils.toBytes(u32, mem.readIntLE(u32, utils.toBytes(u32, u32(latios_levelup   + 0x8000000))));
+        const jirachi_pattern  = utils.toBytes(u32, mem.readIntLE(u32, utils.toBytes(u32, u32(jirachi_levelup  + 0x8000000))));
+        const chimecho_pattern = utils.toBytes(u32, mem.readIntLE(u32, utils.toBytes(u32, u32(chimecho_levelup + 0x8000000))));
 
         const level_up_start = []?u8 {
             // Dummy mon has the same levelup moveset as bulbasaur
@@ -543,17 +601,11 @@ pub fn main() !void {
             chimecho_pattern[0], chimecho_pattern[1], chimecho_pattern[2], chimecho_pattern[3],
         };
 
-        break :blk findOffsetUsingPattern(u8, data, level_up_start, level_up_end) ?? {
-            try stderr.print("Unable to find level_up_learnset_pointers offset.\n");
-            return error.UnableToFindOffset;
-        };
+        break :blk findOffsetUsingPattern(u8, data, level_up_start, level_up_end) ?? return error.UnableToFindLevelUpLearnsetOffset;
     };
 
     const hms = []u8 { 0x0f, 0x00, 0x13, 0x00, 0x39, 0x00, 0x46, 0x00, 0x94, 0x00, 0xf9, 0x00, 0x7f, 0x00, 0x23, 0x01, 0xff, 0xff, };
-    const hms_start = mem.indexOf(u8, data, hms) ?? {
-        try stderr.print("Unable to find hms offset.\n");
-        return error.UnableToFindOffset;
-    };
+    const hms_start = mem.indexOf(u8, data, hms) ?? return error.UnableToFindHmOffset;
     const hms_offsets = Offset { .start = hms_start, .end = hms_start + hms.len };
 
     // TODO: Pokémon Emerald have 2 tm tables. I'll figure out some hack for that
@@ -569,10 +621,7 @@ pub fn main() !void {
         0x21, 0x01, 0x3b, 0x01, 0x0f, 0x00, 0x13, 0x00, 0x39, 0x00, 0x46, 0x00, 0x94, 0x00, 0xf9, 0x00,
         0x7f, 0x00, 0x23, 0x01,
     };
-    const tms_start = mem.indexOf(u8, data, tms) ?? {
-        try stderr.print("Unable to find tms offset.\n");
-        return error.UnableToFindOffset;
-    };
+    const tms_start = mem.indexOf(u8, data, tms) ?? return error.UnableToFindTmOffset;
     const tms_offsets = Offset { .start = tms_start, .end = tms_start + tms.len };
 
     const ignored_item_fields = [][]const u8 { "name", "description_offset", "field_use_func", "battle_use_func" };
@@ -811,40 +860,26 @@ pub fn main() !void {
         }),
         else => null,
     } ?? {
-        try stderr.print("Unable to find items offset.\n");
-        return error.UnableToFindOffset;
+        return error.UnableToFindItemsOffset;
     };
 
-    // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
-    try stdout.print("game_title: {}\n", header.game_title);
-    try stdout.print("gamecode: {}\n", header.gamecode);
-    try stdout.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", trainers.start, trainers.end);
-    try stdout.print(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", moves.start, moves.end);
-    try stdout.print(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", tm_hm_learnset.start, tm_hm_learnset.end);
-    try stdout.print(".base_stats                 = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", base_stats.start, base_stats.end);
-    try stdout.print(".evolution_table            = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", evolution_table.start, evolution_table.end);
-    try stdout.print(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", level_up_learnset_pointers.start, level_up_learnset_pointers.end);
-    try stdout.print(".hms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", hms_offsets.start, hms_offsets.end);
-    try stdout.print(".tms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", tms_offsets.start, tms_offsets.end);
-    try stdout.print(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", items.start, items.end);
-}
-
-fn asConstBytes(comptime T: type, value: &const T) []const u8 {
-    return ([]const u8)(value[0..1]);
+    return Offsets {
+        .header                     = header,
+        .trainers                   = trainers,
+        .moves                      = moves,
+        .tm_hm_learnset             = tm_hm_learnset,
+        .base_stats                 = base_stats,
+        .evolution_table            = evolution_table,
+        .level_up_learnset_pointers = level_up_learnset_pointers,
+        .hms                        = hms_offsets,
+        .tms                        = tms_offsets,
+        .items                      = items,
+    };
 }
 
 fn percentFemale(percent: f64) u8 {
     return u8(math.min(f64(254), (percent * 255) / 100));
 }
-
-const Version = enum {
-    Ruby, Shappire, Emerald, FireRed, LeafGreen,
-};
-
-const Offset = struct {
-    start: usize,
-    end: usize,
-};
 
 fn findOffsetOfStructArray(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start: []const Struct, end: []const Struct) ?Offset {
     const start_index = indexOfStructsInBytes(Struct, ignored_fields, data, 0, start) ?? return null;

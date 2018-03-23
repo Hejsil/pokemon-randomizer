@@ -178,8 +178,8 @@ const Offsets = struct {
     evolution_table:            Offset,
     level_up_learnset_pointers: Offset,
     hms:                        Offset,
-    items:                      Offset,
     tms:                        Offset,
+    items:                      Offset,
 };
 
 const bulbasaur_fingerprint = []u8 {
