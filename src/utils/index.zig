@@ -10,19 +10,6 @@ test "utils" {
     _ = @import("file.zig");
 }
 
-fn isConstPtr(comptime T: type) bool {
-    comptime debug.assert(@typeId(T) == @import("builtin").TypeId.Pointer);
-    return &const T.Child == T;
-}
-
-fn ByteSliceFromPtr(comptime T: type) type {
-    if (isConstPtr(T)) {
-        return []const u8;
-    } else {
-        return []u8;
-    }
-}
-
 /// Returns a mutable byte slice of ::value.
 pub fn asBytes(comptime T: type, value: &T) []u8 {
     return ([]u8)(value[0..1]);
