@@ -10,7 +10,7 @@ pub fn read(file: &os.File, comptime T: type) !T {
     var stream = &file_stream.stream;
 
     var result : T = undefined;
-    try stream.readNoEof(utils.asBytes(&result));
+    try stream.readNoEof(utils.asBytes(T, &result));
 
     return result;
 }

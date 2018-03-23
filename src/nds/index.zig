@@ -156,7 +156,7 @@ pub const Rom = struct {
 
         try header.validate();
         try file.seekTo(0x00);
-        try file.write(utils.asBytes(header));
+        try file.write(utils.toBytes(Header, header));
         try file.seekTo(header.arm9_rom_offset.get());
         try file.write(blk: {
             const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, allocator);
@@ -175,7 +175,7 @@ pub const Rom = struct {
         try file.seekTo(header.arm7_overlay_offset.get());
         try file.write(([]u8)(rom.arm7_overlay_table));
         try file.seekTo(header.banner_offset.get());
-        try file.write(utils.asBytes(rom.banner));
+        try file.write(utils.toBytes(Banner, rom.banner));
     }
 
     fn hasNitroFooter(rom: &const Rom) bool {

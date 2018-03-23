@@ -38,7 +38,7 @@ pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Ove
 
         var fat_entry : fs.FatEntry = undefined;
         try file.seekTo(fat_offset + offset);
-        try stream.readNoEof(utils.asBytes(fat_entry));
+        try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
 
         const overay_file = try utils.file.seekToAllocRead(file, fat_entry.start.get(), allocator, u8, fat_entry.getSize());
         try results.append(overay_file);

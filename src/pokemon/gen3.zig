@@ -306,7 +306,7 @@ pub const Game = struct {
     }
 
     pub fn validateData(game: &const Game) !void {
-        if (!mem.eql(u8, bulbasaur_fingerprint, utils.asBytes(game.base_stats[1])))
+        if (!mem.eql(u8, bulbasaur_fingerprint, utils.asBytes(BasePokemon, &game.base_stats[1])))
             return error.NoBulbasaurFound;
     }
 

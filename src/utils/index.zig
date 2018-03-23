@@ -24,7 +24,7 @@ fn ByteSliceFromPtr(comptime T: type) type {
 }
 
 /// Returns a mutable byte slice of ::value.
-pub fn asBytes(value: var) []u8 {
+pub fn asBytes(comptime T: type, value: &T) []u8 {
     return ([]u8)(value[0..1]);
 }
 
@@ -38,7 +38,7 @@ pub fn toBytes(comptime T: type, value: &const T) [@sizeOf(T)]u8 {
 test "utils.asBytes" {
     const Str = packed struct { a: u8, b: u8 };
     var str = Str{ .a = 0x01, .b = 0x02 };
-    debug.assert(mem.eql(u8, []u8 { 0x01, 0x02 }, asBytes(str)));
+    debug.assert(mem.eql(u8, []u8 { 0x01, 0x02 }, asBytes(Str, &str)));
 }
 
 test "utils.toBytes" {
