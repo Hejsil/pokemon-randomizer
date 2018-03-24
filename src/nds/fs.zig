@@ -398,7 +398,7 @@ pub const FSWriter = struct {
             const start = common.@"align"(writer.file_offset, u32(0x200));
             try writer.file.seekTo(start);
 
-            const size = try writeFile(writer.file, f, fat_offset, img_base);
+            const size = try writeFile(writer.file, f);
             writer.file_offset = start + size;
 
             // Write offsets to fat
@@ -448,7 +448,7 @@ pub const FSWriter = struct {
 };
 
 // TODO: More specific error set
-pub fn writeFile(file: &os.File, fs_file: &const File, fat_offset: u32, img_base: u32) error!u32 {
+pub fn writeFile(file: &os.File, fs_file: &const File) error!u32 {
     const start = try file.getPos();
     switch (fs_file.@"type") {
         File.Type.Binary => |data| {
