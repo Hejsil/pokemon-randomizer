@@ -51,7 +51,7 @@ pub const Rom = struct {
             const raw = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
             // defer allocator.free(raw); TODO: error: unreachable code
 
-            break :blk try blz.decode(raw, allocator);
+            break :blk raw; // try blz.decode(raw, allocator);
         };
         errdefer allocator.free(arm9);
         const nitro_footer = try utils.file.read(file, [3]Little(u32));
@@ -159,7 +159,7 @@ pub const Rom = struct {
         try file.write(utils.toBytes(Header, header));
         try file.seekTo(header.arm9_rom_offset.get());
         try file.write(blk: {
-            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, allocator);
+            const encoded = rom.arm9; // try blz.encode(rom.arm9, blz.Mode.Normal, allocator);
             // defer allocator.free(encoded);
 
             break :blk encoded;
@@ -178,7 +178,7 @@ pub const Rom = struct {
         try file.write(utils.toBytes(Banner, rom.banner));
     }
 
-    fn hasNitroFooter(rom: &const Rom) bool {
+    pub fn hasNitroFooter(rom: &const Rom) bool {
         return rom.nitro_footer[0].get() == 0xDEC00621;
     }
 
