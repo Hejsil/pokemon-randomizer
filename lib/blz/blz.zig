@@ -140,7 +140,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     var flag = usize(0);
     var raw_end = blk: {
         var res = data.len;
-        if (false) { // TODO: if (arm9)
+        if (true) { // TODO: if (arm9)
             res -= 0x4000;
         }
 
@@ -150,6 +150,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     const result = try allocator.alloc(u8, pak_len);
     const raw_buffer = try allocator.alloc(u8, data.len + 3);
     defer allocator.free(raw_buffer);
+    mem.copy(u8, raw_buffer, data);
 
     invert(raw_buffer, 0, data.len);
 
@@ -178,6 +179,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
 
                         const posts = search(pos_post, raw_buffer, raw, raw_end);
                         pos_post = posts.p;
+                        raw -= 1;
 
                         const len_next = if (nexts.l <= threshold) 1 else nexts.l;
                         const len_post = if (posts.l <= threshold) 1 else posts.l;
@@ -241,10 +243,11 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
 
         return result[0..pak];
     } else {
+        defer allocator.free(result);
         const new_result = try allocator.alloc(u8, raw_tmp + pak_tmp + 11);
+
         mem.copy(u8, new_result[0..raw_tmp], raw_buffer[0..raw_tmp]);
-        mem.copy(u8, new_result[raw_tmp..pak_tmp], result[pak_len - pak_tmp..]);
-        allocator.free(result);
+        mem.copy(u8, new_result[raw_tmp..][0..pak_tmp], result[pak_len - pak_tmp..][0..pak_tmp]);
 
         pak = raw_tmp + pak_tmp;
 
@@ -277,7 +280,7 @@ const SearchResult = struct {
 fn search(p: usize, data: []const u8, raw: usize, raw_end: usize) SearchResult {
     var new_p = p;
     var l = usize(threshold);
-    var max = math.max(raw, usize(0x1002));
+    var max = math.min(raw, usize(0x1002));
     var pos = usize(3);
     while (pos <= max) : (pos += 1) {
         var len = usize(0);

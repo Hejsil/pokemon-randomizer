@@ -1,15 +1,16 @@
 const Builder = @import("std").build.Builder;
+const builtin = @import("builtin");
 
-// TODO: Move this into main build.zig when I have it working
 pub fn build(b: &Builder) void {
-    const zig_blz = b.addObject("blz_wrapper", "blz_wrapper.zig");
-    const fuzz = b.addCExecutable("fuzz");
-    fuzz.addSourceFile("fuzz.c");
-    fuzz.addSourceFile("blz.c");
-    fuzz.addObject(zig_blz);
+    const mode = b.standardReleaseOptions();
 
-    fuzz.addCompileFlags([][]const u8 { "-g", "-fsanitize=fuzzer" });
+    const cblz = b.addCObject("cblz", "blz.c");
+    cblz.setBuildMode(mode);
 
-    const step = b.step("fuzz", "Fuzz test the blz library");
-    step.dependOn(&fuzz.step);
+    const zblz = b.addExecutable("blz_test", "main.zig");
+    zblz.setBuildMode(mode);
+    zblz.addObject(cblz);
+
+    b.addCIncludePath(".");
+    b.default_step.dependOn(&zblz.step);
 }
