@@ -25,6 +25,12 @@ const math  = std.math;
 const threshold = 2;
 const default_mask = 0x80;
 
+// TODO: This file could use some love in the form of a refactor. So far, it is mostly
+//       a direct translation of blz.c, but with some minor refactors here and there.
+//       Sadly, it's still not clear at all what this code is trying to do other than
+//       some kind of encoding. searchReverseMatch is an example of my refactor, that
+//       actually did help make a little piece of this code clearer.
+
 // TODO: Figure out if it's possible to make these encode and decode functions use streams.
 pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
     const Lengths = struct {
@@ -277,11 +283,14 @@ const SearchResult = struct {
     p: usize,
 };
 
-fn search2(data: []const u8, match: []const u8) []const u8 {
+/// Searches for the reverse of ::match in ::data, and returns a slice
+/// to the best match.
+/// Note: The returned slice will have ::match[0] at result[result.len - 1]
+fn searchReverseMatch(data: []const u8, match: []const u8) []const u8 {
     var best = data[0..0];
 
     var pos = usize(0);
-    while (pos < data.len) : (pos += 1) {
+    while (pos <= data.len) : (pos += 1) {
         var len = usize(0);
         const max = math.min(match.len, pos);
         while (len < max) : (len += 1) {
@@ -302,45 +311,19 @@ fn search(p: usize, data: []const u8, raw: usize) SearchResult {
     const max = math.min(raw, usize(0x1002));
     const d1 = data[raw..math.min(usize(0x12) + raw, data.len)];
     const d2 = data[raw - max..raw];
-    const res = search2(d2, d1);
+    const res = searchReverseMatch(d2, d1);
 
-    var tmp : SearchResult = undefined;
     if (res.len <= threshold) {
-        tmp = SearchResult {
+        return SearchResult {
             .p = p,
             .l = threshold,
         };
     } else {
-        tmp = SearchResult {
-            .p = @ptrToInt(&d2[d2.len - 1]) - @ptrToInt(&res[0]),
+        return SearchResult {
+            .p = (@ptrToInt(&d2[0]) + d2.len) - @ptrToInt(&res[0]),
             .l = res.len,
         };
     }
-
-    var new_p = p;
-    var l = usize(threshold);
-    var pos = usize(3);
-    while (pos <= max) : (pos += 1) {
-        var len = usize(0);
-        const len_max = math.min(pos, d1.len);
-        while (len < len_max) : (len += 1) {
-            if (d1[len] != d2[d2.len - pos + len]) break;
-        }
-
-        if (len > l) {
-            new_p = pos;
-            l = len;
-            if (l == 0x12) break;
-        }
-    }
-
-    const tmp2 = SearchResult {
-        .l = l,
-        .p = new_p,
-    };
-
-    //debug.assert(tmp.l == tmp2.l and tmp.p == tmp2.p);
-    return tmp2;
 }
 
 fn invert(data: []u8) void {
