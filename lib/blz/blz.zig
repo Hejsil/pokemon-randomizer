@@ -18,8 +18,9 @@
 
 const std = @import("std");
 
-const mem  = std.mem;
-const math = std.math;
+const mem   = std.mem;
+const debug = std.debug;
+const math  = std.math;
 
 const threshold = 2;
 const default_mask = 0x80;
@@ -276,18 +277,54 @@ const SearchResult = struct {
     p: usize,
 };
 
+fn search2(data: []const u8, match: []const u8) []const u8 {
+    var best = data[0..0];
+
+    var pos = usize(0);
+    while (pos < data.len) : (pos += 1) {
+        var len = usize(0);
+        const max = math.min(match.len, pos);
+        while (len < max) : (len += 1) {
+            if (data[data.len - pos + len] != match[len]) break;
+        }
+
+        if (best.len < len) {
+            best = data[data.len - pos..][0..len];
+        }
+    }
+
+    return best;
+}
+
+/// Finding best match of data[raw..raw+0x12] in data[max(0, raw - 0x1002)..raw]
+/// and return the pos and lenght to that match
 fn search(p: usize, data: []const u8, raw: usize) SearchResult {
     const max = math.min(raw, usize(0x1002));
+    const d1 = data[raw..math.min(usize(0x12) + raw, data.len)];
+    const d2 = data[raw - max..raw];
+    const res = search2(d2, d1);
+
+    var tmp : SearchResult = undefined;
+    if (res.len <= threshold) {
+        tmp = SearchResult {
+            .p = p,
+            .l = threshold,
+        };
+    } else {
+        tmp = SearchResult {
+            .p = @ptrToInt(&d2[d2.len - 1]) - @ptrToInt(&res[0]),
+            .l = res.len,
+        };
+    }
 
     var new_p = p;
     var l = usize(threshold);
     var pos = usize(3);
     while (pos <= max) : (pos += 1) {
         var len = usize(0);
-        while (len < 0x12) : (len += 1) {
-            if (raw + len == data.len) break;
-            if (len >= pos) break;
-            if (data[raw + len] != data[raw + len - pos]) break;
+        const len_max = math.min(pos, d1.len);
+        while (len < len_max) : (len += 1) {
+            if (d1[len] != d2[d2.len - pos + len]) break;
         }
 
         if (len > l) {
@@ -297,10 +334,13 @@ fn search(p: usize, data: []const u8, raw: usize) SearchResult {
         }
     }
 
-    return SearchResult {
+    const tmp2 = SearchResult {
         .l = l,
         .p = new_p,
     };
+
+    //debug.assert(tmp.l == tmp2.l and tmp.p == tmp2.p);
+    return tmp2;
 }
 
 fn invert(data: []u8) void {
