@@ -65,7 +65,7 @@ pub fn main() !void {
         defer heap.c_allocator.free(cencoded_best);
         debug.assert(mem.eql(u8, zencoded_best, cencoded_best));
 
-        const zencoded_normal = try zblz.encode(cdecoded, zblz.Mode.Normal, allocator);
+        const zencoded_normal = try zblz.encode(cdecoded, zblz.Mode.Normal, false, allocator);
         const cencoded_normal = blk: {
             var out_len : c_uint = undefined;
             const res = ??cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_NORMAL);
