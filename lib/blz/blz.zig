@@ -73,7 +73,7 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     mem.copy(u8, result, data[0..lengths.dec]);
     mem.copy(u8, pak_buffer, data);
-    invert(pak_buffer, lengths.dec, lengths.pak);
+    invert(pak_buffer[lengths.dec..lengths.dec + lengths.pak]);
 
     const pak_end = lengths.dec + lengths.pak;
     var pak = lengths.dec;
@@ -118,7 +118,7 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     if (raw != lengths.raw) return error.UnexpectedEnd;
 
-    invert(result, lengths.dec, lengths.raw - lengths.dec);
+    invert(result[lengths.dec..lengths.raw]);
     return result[0..raw];
 }
 
@@ -140,7 +140,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     var flag = usize(0);
     var raw_end = blk: {
         var res = data.len;
-        if (true) { // TODO: if (arm9)
+        if (false) { // TODO: if (arm9)
             res -= 0x4000;
         }
 
@@ -152,7 +152,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     defer allocator.free(raw_buffer);
     mem.copy(u8, raw_buffer, data);
 
-    invert(raw_buffer, 0, data.len);
+    invert(raw_buffer[0..data.len]);
 
     while (raw < raw_end) {
         mask = mask >> 1;
@@ -163,7 +163,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
             pak += 1;
         }
 
-        const bests = search(pos_best, raw_buffer, raw, raw_end);
+        const bests = search(pos_best, raw_buffer[0..raw_end], raw);
         pos_best = bests.p;
 
         const len_best = blk: {
@@ -172,12 +172,11 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
                     if (raw + bests.l < raw_end) {
                         raw += bests.l;
 
-                        const nexts = search(pos_next, raw_buffer, raw, raw_end);
-                        pos_next = nexts.p;
-
+                        const nexts = search(pos_next, raw_buffer[0..raw_end], raw);
                         raw -= bests.l - 1;
+                        const posts = search(pos_post, raw_buffer[0..raw_end], raw);
 
-                        const posts = search(pos_post, raw_buffer, raw, raw_end);
+                        pos_next = nexts.p;
                         pos_post = posts.p;
                         raw -= 1;
 
@@ -219,8 +218,8 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
 
     pak_len = pak;
 
-    invert(raw_buffer, 0, data.len);
-    invert(result, 0, pak_len);
+    invert(raw_buffer[0..data.len]);
+    invert(result[0..pak_len]);
 
     if (pak_tmp == 0 or data.len + 4 < ((pak_tmp + raw_tmp + 3) & 0xFFFFFFFC) + 8) {
         pak = 0;
@@ -277,15 +276,16 @@ const SearchResult = struct {
     p: usize,
 };
 
-fn search(p: usize, data: []const u8, raw: usize, raw_end: usize) SearchResult {
+fn search(p: usize, data: []const u8, raw: usize) SearchResult {
+    const max = math.min(raw, usize(0x1002));
+
     var new_p = p;
     var l = usize(threshold);
-    var max = math.min(raw, usize(0x1002));
     var pos = usize(3);
     while (pos <= max) : (pos += 1) {
         var len = usize(0);
         while (len < 0x12) : (len += 1) {
-            if (raw + len == raw_end) break;
+            if (raw + len == data.len) break;
             if (len >= pos) break;
             if (data[raw + len] != data[raw + len - pos]) break;
         }
@@ -303,13 +303,12 @@ fn search(p: usize, data: []const u8, raw: usize, raw_end: usize) SearchResult {
     };
 }
 
-fn invert(data: []u8, offset: usize, length: usize) void {
-    var bottom = offset + length - 1;
-    var off = offset;
-
-    while (off < bottom) : ({ off += 1; bottom -= 1; }) {
-        const tmp = data[off];
-        data[off] = data[bottom];
+fn invert(data: []u8) void {
+    var bottom = data.len - 1;
+    var i = usize(0);
+    while (i < bottom) : ({ i += 1; bottom -= 1; }) {
+        const tmp = data[i];
+        data[i] = data[bottom];
         data[bottom] = tmp;
     }
 }
