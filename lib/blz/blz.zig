@@ -18,8 +18,9 @@
 
 const std = @import("std");
 
-const mem  = std.mem;
-const math = std.math;
+const mem   = std.mem;
+const debug = std.debug;
+const math  = std.math;
 
 const threshold = 2;
 const default_mask = 0x80;
@@ -73,7 +74,7 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     mem.copy(u8, result, data[0..lengths.dec]);
     mem.copy(u8, pak_buffer, data);
-    invert(pak_buffer, lengths.dec, lengths.pak);
+    invert(pak_buffer[lengths.dec..lengths.dec + lengths.pak]);
 
     const pak_end = lengths.dec + lengths.pak;
     var pak = lengths.dec;
@@ -118,7 +119,7 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     if (raw != lengths.raw) return error.UnexpectedEnd;
 
-    invert(result, lengths.dec, lengths.raw - lengths.dec);
+    invert(result[lengths.dec..lengths.raw]);
     return result[0..raw];
 }
 
@@ -127,7 +128,7 @@ pub const Mode = enum {
     Best
 };
 
-pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
+pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocator) ![]u8 {
     var pak_tmp = usize(0);
     var raw_tmp = data.len;
     var pak_len = data.len + ((data.len + 7) / 8) + 11;
@@ -140,7 +141,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     var flag = usize(0);
     var raw_end = blk: {
         var res = data.len;
-        if (false) { // TODO: if (arm9)
+        if (arm9) {
             res -= 0x4000;
         }
 
@@ -150,8 +151,9 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     const result = try allocator.alloc(u8, pak_len);
     const raw_buffer = try allocator.alloc(u8, data.len + 3);
     defer allocator.free(raw_buffer);
+    mem.copy(u8, raw_buffer, data);
 
-    invert(raw_buffer, 0, data.len);
+    invert(raw_buffer[0..data.len]);
 
     while (raw < raw_end) {
         mask = mask >> 1;
@@ -162,7 +164,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
             pak += 1;
         }
 
-        const bests = search(pos_best, raw_buffer, raw, raw_end);
+        const bests = search(pos_best, raw_buffer[0..raw_end], raw);
         pos_best = bests.p;
 
         const len_best = blk: {
@@ -171,13 +173,13 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
                     if (raw + bests.l < raw_end) {
                         raw += bests.l;
 
-                        const nexts = search(pos_next, raw_buffer, raw, raw_end);
-                        pos_next = nexts.p;
-
+                        const nexts = search(pos_next, raw_buffer[0..raw_end], raw);
                         raw -= bests.l - 1;
+                        const posts = search(pos_post, raw_buffer[0..raw_end], raw);
 
-                        const posts = search(pos_post, raw_buffer, raw, raw_end);
+                        pos_next = nexts.p;
                         pos_post = posts.p;
+                        raw -= 1;
 
                         const len_next = if (nexts.l <= threshold) 1 else nexts.l;
                         const len_post = if (posts.l <= threshold) 1 else posts.l;
@@ -217,8 +219,8 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
 
     pak_len = pak;
 
-    invert(raw_buffer, 0, data.len);
-    invert(result, 0, pak_len);
+    invert(raw_buffer[0..data.len]);
+    invert(result[0..pak_len]);
 
     if (pak_tmp == 0 or data.len + 4 < ((pak_tmp + raw_tmp + 3) & 0xFFFFFFFC) + 8) {
         pak = 0;
@@ -241,10 +243,11 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
 
         return result[0..pak];
     } else {
+        defer allocator.free(result);
         const new_result = try allocator.alloc(u8, raw_tmp + pak_tmp + 11);
+
         mem.copy(u8, new_result[0..raw_tmp], raw_buffer[0..raw_tmp]);
-        mem.copy(u8, new_result[raw_tmp..pak_tmp], result[pak_len - pak_tmp..]);
-        allocator.free(result);
+        mem.copy(u8, new_result[raw_tmp..][0..pak_tmp], result[pak_len - pak_tmp..][0..pak_tmp]);
 
         pak = raw_tmp + pak_tmp;
 
@@ -274,17 +277,54 @@ const SearchResult = struct {
     p: usize,
 };
 
-fn search(p: usize, data: []const u8, raw: usize, raw_end: usize) SearchResult {
+fn search2(data: []const u8, match: []const u8) []const u8 {
+    var best = data[0..0];
+
+    var pos = usize(0);
+    while (pos < data.len) : (pos += 1) {
+        var len = usize(0);
+        const max = math.min(match.len, pos);
+        while (len < max) : (len += 1) {
+            if (data[data.len - pos + len] != match[len]) break;
+        }
+
+        if (best.len < len) {
+            best = data[data.len - pos..][0..len];
+        }
+    }
+
+    return best;
+}
+
+/// Finding best match of data[raw..raw+0x12] in data[max(0, raw - 0x1002)..raw]
+/// and return the pos and lenght to that match
+fn search(p: usize, data: []const u8, raw: usize) SearchResult {
+    const max = math.min(raw, usize(0x1002));
+    const d1 = data[raw..math.min(usize(0x12) + raw, data.len)];
+    const d2 = data[raw - max..raw];
+    const res = search2(d2, d1);
+
+    var tmp : SearchResult = undefined;
+    if (res.len <= threshold) {
+        tmp = SearchResult {
+            .p = p,
+            .l = threshold,
+        };
+    } else {
+        tmp = SearchResult {
+            .p = @ptrToInt(&d2[d2.len - 1]) - @ptrToInt(&res[0]),
+            .l = res.len,
+        };
+    }
+
     var new_p = p;
     var l = usize(threshold);
-    var max = math.max(raw, usize(0x1002));
     var pos = usize(3);
     while (pos <= max) : (pos += 1) {
         var len = usize(0);
-        while (len < 0x12) : (len += 1) {
-            if (raw + len == raw_end) break;
-            if (len >= pos) break;
-            if (data[raw + len] != data[raw + len - pos]) break;
+        const len_max = math.min(pos, d1.len);
+        while (len < len_max) : (len += 1) {
+            if (d1[len] != d2[d2.len - pos + len]) break;
         }
 
         if (len > l) {
@@ -294,19 +334,21 @@ fn search(p: usize, data: []const u8, raw: usize, raw_end: usize) SearchResult {
         }
     }
 
-    return SearchResult {
+    const tmp2 = SearchResult {
         .l = l,
         .p = new_p,
     };
+
+    //debug.assert(tmp.l == tmp2.l and tmp.p == tmp2.p);
+    return tmp2;
 }
 
-fn invert(data: []u8, offset: usize, length: usize) void {
-    var bottom = offset + length - 1;
-    var off = offset;
-
-    while (off < bottom) : ({ off += 1; bottom -= 1; }) {
-        const tmp = data[off];
-        data[off] = data[bottom];
+fn invert(data: []u8) void {
+    var bottom = data.len - 1;
+    var i = usize(0);
+    while (i < bottom) : ({ i += 1; bottom -= 1; }) {
+        const tmp = data[i];
+        data[i] = data[bottom];
         data[bottom] = tmp;
     }
 }

@@ -21,12 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "blz.h"
+
 /*----------------------------------------------------------------------------*/
 #define CMD_DECODE    0x00       // decode
 #define CMD_ENCODE    0x01       // encode
-
-#define BLZ_NORMAL    0          // normal mode
-#define BLZ_BEST      1          // best mode
 
 #define BLZ_SHIFT     1          // bits to shift
 #define BLZ_MASK      0x80       // bits to check:
