@@ -18,8 +18,17 @@ pub fn build(b: &Builder) void {
     offset_finder.addPackagePath("utils", "src/utils/index.zig");
     offset_finder.addPackagePath("pokemon", "src/pokemon/index.zig");
 
+    const nds_util = b.addExecutable("nds-util", "tools/nds-util/main.zig");
+    nds_util.setBuildMode(mode);
+    nds_util.addPackagePath("crc", "lib/zig-crc/crc.zig");
+    nds_util.addPackagePath("utils", "src/utils/index.zig");
+
+    // TODO: When https://github.com/zig-lang/zig/issues/855 is fixed. Add this line.
+    // nds_util.addPackagePath("nds", "src/nds/index.zig");
+
     const tools_step = b.step("tools", "Build tools");
     tools_step.dependOn(&offset_finder.step);
+    tools_step.dependOn(&nds_util.step);
 
     const tests = b.addTest("src/test.zig");
     const test_step = b.step("test", "Run all tests");
