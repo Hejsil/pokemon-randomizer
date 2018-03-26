@@ -127,7 +127,7 @@ pub const Mode = enum {
     Best
 };
 
-pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
+pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocator) ![]u8 {
     var pak_tmp = usize(0);
     var raw_tmp = data.len;
     var pak_len = data.len + ((data.len + 7) / 8) + 11;
@@ -140,7 +140,7 @@ pub fn encode(data: []const u8, mode: Mode, allocator: &mem.Allocator) ![]u8 {
     var flag = usize(0);
     var raw_end = blk: {
         var res = data.len;
-        if (false) { // TODO: if (arm9)
+        if (arm9) {
             res -= 0x4000;
         }
 

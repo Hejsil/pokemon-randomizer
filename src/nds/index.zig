@@ -159,7 +159,7 @@ pub const Rom = struct {
         try file.write(utils.toBytes(Header, header));
         try file.seekTo(header.arm9_rom_offset.get());
         try file.write(blk: {
-            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, allocator);
+            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, true, allocator);
             // defer allocator.free(encoded);
 
             break :blk encoded;
