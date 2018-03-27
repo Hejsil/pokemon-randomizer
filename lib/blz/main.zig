@@ -18,16 +18,12 @@ pub fn main() !void {
     var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
-    var stderr_handle = try io.getStdErr();
-    var stderr_file_stream = io.FileOutStream.init(&stderr_handle);
-    var stderr = &stderr_file_stream.stream;
-
     // NOTE: Do we want to use another allocator for arguments? Does it matter? Idk.
     const args = try os.argsAlloc(&global.allocator);
     defer os.argsFree(&global.allocator, args);
 
     if (args.len < 2) {
-        try stderr.print("No file was provided.\n");
+        debug.warn("No file was provided.\n");
         return error.NoFileInArguments;
     }
 
@@ -38,7 +34,7 @@ pub fn main() !void {
         const allocator = &arena.allocator;
 
         var file = os.File.openRead(allocator, arg) catch |err| {
-            try stderr.print("Couldn't open {}.\n", arg);
+            debug.warn("Couldn't open {}.\n", arg);
             return err;
         };
         defer file.close();
