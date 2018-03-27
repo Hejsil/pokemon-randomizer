@@ -138,7 +138,6 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
     var pak_tmp = usize(0);
     var raw_tmp = data.len;
     var pak_len = data.len + ((data.len + 7) / 8) + 11;
-    var pos_best = usize(0);
     var pak = usize(0);
     var raw = usize(0);
     var mask = usize(0);
@@ -168,36 +167,37 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
             pak += 1;
         }
 
-        const bests = search(raw_buffer[0..raw_end], raw);
+        const best = search(raw_buffer[0..raw_end], raw);
+        const pos_best = @ptrToInt(raw_buffer[raw..].ptr) - @ptrToInt(best.ptr);
         const len_best = blk: {
             if (mode == Mode.Best) {
-                if (bests.l > threshold) {
-                    if (raw + bests.l < raw_end) {
-                        raw += bests.l;
+                if (best.len > threshold) {
+                    if (raw + best.len < raw_end) {
+                        raw += best.len;
 
-                        const nexts = search(raw_buffer[0..raw_end], raw);
-                        raw -= bests.l - 1;
-                        const posts = search(raw_buffer[0..raw_end], raw);
+                        const next = search(raw_buffer[0..raw_end], raw);
+                        raw -= best.len - 1;
+                        const post = search(raw_buffer[0..raw_end], raw);
                         raw -= 1;
 
-                        const len_next = if (nexts.l <= threshold) 1 else nexts.l;
-                        const len_post = if (posts.l <= threshold) 1 else posts.l;
+                        const len_next = if (next.len <= threshold) 1 else next.len;
+                        const len_post = if (post.len <= threshold) 1 else post.len;
 
-                        if (bests.l + len_next <= 1 + len_post)
+                        if (best.len + len_next <= 1 + len_post)
                             break :blk 1;
                     }
                 }
             }
 
-            break :blk bests.l;
+            break :blk best.len;
         };
 
         result[flag] = result[flag] << 1;
         if (len_best > threshold) {
             raw += len_best;
             result[flag] |= 1;
-            result[pak] = @truncate(u8, ((len_best - (threshold + 1)) << 4) | ((bests.p - 3) >> 8));
-            result[pak + 1] = @truncate(u8, (bests.p - 3));
+            result[pak] = @truncate(u8, ((len_best - (threshold + 1)) << 4) | ((pos_best - 3) >> 8));
+            result[pak + 1] = @truncate(u8, (pos_best - 3));
             pak += 2;
         } else {
             result[pak] = raw_buffer[raw];
@@ -271,11 +271,6 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
     }
 }
 
-const SearchResult = struct {
-    l: usize,
-    p: usize,
-};
-
 /// Searches for ::match in ::data, and returns a slice to the best match.
 /// TODO: This function finds the last best match, aka if two matches are
 ///       the same len, the last in ::data will be returned.
@@ -303,16 +298,12 @@ fn searchMatch(data: []const u8, match: []const u8) []const u8 {
 
 /// Finding best match of data[raw..raw+0x12] in data[max(0, raw - 0x1002)..raw]
 /// and return the pos and lenght to that match
-fn search(data: []const u8, raw: usize) SearchResult {
+fn search(data: []const u8, raw: usize) []const u8 {
     const max = math.min(raw, usize(0x1002));
-    const d1 = data[raw..math.min(usize(0x12) + raw, data.len)];
-    const d2 = data[raw - max..raw];
-    const res = searchMatch(d2, d1);
+    const pattern = data[raw..math.min(usize(0x12) + raw, data.len)];
+    const d = data[raw - max..raw];
 
-    return SearchResult {
-        .p = (@ptrToInt(d2.ptr) + d2.len) - @ptrToInt(res.ptr),
-        .l = res.len,
-    };
+    return searchMatch(d, pattern);
 }
 
 fn invert(data: []u8) void {
