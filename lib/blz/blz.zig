@@ -139,8 +139,6 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
     var raw_tmp = data.len;
     var pak_len = data.len + ((data.len + 7) / 8) + 11;
     var pos_best = usize(0);
-    var pos_next = usize(0);
-    var pos_post = usize(0);
     var pak = usize(0);
     var raw = usize(0);
     var mask = usize(0);
@@ -170,21 +168,16 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
             pak += 1;
         }
 
-        const bests = search(pos_best, raw_buffer[0..raw_end], raw);
-        pos_best = bests.p;
-
+        const bests = search(raw_buffer[0..raw_end], raw);
         const len_best = blk: {
             if (mode == Mode.Best) {
                 if (bests.l > threshold) {
                     if (raw + bests.l < raw_end) {
                         raw += bests.l;
 
-                        const nexts = search(pos_next, raw_buffer[0..raw_end], raw);
+                        const nexts = search(raw_buffer[0..raw_end], raw);
                         raw -= bests.l - 1;
-                        const posts = search(pos_post, raw_buffer[0..raw_end], raw);
-
-                        pos_next = nexts.p;
-                        pos_post = posts.p;
+                        const posts = search(raw_buffer[0..raw_end], raw);
                         raw -= 1;
 
                         const len_next = if (nexts.l <= threshold) 1 else nexts.l;
@@ -203,8 +196,8 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
         if (len_best > threshold) {
             raw += len_best;
             result[flag] |= 1;
-            result[pak] = @truncate(u8, ((len_best - (threshold + 1)) << 4) | ((pos_best - 3) >> 8));
-            result[pak + 1] = @truncate(u8, (pos_best - 3));
+            result[pak] = @truncate(u8, ((len_best - (threshold + 1)) << 4) | ((bests.p - 3) >> 8));
+            result[pak + 1] = @truncate(u8, (bests.p - 3));
             pak += 2;
         } else {
             result[pak] = raw_buffer[raw];
@@ -310,23 +303,16 @@ fn searchMatch(data: []const u8, match: []const u8) []const u8 {
 
 /// Finding best match of data[raw..raw+0x12] in data[max(0, raw - 0x1002)..raw]
 /// and return the pos and lenght to that match
-fn search(p: usize, data: []const u8, raw: usize) SearchResult {
+fn search(data: []const u8, raw: usize) SearchResult {
     const max = math.min(raw, usize(0x1002));
     const d1 = data[raw..math.min(usize(0x12) + raw, data.len)];
     const d2 = data[raw - max..raw];
     const res = searchMatch(d2, d1);
 
-    if (res.len <= threshold) {
-        return SearchResult {
-            .p = p,
-            .l = threshold,
-        };
-    } else {
-        return SearchResult {
-            .p = (@ptrToInt(&d2[0]) + d2.len) - @ptrToInt(&res[0]),
-            .l = res.len,
-        };
-    }
+    return SearchResult {
+        .p = (@ptrToInt(d2.ptr) + d2.len) - @ptrToInt(res.ptr),
+        .l = res.len,
+    };
 }
 
 fn invert(data: []u8) void {
