@@ -283,22 +283,21 @@ const SearchResult = struct {
     p: usize,
 };
 
-/// Searches for the reverse of ::match in ::data, and returns a slice
-/// to the best match.
-/// Note: The returned slice will have ::match[0] at result[result.len - 1]
-fn searchReverseMatch(data: []const u8, match: []const u8) []const u8 {
+/// Searches for ::match in ::data, and returns a slice to the best match.
+fn searchMatch(data: []const u8, match: []const u8) []const u8 {
     var best = data[0..0];
 
     var pos = usize(0);
-    while (pos <= data.len) : (pos += 1) {
+    while (pos < data.len) : (pos += 1) {
+        const max = math.min(match.len, data.len - pos);
+
         var len = usize(0);
-        const max = math.min(match.len, pos);
         while (len < max) : (len += 1) {
-            if (data[data.len - pos + len] != match[len]) break;
+            if (data[pos + len] != match[len]) break;
         }
 
         if (best.len < len) {
-            best = data[data.len - pos..][0..len];
+            best = data[pos..][0..len];
         }
     }
 
@@ -311,7 +310,7 @@ fn search(p: usize, data: []const u8, raw: usize) SearchResult {
     const max = math.min(raw, usize(0x1002));
     const d1 = data[raw..math.min(usize(0x12) + raw, data.len)];
     const d2 = data[raw - max..raw];
-    const res = searchReverseMatch(d2, d1);
+    const res = searchMatch(d2, d1);
 
     if (res.len <= threshold) {
         return SearchResult {
