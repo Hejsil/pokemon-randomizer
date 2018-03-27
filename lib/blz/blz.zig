@@ -284,6 +284,10 @@ const SearchResult = struct {
 };
 
 /// Searches for ::match in ::data, and returns a slice to the best match.
+/// TODO: This function finds the last best match, aka if two matches are
+///       the same len, the last in ::data will be returned.
+///       We only do this so that we are binary equivalent with blz.c.
+///       When we don't need blz.c anymore, change this behavior.
 fn searchMatch(data: []const u8, match: []const u8) []const u8 {
     var best = data[0..0];
 
@@ -296,7 +300,7 @@ fn searchMatch(data: []const u8, match: []const u8) []const u8 {
             if (data[pos + len] != match[len]) break;
         }
 
-        if (best.len < len) {
+        if (best.len <= len) {
             best = data[pos..][0..len];
         }
     }
