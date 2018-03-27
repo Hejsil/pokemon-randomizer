@@ -211,7 +211,7 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
         }
     }
 
-    while (mask > 0 and mask != 0) {
+    while (mask > 0) {
         mask = mask >> 1;
         result[flag] = result[flag] << 1;
     }
@@ -222,13 +222,8 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
     invert(result[0..pak_len]);
 
     if (pak_tmp == 0 or data.len + 4 < ((pak_tmp + raw_tmp + 3) & 0xFFFFFFFC) + 8) {
-        pak = 0;
-        raw = 0;
-        raw_end = data.len;
-
-        while (raw < raw_end) : ({ pak += 1; raw += 1; }) {
-            result[pak] = raw_buffer[raw];
-        }
+        mem.copy(u8, result[0..data.len], raw_buffer[0..data.len]);
+        pak = data.len;
 
         while ((pak & 3) > 0) : (pak += 1) {
             result[pak] = 0;
@@ -254,10 +249,8 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
         const inc_len = data.len - pak_tmp - raw_tmp;
         var hdr_len = usize(8);
 
-        while ((pak & 3) != 0) {
+        while ((pak & 3) != 0) : ({ pak += 1; hdr_len += 1; }) {
             new_result[pak] = 0xFF;
-            pak += 1;
-            hdr_len += 1;
         }
 
         mem.writeInt(new_result[pak..], u32(enc_len + hdr_len), @import("builtin").Endian.Little);
