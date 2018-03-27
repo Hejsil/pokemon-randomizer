@@ -25,10 +25,6 @@ pub fn main() !void {
     var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
-    var stderr_handle = try io.getStdErr();
-    var stderr_file_stream = io.FileOutStream.init(&stderr_handle);
-    var stderr = &stderr_file_stream.stream;
-
     // NOTE: Do we want to use another allocator for arguments? Does it matter? Idk.
     const args = try os.argsAlloc(allocator);
     defer os.argsFree(allocator, args);

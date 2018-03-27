@@ -45,16 +45,12 @@ pub fn main() !void {
     var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
-    var stderr_handle = try io.getStdErr();
-    var stderr_file_stream = io.FileOutStream.init(&stderr_handle);
-    var stderr = &stderr_file_stream.stream;
-
     // NOTE: Do we want to use another allocator for arguments? Does it matter? Idk.
     const args = try os.argsAlloc(&direct_allocator.allocator);
     defer os.argsFree(&direct_allocator.allocator, args);
 
     if (args.len < 2) {
-        try stderr.print("No file was provided.\n");
+        debug.warn("No file was provided.\n");
         return error.NoFileInArguments;
     }
 
@@ -65,7 +61,7 @@ pub fn main() !void {
         const allocator = &arena.allocator;
 
         var file = os.File.openRead(allocator, arg) catch |err| {
-            try stderr.print("Couldn't open {}.\n", arg);
+            debug.warn("Couldn't open {}.\n", arg);
             return err;
         };
         defer file.close();
@@ -87,24 +83,24 @@ pub fn main() !void {
             // TODO: This is the starting point for error messages. They should probably be better, but at least
             //       all errors from "findOffsetsInFile" are handled in this switch.
             switch (err) {
-                error.UnknownPokemonVersion             => try stderr.print("Unknown generation 3 game.\n"),
-                error.UnableToFindTrainerOffset         => try stderr.print("Unable to find trainers offset.\n"),
-                error.UnableToFindMoveOffset            => try stderr.print("Unable to find moves offset.\n"),
-                error.UnableToFindTmHmLearnsetOffset    => try stderr.print("Unable to find tm_hm_learnset offset.\n"),
-                error.UnableToFindBaseStatsOffset       => try stderr.print("Unable to find base_stats offset.\n"),
-                error.UnableToFindEvolutionTableOffset  => try stderr.print("Unable to find evolution_table offset.\n"),
-                error.UnableToFindLevelUpLearnsetOffset => try stderr.print("Unable to find levelup learnset offset.\n"),
-                error.UnableToFindHmOffset              => try stderr.print("Unable to find hms offset.\n"),
-                error.UnableToFindTmOffset              => try stderr.print("Unable to find tms offset.\n"),
-                error.UnableToFindItemsOffset           => try stderr.print("Unable to find items offset.\n"),
-                error.Io                                => try stderr.print("Io.\n"),
-                error.OutOfMemory                       => try stderr.print("Ran out of memory.\n"),
-                error.BadFd                             => try stderr.print("BadFd.\n"),
-                error.Unexpected                        => try stderr.print("An unexpected error occured.\n"),
-                error.StreamTooLong                     => try stderr.print("StreamTooLong.\n"),
-                error.Unseekable                        => try stderr.print("Unseekable.\n"),
-                error.Overflow                          => try stderr.print("Overflow.\n"),
-                error.EndOfStream                       => try stderr.print("EndOfStream.\n"),
+                error.UnknownPokemonVersion             => debug.warn("Unknown generation 3 game.\n"),
+                error.UnableToFindTrainerOffset         => debug.warn("Unable to find trainers offset.\n"),
+                error.UnableToFindMoveOffset            => debug.warn("Unable to find moves offset.\n"),
+                error.UnableToFindTmHmLearnsetOffset    => debug.warn("Unable to find tm_hm_learnset offset.\n"),
+                error.UnableToFindBaseStatsOffset       => debug.warn("Unable to find base_stats offset.\n"),
+                error.UnableToFindEvolutionTableOffset  => debug.warn("Unable to find evolution_table offset.\n"),
+                error.UnableToFindLevelUpLearnsetOffset => debug.warn("Unable to find levelup learnset offset.\n"),
+                error.UnableToFindHmOffset              => debug.warn("Unable to find hms offset.\n"),
+                error.UnableToFindTmOffset              => debug.warn("Unable to find tms offset.\n"),
+                error.UnableToFindItemsOffset           => debug.warn("Unable to find items offset.\n"),
+                error.Io                                => debug.warn("Io.\n"),
+                error.OutOfMemory                       => debug.warn("Ran out of memory.\n"),
+                error.BadFd                             => debug.warn("BadFd.\n"),
+                error.Unexpected                        => debug.warn("An unexpected error occured.\n"),
+                error.StreamTooLong                     => debug.warn("StreamTooLong.\n"),
+                error.Unseekable                        => debug.warn("Unseekable.\n"),
+                error.Overflow                          => debug.warn("Overflow.\n"),
+                error.EndOfStream                       => debug.warn("EndOfStream.\n"),
             }
 
             return err;

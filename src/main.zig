@@ -142,10 +142,6 @@ pub fn main() !void {
     var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
-    var stderr_handle = try io.getStdErr();
-    var stderr_file_stream = io.FileOutStream.init(&stderr_handle);
-    var stderr = &stderr_file_stream.stream;
-
     const args = try os.argsAlloc(allocator);
     defer os.argsFree(allocator, args);
 
@@ -155,12 +151,12 @@ pub fn main() !void {
     };
 
     if (help) {
-        try clap.help(randomizer.Options, program_arguments, stderr);
+        try clap.help(randomizer.Options, program_arguments, stdout);
         return;
     }
 
     var out_file = os.File.openWrite(allocator, output_file) catch |err| {
-        try stderr.print("Couldn't open {}.\n", output_file);
+        debug.warn("Couldn't open {}.\n", output_file);
         return err;
     };
     defer out_file.close();
@@ -172,12 +168,12 @@ pub fn main() !void {
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
         game.validateData() catch |err| {
-            try stderr.print("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
+            debug.warn("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
 
             switch (err) {
                 error.NoBulbasaurFound => {
-                    try stderr.print("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
-                    try stderr.print("Note: If you are randomizing a hacked version, then .\n");
+                    debug.warn("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
+                    debug.warn("Note: If you are randomizing a hacked version, then .\n");
                 },
                 else => {}
             }
@@ -188,7 +184,7 @@ pub fn main() !void {
 
         var file_stream = io.FileOutStream.init(&out_file);
         game.writeToStream(&file_stream.stream) catch |err| {
-            try stderr.print("Unable to write gba to {}.\n", output_file);
+            debug.warn("Unable to write gba to {}.\n", output_file);
             return err;
         };
 
@@ -203,13 +199,13 @@ pub fn main() !void {
         var game = try gen5.Game.fromRom(&nds_rom);
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
-            try stderr.print("Unable to write nds to {}\n", output_file);
+            debug.warn("Unable to write nds to {}\n", output_file);
             return err;
         };
 
         return;
     }
 
-    try stderr.print("Rom type not supported (yet)\n");
+    debug.warn("Rom type not supported (yet)\n");
     return error.NotARom;
 }
