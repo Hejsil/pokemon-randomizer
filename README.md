@@ -10,34 +10,34 @@ programming language and its features.
 * :heavy_check_mark: means that the game is implemented in code and is completable without any major issues.
 * :heavy_minus_sign: means that the game is implemented in code but haven't been tested.
 
-|             | U                  | E | J | F | S | G | I | K |
-|-------------|--------------------|---|---|---|---|---|---|---|
-| Red         |                    |   |   |   |   |   |   |   |
-| Blue        |                    |   |   |   |   |   |   |   |
-| Green       |                    |   |   |   |   |   |   |   |
-| Yellow      |                    |   |   |   |   |   |   |   |
-| Gold        |                    |   |   |   |   |   |   |   |
-|             |                    |   |   |   |   |   |   |   |
-| Gold        |                    |   |   |   |   |   |   |   |
-| Silver      |                    |   |   |   |   |   |   |   |
-| Crystal     |                    |   |   |   |   |   |   |   |
-|             |                    |   |   |   |   |   |   |   |
-| Ruby        | :heavy_minus_sign: |   |   |   |   |   |   |   |
-| Sapphire    | :heavy_minus_sign: |   |   |   |   |   |   |   |
-| Emerald     | :heavy_check_mark: |   |   |   |   |   |   |   |
-| Fire Red    | :heavy_minus_sign: |   |   |   |   |   |   |   |
-| Leaf Green  | :heavy_minus_sign: |   |   |   |   |   |   |   |
-|             |                    |   |   |   |   |   |   |   |
-| Diamon      |                    |   |   |   |   |   |   |   |
-| Pearl       |                    |   |   |   |   |   |   |   |
-| Platinum    |                    |   |   |   |   |   |   |   |
-| Heart Gold  |                    |   |   |   |   |   |   |   |
-| Soul Silver |                    |   |   |   |   |   |   |   |
-|             |                    |   |   |   |   |   |   |   |
-| Black       |                    |   |   |   |   |   |   |   |
-| White       |                    |   |   |   |   |   |   |   |
-| Black 2     | :heavy_minus_sign: |   |   |   |   |   |   |   |
-| White 2     |                    |   |   |   |   |   |   |   |
+| Version:    | International (O)  | English/USA (E)    |
+|-------------|--------------------|--------------------|
+| Red         |                    |                    |
+| Blue        |                    |                    |
+| Green       |                    |                    |
+| Yellow      |                    |                    |
+| Gold        |                    |                    |
+|             |                    |                    |
+| Gold        |                    |                    |
+| Silver      |                    |                    |
+| Crystal     |                    |                    |
+|             |                    |                    |
+| Ruby        |                    | :heavy_minus_sign: |
+| Sapphire    |                    | :heavy_minus_sign: |
+| Emerald     |                    | :heavy_check_mark: |
+| Fire Red    |                    | :heavy_minus_sign: |
+| Leaf Green  |                    | :heavy_minus_sign: |
+|             |                    |                    |
+| Diamon      |                    |                    |
+| Pearl       |                    |                    |
+| Platinum    |                    |                    |
+| Heart Gold  |                    |                    |
+| Soul Silver |                    |                    |
+|             |                    |                    |
+| Black       |                    |                    |
+| White       |                    |                    |
+| Black 2     | :heavy_minus_sign: |                    |
+| White 2     |                    |                    |
 
 ## Build
 
