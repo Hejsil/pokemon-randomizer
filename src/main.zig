@@ -161,25 +161,13 @@ pub fn main() !void {
     };
     defer out_file.close();
 
+    var random = rand.Rand.init(0);
 
     gba_blk: {
         var rom_file = try os.File.openRead(allocator, input_file);
         //defer rom_file.close(); error: unreachable code
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
-        game.validateData() catch |err| {
-            debug.warn("Warning: Invalid Pokemon game data. The rom will still be randomized, but there is no garenties that the rom will work as indented.\n");
-
-            switch (err) {
-                error.NoBulbasaurFound => {
-                    debug.warn("Note: Pokemon 001 (Bulbasaur) did not have expected stats.\n");
-                    debug.warn("Note: If you are randomizing a hacked version, then .\n");
-                },
-                else => {}
-            }
-        };
-
-        var random = rand.Rand.init(0);
         try randomizer.randomize(game, options, &random, allocator);
 
         var file_stream = io.FileOutStream.init(&out_file);
@@ -197,6 +185,8 @@ pub fn main() !void {
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
 
         var game = try gen5.Game.fromRom(&nds_rom);
+
+        try randomizer.randomize(game, options, &random, allocator);
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
             debug.warn("Unable to write nds to {}\n", output_file);

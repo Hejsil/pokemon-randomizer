@@ -1,5 +1,6 @@
 const std    = @import("std");
 const gba    = @import("../gba.zig");
+const bits   = @import("../bits.zig");
 const little = @import("../little.zig");
 const utils  = @import("../utils/index.zig");
 const common = @import("common.zig");
@@ -188,6 +189,7 @@ const bulbasaur_fingerprint = []u8 {
 };
 
 pub const Game = struct {
+    // TODO: We should look up species dex id, and use the dex ids here instead.
     const legendaries = []u16 {
         0x090, 0x091, 0x092, // Articuno, Zapdos, Moltres
         0x096, 0x097,        // Mewtwo, Mew
@@ -397,10 +399,20 @@ pub const Game = struct {
         return ([]LevelUpMove)(game.data[offset..end]);
     }
 
-    pub fn getTms(game: &const Game) []Little(u16) { return game.tms; }
-    pub fn getHms(game: &const Game) []Little(u16) { return game.hms; }
+    pub fn getTmMove(game: &const Game, tm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.tms, tm); }
+    pub fn getHmMove(game: &const Game, hm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.hms, hm); }
 
-    pub fn getTmHmLearnset(game: &const Game, species: usize) ?&Little(u64) {
-        return utils.slice.ptrAtOrNull(game.tm_hm_learnset, species);
+    pub fn learnsTm(game: &const Game, species: usize, tm: usize) ?bool {
+        if (tm >= game.tms.len)                 return null;
+        if (species >= game.tm_hm_learnset.len) return null;
+
+        return bits.get(u64, game.tm_hm_learnset[species].get(), u6(tm));
+    }
+
+    pub fn learnsHm(game: &const Game, species: usize, hm: usize) ?bool {
+        if (hm >= game.hms.len)                 return null;
+        if (species >= game.tm_hm_learnset.len) return null;
+
+        return bits.get(u64, game.tm_hm_learnset[species].get(), u6(hm + game.tms.len));
     }
 };

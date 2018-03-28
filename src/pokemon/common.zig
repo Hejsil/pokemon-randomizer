@@ -148,3 +148,29 @@ pub const Version = enum(u8) {
         };
     }
 };
+
+pub const legendaries = []u16 {
+    144, 145, 146, // Articuno, Zapdos, Moltres
+    150, 151,      // Mewtwo, Mew
+    243, 244, 245, // Raikou, Entei, Suicune
+    249, 250, 251, // Lugia, Ho-Oh, Celebi
+    377, 378, 379, // Regirock, Regice, Registeel
+    380, 381,      // Latias, Latios
+    382, 383, 384, // Kyogre, Groudon, Rayquaza
+    385, 386,      // Jirachi, Deoxys
+    480, 481, 482, // Uxie, Mesprit, Azelf
+    483, 484,      // Dialga, Palkia
+    485, 486,      // Heatran, Regigigas
+    487, 488,      // Giratina, Cresselia
+    489, 490,      // Phione, Manaphy
+    491, 492, 493, // Darkrai, Shaymin, Arceus
+    494,           // Victini
+    638, 639, 640, // Cobalion, Terrakion, Virizion
+    641, 642,      // Tornadus, Thundurus
+    643, 644,      // Reshiram, Zekrom
+    645, 646, 647, // Landorus, Kyurem, Keldeo
+    648, 649,      // Meloetta, Genesect
+    716, 717, 718, // Xerneas, Yveltal, Zygarde
+    719, 720, 721, // Diancie, Hoopa, Volcanion
+    // TODO: Sun and Moon legendaries
+};

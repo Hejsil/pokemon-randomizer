@@ -36,7 +36,7 @@ programming language and its features.
 |             |                    |   |   |   |   |   |   |   |
 | Black       |                    |   |   |   |   |   |   |   |
 | White       |                    |   |   |   |   |   |   |   |
-| Black 2     |                    |   |   |   |   |   |   |   |
+| Black 2     | :heavy_minus_sign: |   |   |   |   |   |   |   |
 | White 2     |                    |   |   |   |   |   |   |   |
 
 ## Build

@@ -421,29 +421,44 @@ fn randomMoveId(game: var, random: &rand.Rand) u16 {
 
 /// Caller owns memory returned
 fn getMovesLearned(game: var, species: usize, allocator: &mem.Allocator) ![]u16 {
-    const tms = game.getTms();
-    const hms = game.getHms();
-    const levelup_learnset = game.getLevelupMoves(species) ?? unreachable; // TODO: Handle
-    const tm_hm_learnset = game.getTmHmLearnset(species) ?? unreachable;
-
-    const moves_learnt = bits.count(u64, tm_hm_learnset.get()) + levelup_learnset.len;
+    const levelup_learnset = game.getLevelupMoves(species) ?? unreachable;
     var res = std.ArrayList(u16).init(allocator);
-    try res.ensureCapacity(moves_learnt);
+    try res.ensureCapacity(levelup_learnset.len);
 
     for (levelup_learnset) |level_up_move| {
         try res.append(u16(level_up_move.move_id));
     }
 
-    var i : usize = 0;
-    while (i < @sizeOf(@typeOf(tm_hm_learnset.get())) * 8) : (i += 1) {
-        if (bits.get(@typeOf(tm_hm_learnset.get()), tm_hm_learnset.get(), u6(i))) {
-            if (i < tms.len) {
-                try res.append(tms[i].get());
-            } else if ((i - tms.len) < hms.len) {
-                try res.append(hms[i - tms.len].get());
-            }
-        }
+    var tm = usize(0);
+    while (game.getTmMove(tm)) |move| : (tm += 1) {
+        if (game.learnsTm(species, tm) ?? unreachable)
+            try res.append(move.get());
+    }
+
+    var hm = usize(0);
+    while (game.getHmMove(hm)) |move| : (hm += 1) {
+        if (game.learnsHm(species, hm) ?? unreachable)
+            try res.append(move.get());
     }
 
     return res.toOwnedSlice();
 }
+
+
+
+    pub fn getTmMove(game: &const Game, tm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.tms, tm); }
+    pub fn getHmMove(game: &const Game, hm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.hms, hm); }
+
+    pub fn learnsTm(game: &const Game, species: usize, tm: usize) ?bool {
+        if (tm >= game.tms.len)                 return null;
+        if (species >= game.tm_hm_learnset.len) return null;
+
+        return bits.get(u64, game.tm_hm_learnset[species].get(), u6(tm));
+    }
+
+    pub fn learnsHm(game: &const Game, species: usize, hm: usize) ?bool {
+        if (hm >= game.hms.len)                 return null;
+        if (species >= game.tm_hm_learnset.len) return null;
+
+        return bits.get(u64, game.tm_hm_learnset[species].get(), u6(hm + game.tms.len));
+    }

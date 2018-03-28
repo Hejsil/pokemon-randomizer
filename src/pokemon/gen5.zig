@@ -1,7 +1,12 @@
+const std    = @import("std");
 const little = @import("../little.zig");
 const nds    = @import("../nds/index.zig");
 const utils  = @import("../utils/index.zig");
 const common = @import("common.zig");
+
+const mem = std.mem;
+
+const Little = little.Little;
 
 pub const BasePokemon = packed struct {
     hp:         u8,
@@ -137,21 +142,34 @@ pub const LevelUpMove = packed struct {
 };
 
 pub const Game = struct {
+    const legendaries = common.legendaries;
+
     base_stats: []nds.fs.File,
     moves: []nds.fs.File,
     level_up_moves: []nds.fs.File,
     trainer_data: []nds.fs.File,
     trainer_pokemons: []nds.fs.File,
+    tms1: []Little(u16),
+    hms: []Little(u16),
+    tms2: []Little(u16),
 
     pub fn fromRom(rom: &nds.Rom) !Game {
-        const root = &rom.root;
+        const tm_count = 95;
+        const hm_count = 6;
+        const hm_tm_prefix = "\x87\x03\x88\x03";
+        const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
+        const hm_tm_index = hm_tm_prefix_index + hm_tm_prefix.len;
+        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(tm_count + hm_count) * @sizeOf(u16)]);
 
         return Game {
-            .base_stats       = getNarcFiles(root, "a/0/1/6") ?? return error.Err,
-            .level_up_moves   = getNarcFiles(root, "a/0/1/8") ?? return error.Err,
-            .moves            = getNarcFiles(root, "a/0/2/1") ?? return error.Err,
-            .trainer_data     = getNarcFiles(root, "a/0/9/1") ?? return error.Err,
-            .trainer_pokemons = getNarcFiles(root, "a/0/9/2") ?? return error.Err,
+            .base_stats       = getNarcFiles(rom.root, "a/0/1/6") ?? return error.Err,
+            .level_up_moves   = getNarcFiles(rom.root, "a/0/1/8") ?? return error.Err,
+            .moves            = getNarcFiles(rom.root, "a/0/2/1") ?? return error.Err,
+            .trainer_data     = getNarcFiles(rom.root, "a/0/9/1") ?? return error.Err,
+            .trainer_pokemons = getNarcFiles(rom.root, "a/0/9/2") ?? return error.Err,
+            .tms1             = hm_tms[0..92],
+            .hms              = hm_tms[92..98],
+            .tms2             = hm_tms[98..],
         };
     }
 
@@ -191,12 +209,17 @@ pub const Game = struct {
         const trainer_party_data = getBinary(game.trainer_pokemons, trainer_index) ?? return null;
 
         return switch (trainer.party_type) {
-            PartyType.Standard  => utils.slice.ptrAtOrNull(([]PartyMember)(trainer_party_data), index),
-            PartyType.WithMoves => utils.slice.ptrAtOrNull(([]PartyMemberWithMoves)(trainer_party_data), index),
-            PartyType.WithHeld  => utils.slice.ptrAtOrNull(([]PartyMemberWithHeld)(trainer_party_data), index),
-            PartyType.WithBoth  => utils.slice.ptrAtOrNull(([]PartyMemberWithBoth)(trainer_party_data), index),
+            PartyType.Standard  => getPartyMember(PartyMember, trainer_party_data, party_member_index),
+            PartyType.WithMoves => getPartyMember(PartyMemberWithMoves, trainer_party_data, party_member_index),
+            PartyType.WithHeld  => getPartyMember(PartyMemberWithHeld, trainer_party_data, party_member_index),
+            PartyType.WithBoth  => getPartyMember(PartyMemberWithBoth, trainer_party_data, party_member_index),
             else => null,
         };
+    }
+
+    fn getPartyMember(comptime TMember: type, data: []u8, index: usize) ?&PartyMember {
+        const member = utils.slice.ptrAtOrNull(([]TMember)(data), index) ?? return null;
+        return if (TMember == PartyMember) member else &member.base;
     }
 
     pub fn getMove(game: &const Game, index: usize) ?&Move {
@@ -222,15 +245,29 @@ pub const Game = struct {
         return level_up_moves;
     }
 
-    pub fn getTms(game: &const Game) []Little(u16) {
-        unreachable;
+    pub fn getTmMove(game: &const Game, tm: usize) ?&Little(u16) {
+        return utils.slice.ptrAtOrNull(game.tms1, tm) ??
+               utils.slice.ptrAtOrNull(game.tms2, tm - game.tms1.len);
     }
 
-    pub fn getHms(game: &const Game) []Little(u16) {
-        unreachable;
+    pub fn getHmMove(game: &const Game, hm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.hms, hm); }
+
+    pub fn learnsTm(game: &const Game, species: usize, tm: usize) ?bool {
+        if (tm >= game.tms2.len + game.tms1.len) return null;
+
+        const pokemon = game.getBasePokemon(species) ?? return null;
+        const tm_hm_learnset = pokemon.tm_hm_learnset.get();
+        const index = if (tm < game.tms1.len) tm else tm + game.hms.len;
+
+        return bits.get(u128, tm_hm_learnset, u6(index));
     }
 
-    pub fn getTmHmLearnset(game: &const Game, species: usize) ?&Little(u64) {
-        unreachable;
+    pub fn learnsHm(game: &const Game, species: usize, hm: usize) ?bool {
+        if (hm >= game.hms.len)                 return null;
+
+        const pokemon = game.getBasePokemon(species) ?? return null;
+        const tm_hm_learnset = pokemon.tm_hm_learnset.get();
+
+        return bits.get(u64, tm_hm_learnset, u6(hm + game.tms.len));
     }
 };
