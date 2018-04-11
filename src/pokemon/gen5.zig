@@ -184,7 +184,8 @@ pub const Game = struct {
 
     fn getFileAsType(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
         const data = getBinary(files, index) ?? return null;
-        return utils.slice.ptrAtOrNull(([]T)(data), index);
+        const len = data.len - (data.len % @sizeOf(T));
+        return utils.slice.ptrAtOrNull(([]T)(data[0..len]), 0);
     }
 
     fn getBinary(files: []nds.fs.File, index: usize) ?[]u8 {
