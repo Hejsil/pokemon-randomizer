@@ -113,7 +113,7 @@ pub const Options = struct {
     }
 };
 
-pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocator: &mem.Allocator) !void {
+pub fn randomize(game: var, options: &const Options, random: &rand.Random, allocator: &mem.Allocator) !void {
     var pokemons_by_type : [@memberCount(common.Type)]std.ArrayList(u16) = undefined;
 
     for (pokemons_by_type) |*list| {
@@ -135,7 +135,7 @@ pub fn randomize(game: var, options: &const Options, random: &rand.Rand, allocat
     try randomizeTrainers(game, pokemons_by_type[0..], options.trainer, random, allocator);
 }
 
-fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) !void {
+fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options: &const Options.Trainer, random: &rand.Random, allocator: &mem.Allocator) !void {
     var trainer_id : usize = 0;
     while (game.getTrainer(trainer_id)) |trainer| : (trainer_id += 1) {
         const trainer_theme = switch (options.pokemon) {
@@ -232,7 +232,7 @@ fn randomizeTrainers(game: var, pokemons_by_type: []std.ArrayList(u16), options:
     }
 }
 
-fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Rand, allocator: &mem.Allocator) !u16 {
+fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool, pokemons: []const u16, random: &rand.Random, allocator: &mem.Allocator) !u16 {
     if (same_total_stats) {
         var min_total = totalStats(curr_pokemom);
         var max_total = min_total;
@@ -260,7 +260,7 @@ fn getRandomTrainerPokemon(game: var, curr_pokemom: var, same_total_stats: bool,
     }
 }
 
-fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trainer.HeldItems, random: &rand.Rand) void {
+fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trainer.HeldItems, random: &rand.Random) void {
     switch (option) {
         Options.Trainer.HeldItems.None => {
             pokemon.held_item.set(0);
@@ -278,7 +278,7 @@ fn randomizeTrainerPokemonHeldItem(game: var, pokemon: var, option: Options.Trai
     }
 }
 
-fn randomizeTrainerPokemonMoves(game: var, trainer_pokemon: var, option: &const Options.Trainer, random: &rand.Rand, allocator: &mem.Allocator) !void {
+fn randomizeTrainerPokemonMoves(game: var, trainer_pokemon: var, option: &const Options.Trainer, random: &rand.Random, allocator: &mem.Allocator) !void {
     switch (option.moves) {
         Options.Trainer.Moves.Same => {
             // If trainer Pokémons where randomized, then keeping the same moves
@@ -375,7 +375,7 @@ fn totalStats(pokemon: var) u16 {
         u16(pokemon.sp_defense);
 }
 
-fn randomType(comptime TGame: type, random: &rand.Rand) common.Type {
+fn randomType(comptime TGame: type, random: &rand.Random) common.Type {
     const random_type_table = []common.Type {
         common.Type.Normal,
         common.Type.Fighting,
@@ -406,7 +406,7 @@ fn randomType(comptime TGame: type, random: &rand.Rand) common.Type {
     return table[random.range(u8, 0, type_count)];
 }
 
-fn randomMoveId(game: var, random: &rand.Rand) u16 {
+fn randomMoveId(game: var, random: &rand.Random) u16 {
     while (true) {
         const move_id = random.range(u16, 0, u16(game.getMoveCount()));
 
@@ -443,22 +443,3 @@ fn getMovesLearned(game: var, species: usize, allocator: &mem.Allocator) ![]u16 
 
     return res.toOwnedSlice();
 }
-
-
-
-    pub fn getTmMove(game: &const Game, tm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.tms, tm); }
-    pub fn getHmMove(game: &const Game, hm: usize) ?&Little(u16) { return utils.slice.ptrAtOrNull(game.hms, hm); }
-
-    pub fn learnsTm(game: &const Game, species: usize, tm: usize) ?bool {
-        if (tm >= game.tms.len)                 return null;
-        if (species >= game.tm_hm_learnset.len) return null;
-
-        return bits.get(u64, game.tm_hm_learnset[species].get(), u6(tm));
-    }
-
-    pub fn learnsHm(game: &const Game, species: usize, hm: usize) ?bool {
-        if (hm >= game.hms.len)                 return null;
-        if (species >= game.tm_hm_learnset.len) return null;
-
-        return bits.get(u64, game.tm_hm_learnset[species].get(), u6(hm + game.tms.len));
-    }
