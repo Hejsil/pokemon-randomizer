@@ -217,15 +217,15 @@ pub const Game = struct {
     tms: []Little(u16),
 
     pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Game {
-        var file_out_stream = io.FileInStream.init(file);
-        var out_stream = &file_out_stream.stream;
+        var file_in_stream = io.FileInStream.init(file);
+        var in_stream = &file_in_stream.stream;
 
-        const header = try utils.file.read(file, gba.Header);
+        const header = try utils.stream.read(in_stream, gba.Header);
         try header.validate();
         try file.seekTo(0);
 
         const offsets = try getOffsets(header);
-        const rom = try out_stream.readAllAlloc(allocator, @maxValue(usize));
+        const rom = try in_stream.readAllAlloc(allocator, @maxValue(usize));
         errdefer allocator.free(rom);
 
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
@@ -246,9 +246,9 @@ pub const Game = struct {
         };
     }
 
-    pub fn writeToStream(game: &const Game, out_stream: var) !void {
+    pub fn writeToStream(game: &const Game, in_stream: var) !void {
         try game.header.validate();
-        try out_stream.write(game.data);
+        try in_stream.write(game.data);
     }
 
     pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {

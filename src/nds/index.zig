@@ -41,7 +41,9 @@ pub const Rom = struct {
     arm7_overlay_files: [][]u8,
 
     banner: Banner,
-    root: fs.Folder,
+    tree: fs.Tree(fs.NitroFile),
+
+    allocator: &mem.Allocator,
 
     pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Rom {
         const header = try utils.file.read(file, Header);
@@ -84,14 +86,11 @@ pub const Rom = struct {
         try banner.validate();
         if (header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
 
-        const root = try fs.read(
-            file,
-            allocator,
-            header.fnt_offset.get(),
-            header.fat_offset.get(),
-            header.fat_size.get() / @sizeOf(fs.FatEntry),
-            0);
-        errdefer root.destroy(allocator);
+        const fnt = try utils.file.seekToAllocRead(file, header.fnt_offset.get(), allocator, u8, header.fnt_size.get());
+        const fat = try utils.file.seekToAllocRead(file, header.fat_offset.get(), allocator, fs.FatEntry, header.fat_size.get() / @sizeOf(fs.FatEntry));
+
+        const tree = try fs.read(file, allocator, fnt, fat);
+        errdefer tree.destroy(allocator);
 
         return Rom {
             .header = header,
@@ -103,7 +102,8 @@ pub const Rom = struct {
             .arm7_overlay_table = arm7_overlay_table,
             .arm7_overlay_files = arm7_overlay_files,
             .banner = banner,
-            .root = root,
+            .tree = tree,
+            .allocator = allocator,
         };
     }
 
@@ -111,7 +111,7 @@ pub const Rom = struct {
         try rom.banner.validate();
 
         const header = &rom.header;
-        const fs_info = rom.root.sizes();
+        const fs_info = rom.tree.sizes();
 
         if (@maxValue(u16) < fs_info.folders * @sizeOf(fs.FntMainEntry)) return error.InvalidSizeInHeader;
         if (@maxValue(u16) < fs_info.files   * @sizeOf(fs.FatEntry))     return error.InvalidSizeInHeader;
@@ -140,8 +140,8 @@ pub const Rom = struct {
         try overlay_writer.writeOverlayFiles(rom.arm9_overlay_table, rom.arm9_overlay_files, header.fat_offset.get());
         try overlay_writer.writeOverlayFiles(rom.arm7_overlay_table, rom.arm7_overlay_files, header.fat_offset.get());
 
-        var fs_writer = fs.FSWriter.init(file, overlay_writer.file_offset, overlay_writer.file_id);
-        try fs_writer.writeFileSystem(rom.root, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
+        var fs_writer = fs.FSWriter(fs.NitroFile).init(file, overlay_writer.file_offset, overlay_writer.file_id);
+        try fs_writer.writeFileSystem(rom.tree, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
 
         header.total_used_rom_size = toLittle( common.@"align"(fs_writer.file_offset, u32(4)));
         header.device_capacity = blk: {
@@ -182,13 +182,13 @@ pub const Rom = struct {
         return rom.nitro_footer[0].get() == 0xDEC00621;
     }
 
-    pub fn destroy(rom: &const Rom, allocator: &mem.Allocator) void {
-        allocator.free(rom.arm9);
-        allocator.free(rom.arm7);
-        allocator.free(rom.arm9_overlay_table);
-        allocator.free(rom.arm7_overlay_table);
-        overlay.freeFiles(rom.arm9_overlay_files, allocator);
-        overlay.freeFiles(rom.arm7_overlay_files, allocator);
-        rom.root.destroy(allocator);
+    pub fn deinit(rom: &Rom) void {
+        rom.allocator.free(rom.arm9);
+        rom.allocator.free(rom.arm7);
+        rom.allocator.free(rom.arm9_overlay_table);
+        rom.allocator.free(rom.arm7_overlay_table);
+        overlay.freeFiles(rom.arm9_overlay_files, rom.allocator);
+        overlay.freeFiles(rom.arm7_overlay_files, rom.allocator);
+        rom.tree.deinit();
     }
 };

@@ -9,10 +9,7 @@ pub fn read(file: &os.File, comptime T: type) !T {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
-    var result : T = undefined;
-    try stream.readNoEof(utils.asBytes(T, &result));
-
-    return result;
+    return try utils.stream.read(stream, T);
 }
 
 pub fn seekToRead(file: &os.File, offset: usize, comptime T: type) !T {
@@ -29,11 +26,7 @@ pub fn allocRead(file: &os.File, allocator: &mem.Allocator, comptime T: type, si
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
 
-    const data = try allocator.alloc(T, size);
-    errdefer allocator.free(data);
-
-    try stream.readNoEof(([]u8)(data));
-    return data;
+    return try utils.stream.allocRead(stream, allocator, T, size);
 }
 
 pub fn seekToCreateRead(file: &os.File, offset: usize, allocator: &mem.Allocator, comptime T: type) !&T {
