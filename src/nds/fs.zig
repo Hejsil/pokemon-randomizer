@@ -23,13 +23,13 @@ pub fn Tree(comptime FileType: type) type {
         arena: std.heap.ArenaAllocator,
         root: &Folder,
 
-        pub fn init(allocator: &mem.Allocator) !Self {
-            var res = Self {
-                .arena = std.heap.ArenaAllocator.init(allocator),
-                .root = undefined,
-            };
-
+        // GIGA HACK!: We allocate the tree with the arenas child allocator. This allows us to
+        //             return Trees without invalidating the pointers to tree.arena.allocator.
+        pub fn alloc(allocator: &mem.Allocator) !&Self {
+            const res = try allocator.create(Self);
+            res.arena = std.heap.ArenaAllocator.init(allocator);
             res.root = try res.createFolder(try mem.dupe(&res.arena.allocator, u8, ""));
+
             return res;
         }
 
@@ -152,6 +152,7 @@ pub fn Tree(comptime FileType: type) type {
 
         pub fn deinit(tree: &Self) void {
             tree.arena.deinit();
+            tree.arena.child_allocator.destroy(tree);
         }
     };
 }
@@ -167,7 +168,7 @@ pub const NitroFile = struct {
 
     const Type = union(enum) {
         Binary: []u8,
-        Narc: Tree(NarcFile),
+        Narc: &Tree(NarcFile),
     };
 };
 
@@ -197,11 +198,11 @@ pub const FatEntry = packed struct {
     }
 };
 
-pub fn read(file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry) !Tree(NitroFile) {
+pub fn read(file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry) !&Tree(NitroFile) {
     return readHelper(NitroFile, file, allocator, fnt, fat, 0);
 }
 
-fn readHelper(comptime FileType: type, file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !Tree(FileType) {
+fn readHelper(comptime FileType: type, file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !&Tree(FileType) {
     const fnt_main_table = blk: {
         const new_len = fnt.len - (fnt.len % @sizeOf(FntMainEntry));
         const tmp = ([]const FntMainEntry)(fnt[0..new_len]);
@@ -221,7 +222,8 @@ fn readHelper(comptime FileType: type, file: &os.File, allocator: &mem.Allocator
 
     var stack = std.ArrayList(State).init(allocator);
     defer stack.deinit();
-    var tree = try Tree(FileType).init(allocator);
+
+    const tree = try Tree(FileType).alloc(allocator);
     errdefer tree.deinit();
 
     const fnt_first = fnt_main_table[0];
@@ -253,7 +255,7 @@ fn readHelper(comptime FileType: type, file: &os.File, allocator: &mem.Allocator
         switch (kind) {
             Kind.File => {
                 const fat_entry = utils.slice.atOrNull(fat, file_id) ?? return error.InvalidFileId;
-                const sub_file = try readFile(FileType, &tree, file, allocator, fat_entry, img_base, name);
+                const sub_file = try readFile(FileType, tree, file, allocator, fat_entry, img_base, name);
                 try folder.files.append(sub_file);
 
                 stack.append(State {
@@ -305,7 +307,6 @@ fn readFile(comptime FileType: type, tree: &Tree(FileType), file: &os.File, tmp_
             const file_count      = try utils.file.read(file, Little(u16));
             const reserved        = try utils.file.read(file, Little(u16));
             if (!mem.eql(u8, fat_header.name, names.fat)) return error.InvalidChunkName;
-            debug.warn("{} {} {}\n", fat_header.size.get(), fat_header.size.get() - fat_chunk_size, (fat_header.size.get() - fat_chunk_size) % fat_chunk_size);
             if ((fat_header.size.get() - fat_chunk_size) % @sizeOf(FatEntry) != 0) return error.InvalidChunkSize;
             if ((fat_header.size.get() - fat_chunk_size) / @sizeOf(FatEntry) != file_count.get()) return error.InvalidChunkSize;
 
@@ -329,13 +330,13 @@ fn readFile(comptime FileType: type, tree: &Tree(FileType), file: &os.File, tmp_
             // fnt sub table and files don't have names. We therefore can't use our normal
             // read function, as it relies on the fnt sub table to build the file system.
             if (first_fnt.offset_to_subtable.get() < @sizeOf(FntMainEntry)) {
-                var sub_tree = try Tree(NarcFile).init(&tree.arena.allocator);
+                const sub_tree = try Tree(NarcFile).alloc(&tree.arena.allocator);
                 const files = &sub_tree.root.files;
                 try files.ensureCapacity(file_count.get());
 
                 for (fat) |entry| {
                     const sub_file_name = try mem.dupe(&sub_tree.arena.allocator, u8, "");
-                    const sub_file = try readFile(NarcFile, &sub_tree, file, tmp_allocator, entry, narc_img_base, sub_file_name);
+                    const sub_file = try readFile(NarcFile, sub_tree, file, tmp_allocator, entry, narc_img_base, sub_file_name);
                     try files.append(sub_file);
                 }
 

@@ -41,7 +41,7 @@ pub const Rom = struct {
     arm7_overlay_files: [][]u8,
 
     banner: Banner,
-    tree: fs.Tree(fs.NitroFile),
+    tree: &fs.Tree(fs.NitroFile),
 
     allocator: &mem.Allocator,
 
