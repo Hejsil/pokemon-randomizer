@@ -22,6 +22,10 @@ pub const Banner  = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
 pub const Rom = struct {
+    // TODO: Do we actually want to store the header?
+    //       Info like offsets, the user of the lib shouldn't touch, but other info, are allowed.
+    //       Instead of storing the header. Only store info relevant for customization, and let
+    //       the writeToFile function generate the offsets
     header: Header,
     arm9: []u8,
 
@@ -108,42 +112,93 @@ pub const Rom = struct {
     }
 
     pub fn writeToFile(rom: &Rom, file: &os.File, allocator: &mem.Allocator) !void {
-        try rom.banner.validate();
-
         const header = &rom.header;
-        const fs_info = rom.tree.sizes();
 
-        if (@maxValue(u16) < fs_info.folders * @sizeOf(fs.FntMainEntry)) return error.InvalidSizeInHeader;
-        if (@maxValue(u16) < fs_info.files   * @sizeOf(fs.FatEntry))     return error.InvalidSizeInHeader;
+        try file.seekTo(0x4000);
+        header.arm9_rom_offset = toLittle(u32(0x4000));
+        header.arm9_size       = toLittle(u32(rom.arm9.len));
+        try file.write(blk: {
+            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, true, allocator);
+            // defer allocator.free(encoded);
 
-        header.arm9_rom_offset     = toLittle(u32(0x4000));
-        header.arm9_size           = toLittle(u32(rom.arm9.len));
-        header.arm9_overlay_offset = little.add(u32, header.arm9_rom_offset, header.arm9_size);
-        header.arm9_overlay_size   = toLittle(u32(rom.arm9_overlay_table.len * @sizeOf(Overlay)));
+            break :blk encoded;
+        });
         if (rom.hasNitroFooter()) {
-            header.arm9_overlay_offset = toLittle(header.arm9_overlay_offset.get() + @sizeOf(@typeOf(rom.nitro_footer)));
+            try file.write(([]u8)(rom.nitro_footer[0..]));
         }
 
-        header.arm7_rom_offset     = toLittle(common.@"align"(header.arm9_overlay_offset.get() + header.arm9_overlay_size.get(), u32(0x200)));
-        header.arm7_size           = toLittle(u32(rom.arm7.len));
-        header.arm7_overlay_offset = toLittle(header.arm7_rom_offset.get() + header.arm7_size.get());
+        try file.seekTo(common.@"align"(try file.getPos(), 0x200));
+        header.arm7_rom_offset = toLittle(u32(try file.getPos()));
+        header.arm7_size       = toLittle(u32(rom.arm7.len));
+        try file.write(rom.arm7);
+
+        try file.seekTo(common.@"align"(try file.getPos(), 0x200));
+        header.banner_offset  = toLittle(u32(try file.getPos()));
+        header.banner_size    = toLittle(u32(@sizeOf(Banner)));
+        try file.write(utils.toBytes(Banner, rom.banner));
+
+        const fntAndFiles = try fs.getFntAndFiles(fs.NitroFile, rom.tree, allocator);
+        const files = fntAndFiles.files;
+        const main_fnt = fntAndFiles.main_fnt;
+        const sub_fnt = fntAndFiles.sub_fnt;
+        defer {
+            allocator.free(files);
+            allocator.free(main_fnt);
+            allocator.free(sub_fnt);
+        }
+
+        try file.seekTo(common.@"align"(try file.getPos(), 0x200));
+        header.fnt_offset = toLittle(u32(try file.getPos()));
+        header.fnt_size   = toLittle(u32(main_fnt.len * @sizeOf(fs.FntMainEntry) + sub_fnt.len));
+        try file.write(([]u8)(main_fnt));
+        try file.write(sub_fnt);
+
+        var fat = std.ArrayList(fs.FatEntry).init(allocator);
+        try fat.ensureCapacity(files.len + rom.arm9_overlay_files.len + rom.arm7_overlay_files.len);
+
+        for (files) |f| {
+            const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
+            try file.seekTo(pos);
+            try fs.writeFile(fs.NitroFile, file, allocator, f);
+            fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
+        }
+
+        for (rom.arm9_overlay_files) |f, i| {
+            const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
+            try file.seekTo(pos);
+            try file.write(f);
+            fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
+
+            const table_entry = &rom.arm9_overlay_table[i];
+            table_entry.overlay_id = toLittle(u32(i));
+            table_entry.file_id = toLittle(u32(files.len + i));
+        }
+
+        for (rom.arm7_overlay_files) |f, i| {
+            const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
+            try file.seekTo(pos);
+            try file.write(f);
+            fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
+
+            const table_entry = &rom.arm7_overlay_table[i];
+            table_entry.overlay_id = toLittle(u32(i));
+            table_entry.file_id = toLittle(u32(rom.arm9_overlay_files.len + files.len + i));
+        }
+
+        try file.seekTo(common.@"align"(try file.getPos(), 0x200));
+        header.fat_offset = toLittle(u32(try file.getPos()));
+        header.fat_size   = toLittle(u32((files.len + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
+        try file.write(([]const u8)(fat.toSliceConst()));
+
+        header.arm9_overlay_offset = toLittle(u32(try file.getPos()));
+        header.arm9_overlay_size   = toLittle(u32(rom.arm9_overlay_table.len * @sizeOf(Overlay)));
+        try file.write(([]const u8)(rom.arm9_overlay_table));
+
+        header.arm7_overlay_offset = toLittle(u32(try file.getPos()));
         header.arm7_overlay_size   = toLittle(u32(rom.arm7_overlay_table.len * @sizeOf(Overlay)));
-        header.banner_offset       = toLittle(common.@"align"(header.arm7_overlay_offset.get() + header.arm7_overlay_size.get(), u32(0x200)));
-        header.banner_size         = toLittle(u32(@sizeOf(Banner)));
-        header.fnt_offset          = toLittle(common.@"align"(header.banner_offset.get() + header.banner_size.get(), u32(0x200)));
-        header.fnt_size            = toLittle(u32(fs_info.folders * @sizeOf(fs.FntMainEntry) + fs_info.fnt_sub_size));
-        header.fat_offset          = toLittle(common.@"align"(header.fnt_offset.get() + header.fnt_size.get(), u32(0x200)));
-        header.fat_size            = toLittle(u32((fs_info.files + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
+        try file.write(([]const u8)(rom.arm7_overlay_table));
 
-        const file_offset = header.fat_offset.get() + header.fat_size.get();
-        var overlay_writer = overlay.Writer.init(file, file_offset, 0);
-        try overlay_writer.writeOverlayFiles(rom.arm9_overlay_table, rom.arm9_overlay_files, header.fat_offset.get());
-        try overlay_writer.writeOverlayFiles(rom.arm7_overlay_table, rom.arm7_overlay_files, header.fat_offset.get());
-
-        var fs_writer = fs.FSWriter(fs.NitroFile).init(file, overlay_writer.file_offset, overlay_writer.file_id);
-        try fs_writer.writeFileSystem(rom.tree, header.fnt_offset.get(), header.fat_offset.get(), 0, fs_info.folders);
-
-        header.total_used_rom_size = toLittle( common.@"align"(fs_writer.file_offset, u32(4)));
+        header.total_used_rom_size = toLittle(common.@"align"(u32(try file.getPos()), u32(4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
@@ -157,25 +212,6 @@ pub const Rom = struct {
         try header.validate();
         try file.seekTo(0x00);
         try file.write(utils.toBytes(Header, header));
-        try file.seekTo(header.arm9_rom_offset.get());
-        try file.write(blk: {
-            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, true, allocator);
-            // defer allocator.free(encoded);
-
-            break :blk encoded;
-        });
-        if (rom.hasNitroFooter()) {
-            try file.write(([]u8)(rom.nitro_footer[0..]));
-        }
-
-        try file.seekTo(header.arm9_overlay_offset.get());
-        try file.write(([]u8)(rom.arm9_overlay_table));
-        try file.seekTo(header.arm7_rom_offset.get());
-        try file.write(rom.arm7);
-        try file.seekTo(header.arm7_overlay_offset.get());
-        try file.write(([]u8)(rom.arm7_overlay_table));
-        try file.seekTo(header.banner_offset.get());
-        try file.write(utils.toBytes(Banner, rom.banner));
     }
 
     pub fn hasNitroFooter(rom: &const Rom) bool {

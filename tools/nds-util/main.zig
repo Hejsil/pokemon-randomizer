@@ -72,7 +72,7 @@ fn writeFs(folder: []const u8, fs: &const nds.fs.Tree(nds.fs.NitroFile)) error!v
         var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
         var file = try os.File.openWrite(&fixed_allocator.allocator, try path.join(&fixed_allocator.allocator, folder, f.name));
         defer file.close();
-        _ = try nds.fs.writeFile(nds.fs.NitroFile, &file, f);
+        _ = try nds.fs.writeFile(nds.fs.NitroFile, &file, &fixed_allocator.allocator, f);
     }
 
     for (fs.root.folders.toSliceConst()) |f| {
