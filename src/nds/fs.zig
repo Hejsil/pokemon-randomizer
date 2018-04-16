@@ -421,7 +421,7 @@ pub fn getFntAndFiles(comptime FileType: type, tree: &Tree(FileType), allocator:
         for (state.folder.folders.toSliceConst()) |folder| {
             try sub_fnt.appendByte(u8(folder.name.len + 0x80));
             try sub_fnt.append(folder.name);
-            try sub_fnt.append(toLittle(u16(states.len)).bytes);
+            try sub_fnt.append(toLittle(u16(states.len + 0xF000)).bytes);
 
             try states.append(State {
                 .folder = folder,
@@ -432,7 +432,7 @@ pub fn getFntAndFiles(comptime FileType: type, tree: &Tree(FileType), allocator:
         try sub_fnt.appendByte(0x00);
     }
 
-    main_fnt.items[0].parent_id = toLittle(u16(files.len));
+    main_fnt.items[0].parent_id = toLittle(u16(main_fnt.len));
     for (main_fnt.toSlice()) |*entry| {
         entry.offset_to_subtable = toLittle(u32(main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.get()));
     }
