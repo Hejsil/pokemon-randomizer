@@ -10,6 +10,7 @@ const heap  = std.heap;
 const io    = std.io;
 const os    = std.os;
 const math  = std.math;
+const fmt   = std.fmt;
 
 const assert = debug.assert;
 
@@ -320,6 +321,9 @@ fn readFile(comptime FileType: type, tree: &Tree(FileType), file: &os.File, tmp_
             const fnt = try utils.file.allocRead(file, tmp_allocator, u8, fnt_size);
             defer tmp_allocator.free(fnt);
 
+            const fnt_end = try file.getPos();
+            debug.assert(fnt_end % 4 == 0);
+
             const first_fnt = utils.slice.atOrNull(([]FntMainEntry)(fnt[0..fnt.len - (fnt.len % @sizeOf(FntMainEntry))]), 0) ?? return error.InvalidChunkSize;
 
             const file_data_header = try utils.file.read(file, formats.Chunk);
@@ -334,10 +338,10 @@ fn readFile(comptime FileType: type, tree: &Tree(FileType), file: &os.File, tmp_
                 const files = &sub_tree.root.files;
                 try files.ensureCapacity(fat_chunk.file_count.get());
 
-                for (fat) |entry| {
-                    const sub_file_name = try mem.dupe(&sub_tree.arena.allocator, u8, "");
+                for (fat) |entry, i| {
+                    const sub_file_name = try fmt.allocPrint(&sub_tree.arena.allocator, "{}", i);
                     const sub_file = try readFile(NarcFile, sub_tree, file, tmp_allocator, entry, narc_img_base, sub_file_name);
-                    try files.append(sub_file);
+                    files.append(sub_file) catch unreachable;
                 }
 
                 return tree.createFile(
@@ -413,6 +417,7 @@ pub fn getFntAndFiles(comptime FileType: type, tree: &Tree(FileType), allocator:
         });
 
         for (state.folder.files.toSliceConst()) |f| {
+            debug.assert(f.name.len != 0x00); // TODO: We should probably return an error here instead of asserting
             try sub_fnt.appendByte(u8(f.name.len));
             try sub_fnt.append(f.name);
             try files.append(f);
@@ -558,61 +563,64 @@ pub fn writeFile(comptime FileType: type, file: &os.File, allocator: &mem.Alloca
                     allocator.free(sub_fnt);
                 }
 
-                const fat_chunk_size = @sizeOf(formats.FatChunk) + files.len * @sizeOf(FatEntry);
-                const fnt_chunk_size = common.@"align"(@sizeOf(formats.Chunk) + sub_fnt.len + main_fnt.len * @sizeOf(FntMainEntry), u32(4));
-                const narc_img_base = (try file.getPos()) + @sizeOf(formats.Header) + fat_chunk_size + fnt_chunk_size + @sizeOf(formats.Chunk);
-                const file_data_size = blk: {
-                    var res = narc_img_base + @sizeOf(formats.Chunk);
+                const file_start = try file.getPos();
+                const fat_start = file_start + @sizeOf(formats.Header);
+                const fnt_start = fat_start + @sizeOf(formats.FatChunk) + files.len * @sizeOf(FatEntry);
+                const file_image_start = common.@"align"(fnt_start + @sizeOf(formats.Chunk) + sub_fnt.len + main_fnt.len * @sizeOf(FntMainEntry), u32(0x4));
+                const narc_img_base = file_image_start + @sizeOf(formats.Chunk);
+                const file_end = blk: {
+                    var res = narc_img_base;
                     for (files) |f| {
-                        res += 0x200;
                         res += f.data.len;
                     }
 
-                    break :blk res - narc_img_base;
+                    break :blk res;
                 };
-                const file_size = @sizeOf(formats.Header) + fat_chunk_size + fnt_chunk_size + file_data_size;
 
-                try file.write(utils.toBytes(formats.Header, formats.Header.narc(u32(file_size))));
+                try file.write(utils.toBytes(formats.Header, formats.Header.narc(u32(file_end - file_start))));
+                assert(fat_start == try file.getPos());
                 try file.write(
                     utils.toBytes(formats.FatChunk, formats.FatChunk {
                         .header = formats.Chunk {
                             .name = formats.Chunk.names.fat,
-                            .size = toLittle(u32(fat_chunk_size))
+                            .size = toLittle(u32(fnt_start - fat_start))
                         },
                         .file_count = toLittle(u16(files.len)),
                         .reserved = toLittle(u16(0x00)),
                     })
                 );
 
-                var start = narc_img_base;
+                var start = u32(0);
                 for (files) |f| {
-                    start = common.@"align"(start, u32(0x200));
-                    try file.write(utils.toBytes(FatEntry, FatEntry.init(u32(start - narc_img_base), u32(f.data.len))));
-                    start += f.data.len;
+                    const fat_entry = FatEntry.init(start, u32(f.data.len));
+                    try file.write(utils.toBytes(FatEntry, fat_entry));
+                    start += u32(f.data.len);
                 }
 
+                assert(fnt_start == try file.getPos());
                 try file.write(
                     utils.toBytes(formats.Chunk, formats.Chunk {
                         .name = formats.Chunk.names.fnt,
-                        .size = toLittle(u32(fnt_chunk_size)),
+                        .size = toLittle(u32(file_image_start - fnt_start)),
                     })
                 );
                 try file.write(([]u8)(main_fnt));
                 try file.write(sub_fnt);
                 try file.seekTo(common.@"align"(try file.getPos(), 4));
 
+                assert(file_image_start == try file.getPos());
                 try file.write(
                     utils.toBytes(formats.Chunk, formats.Chunk {
                         .name = formats.Chunk.names.file_data,
-                        .size = toLittle(u32(file_data_size)),
+                        .size = toLittle(u32(file_end - file_image_start)),
                     })
                 );
                 assert(narc_img_base == try file.getPos());
                 for (files) |f| {
-                    const pos = common.@"align"(try file.getPos(), u32(0x200));
-                    try file.seekTo(pos);
                     try writeFile(NarcFile, file, allocator, f);
                 }
+
+                assert(file_end == try file.getPos());
             },
         }
     } else if (FileType == NarcFile) {
