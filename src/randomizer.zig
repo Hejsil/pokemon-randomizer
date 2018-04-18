@@ -127,13 +127,10 @@ pub fn randomize(game: var, options: &const Options, random: &rand.Random, alloc
 
     var species : u16 = 0;
     while (game.getBasePokemon(species)) |pokemon| : (species += 1) {
-        debug.warn("species: {}, types:", species);
         for (pokemon.types) |t| {
             if (pokemons_by_type.len <= u8(t)) continue;
-            debug.warn(" {},", @tagName(t));
             try pokemons_by_type[u8(t)].append(species);
         }
-        debug.warn("\n");
     }
 
     try randomizeTrainers(game, pokemons_by_type[0..], options.trainer, random, allocator);
