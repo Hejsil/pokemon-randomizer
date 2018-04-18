@@ -144,11 +144,11 @@ pub const LevelUpMove = packed struct {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
-    base_stats: []const &nds.fs.NarcFile,
-    moves: []const &nds.fs.NarcFile,
-    level_up_moves: []const &nds.fs.NarcFile,
-    trainer_data: []const &nds.fs.NarcFile,
-    trainer_pokemons: []const &nds.fs.NarcFile,
+    base_stats: []const &nds.fs.Narc.File,
+    moves: []const &nds.fs.Narc.File,
+    level_up_moves: []const &nds.fs.Narc.File,
+    trainer_data: []const &nds.fs.Narc.File,
+    trainer_pokemons: []const &nds.fs.Narc.File,
     tms1: []Little(u16),
     hms: []Little(u16),
     tms2: []Little(u16),
@@ -162,27 +162,27 @@ pub const Game = struct {
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(tm_count + hm_count) * @sizeOf(u16)]);
 
         return Game {
-            .base_stats       = getNarcFiles(rom.tree, "a/0/1/6") ?? return error.Err,
-            .level_up_moves   = getNarcFiles(rom.tree, "a/0/1/8") ?? return error.Err,
-            .moves            = getNarcFiles(rom.tree, "a/0/2/1") ?? return error.Err,
-            .trainer_data     = getNarcFiles(rom.tree, "a/0/9/1") ?? return error.Err,
-            .trainer_pokemons = getNarcFiles(rom.tree, "a/0/9/2") ?? return error.Err,
+            .base_stats       = getNarcFiles(rom.file_system, "a/0/1/6") ?? return error.Err,
+            .level_up_moves   = getNarcFiles(rom.file_system, "a/0/1/8") ?? return error.Err,
+            .moves            = getNarcFiles(rom.file_system, "a/0/2/1") ?? return error.Err,
+            .trainer_data     = getNarcFiles(rom.file_system, "a/0/9/1") ?? return error.Err,
+            .trainer_pokemons = getNarcFiles(rom.file_system, "a/0/9/2") ?? return error.Err,
             .tms1             = hm_tms[0..92],
             .hms              = hm_tms[92..98],
             .tms2             = hm_tms[98..],
         };
     }
 
-    fn getNarcFiles(tree: &const nds.fs.Tree(nds.fs.NitroFile), path: []const u8) ?[]const &nds.fs.NarcFile {
-        const file = tree.getFile(path) ?? return null;
+    fn getNarcFiles(file_system: &const nds.fs.Nitro, path: []const u8) ?[]const &nds.fs.Narc.File {
+        const file = file_system.getFile(path) ?? return null;
 
         switch (file.@"type") {
-            nds.fs.NitroFile.Type.Binary => return null,
-            nds.fs.NitroFile.Type.Narc => |f| return f.root.files.toSliceConst(),
+            nds.fs.Nitro.File.Type.Binary => return null,
+            nds.fs.Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
         }
     }
 
-    fn getFileAsType(comptime T: type, files: []const &nds.fs.NarcFile, index: usize) ?&T {
+    fn getFileAsType(comptime T: type, files: []const &nds.fs.Narc.File, index: usize) ?&T {
         const file = utils.slice.atOrNull(files, index) ?? return null;
         const data = file.data;
         const len = data.len - (data.len % @sizeOf(T));

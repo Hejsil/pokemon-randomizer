@@ -45,7 +45,7 @@ pub const Rom = struct {
     arm7_overlay_files: [][]u8,
 
     banner: Banner,
-    tree: &fs.Tree(fs.NitroFile),
+    file_system: &fs.Nitro,
 
     allocator: &mem.Allocator,
 
@@ -93,8 +93,8 @@ pub const Rom = struct {
         const fnt = try utils.file.seekToAllocRead(file, header.fnt_offset.get(), allocator, u8, header.fnt_size.get());
         const fat = try utils.file.seekToAllocRead(file, header.fat_offset.get(), allocator, fs.FatEntry, header.fat_size.get() / @sizeOf(fs.FatEntry));
 
-        const tree = try fs.read(file, allocator, fnt, fat);
-        errdefer tree.destroy(allocator);
+        const file_system = try fs.read(file, allocator, fnt, fat);
+        errdefer file_system.destroy(allocator);
 
         return Rom {
             .header = header,
@@ -106,7 +106,7 @@ pub const Rom = struct {
             .arm7_overlay_table = arm7_overlay_table,
             .arm7_overlay_files = arm7_overlay_files,
             .banner = banner,
-            .tree = tree,
+            .file_system = file_system,
             .allocator = allocator,
         };
     }
@@ -143,7 +143,7 @@ pub const Rom = struct {
         header.banner_offset  = toLittle(u32(banner_pos));
         header.banner_size    = toLittle(u32(@sizeOf(Banner)));
 
-        const fntAndFiles = try fs.getFntAndFiles(fs.NitroFile, rom.tree, allocator);
+        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro.File, rom.file_system, allocator);
         const files = fntAndFiles.files;
         const main_fnt = fntAndFiles.main_fnt;
         const sub_fnt = fntAndFiles.sub_fnt;
@@ -167,7 +167,7 @@ pub const Rom = struct {
         for (files) |f| {
             const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
             try file.seekTo(pos);
-            try fs.writeFile(fs.NitroFile, file, allocator, f);
+            try fs.writeNitroFile(file, allocator, f);
             fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
         }
 
@@ -239,6 +239,6 @@ pub const Rom = struct {
         rom.allocator.free(rom.arm7_overlay_table);
         overlay.freeFiles(rom.arm9_overlay_files, rom.allocator);
         overlay.freeFiles(rom.arm7_overlay_files, rom.allocator);
-        rom.tree.deinit();
+        rom.file_system.deinit();
     }
 };
