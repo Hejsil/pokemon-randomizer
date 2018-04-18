@@ -47,34 +47,3 @@ pub fn freeFiles(files: [][]u8, allocator: &mem.Allocator) void {
     for (files) |file| allocator.free(file);
     allocator.free(files);
 }
-
-pub const Writer = struct {
-    file: &os.File,
-    file_offset: u32,
-    file_id: u16,
-
-    fn init(file: &os.File, file_offset: u32, start_file_id: u16) Writer {
-        return Writer {
-            .file = file,
-            .file_offset = file_offset,
-            .file_id = start_file_id,
-        };
-    }
-
-    fn writeOverlayFiles(writer: &Writer, overlay_table: []Overlay, overlay_files: []const []u8, fat_offset: usize) !void {
-        for (overlay_table) |*overlay_entry, i| {
-            const overlay_file = overlay_files[i];
-            const fat_entry = fs.FatEntry.init(common.@"align"(writer.file_offset, u32(0x200)), u32(overlay_file.len));
-            try writer.file.seekTo(fat_offset + (writer.file_id * @sizeOf(fs.FatEntry)));
-            try writer.file.write(utils.toBytes(fs.FatEntry, fat_entry));
-
-            try writer.file.seekTo(fat_entry.start.get());
-            try writer.file.write(overlay_file);
-
-            overlay_entry.overlay_id = toLittle(u32(i));
-            overlay_entry.file_id = toLittle(u32(writer.file_id));
-            writer.file_offset = u32(try writer.file.getPos());
-            writer.file_id += 1;
-        }
-    }
-};

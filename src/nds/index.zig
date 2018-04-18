@@ -129,15 +129,13 @@ pub const Rom = struct {
         header.arm9_rom_offset = toLittle(u32(arm9_pos));
         header.arm9_size       = toLittle(u32(rom.arm9.len));
 
-        const arm7_pos = common.@"align"(try file.getPos(), 0x200);
-        try file.seekTo(arm7_pos);
+        const arm7_pos = try file.getPos();
         try file.write(rom.arm7);
 
         header.arm7_rom_offset = toLittle(u32(arm7_pos));
         header.arm7_size       = toLittle(u32(rom.arm7.len));
 
-        const banner_pos = common.@"align"(try file.getPos(), 0x200);
-        try file.seekTo(banner_pos);
+        const banner_pos = try file.getPos();
         try file.write(utils.toBytes(Banner, rom.banner));
 
         header.banner_offset  = toLittle(u32(banner_pos));
@@ -153,8 +151,7 @@ pub const Rom = struct {
             allocator.free(sub_fnt);
         }
 
-        const fnt_pos = common.@"align"(try file.getPos(), 0x200);
-        try file.seekTo(fnt_pos);
+        const fnt_pos = try file.getPos();
         try file.write(([]u8)(main_fnt));
         try file.write(sub_fnt);
 
@@ -165,15 +162,13 @@ pub const Rom = struct {
         try fat.ensureCapacity(files.len + rom.arm9_overlay_files.len + rom.arm7_overlay_files.len);
 
         for (files) |f| {
-            const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
-            try file.seekTo(pos);
+            const pos = u32(try file.getPos());
             try fs.writeNitroFile(file, allocator, f);
             fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
         }
 
         for (rom.arm9_overlay_files) |f, i| {
-            const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
-            try file.seekTo(pos);
+            const pos = u32(try file.getPos());
             try file.write(f);
             fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
 
@@ -183,8 +178,7 @@ pub const Rom = struct {
         }
 
         for (rom.arm7_overlay_files) |f, i| {
-            const pos = common.@"align"(u32(try file.getPos()), u32(0x200));
-            try file.seekTo(pos);
+            const pos = u32(try file.getPos());
             try file.write(f);
             fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
 
@@ -193,8 +187,7 @@ pub const Rom = struct {
             table_entry.file_id = toLittle(u32(rom.arm9_overlay_files.len + files.len + i));
         }
 
-        const fat_pos = common.@"align"(try file.getPos(), 0x200);
-        try file.seekTo(fat_pos);
+        const fat_pos = try file.getPos();
         try file.write(([]const u8)(fat.toSliceConst()));
 
         header.fat_offset = toLittle(u32(fat_pos));
