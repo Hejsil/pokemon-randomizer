@@ -140,8 +140,8 @@ pub fn readNitro(file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat
     return readHelper(Nitro, file, allocator, fnt, fat, 0);
 }
 
-pub fn readNarc(file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry) !&Narc {
-    return readHelper(Narc, file, allocator, fnt, fat, 0);
+pub fn readNarc(file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !&Narc {
+    return readHelper(Narc, file, allocator, fnt, fat, img_base);
 }
 
 fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !&Fs {

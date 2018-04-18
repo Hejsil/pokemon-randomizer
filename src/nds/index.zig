@@ -93,7 +93,7 @@ pub const Rom = struct {
         const fnt = try utils.file.seekToAllocRead(file, header.fnt_offset.get(), allocator, u8, header.fnt_size.get());
         const fat = try utils.file.seekToAllocRead(file, header.fat_offset.get(), allocator, fs.FatEntry, header.fat_size.get() / @sizeOf(fs.FatEntry));
 
-        const file_system = try fs.read(file, allocator, fnt, fat);
+        const file_system = try fs.readNitro(file, allocator, fnt, fat);
         errdefer file_system.destroy(allocator);
 
         return Rom {
