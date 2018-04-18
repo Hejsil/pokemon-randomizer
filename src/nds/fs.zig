@@ -240,7 +240,16 @@ fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt:
 pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !&Nitro.File {
     narc_read: {
         const names = formats.Chunk.names;
-        const header = utils.file.seekToRead(file, fat_entry.start.get() + img_base, formats.Header) catch break :narc_read;
+
+        try file.seekTo(fat_entry.start.get() + img_base);
+        const file_start = try file.getPos();
+
+        var file_in_stream = io.FileInStream.init(file);
+        var buffered_in_stream = io.BufferedInStream(io.FileInStream.Error).init(&file_in_stream.stream);
+
+        const stream = &buffered_in_stream.stream;
+
+        const header = utils.stream.read(stream, formats.Header) catch break :narc_read;
         if (!mem.eql(u8, header.chunk_name, names.narc)) break :narc_read;
         if (header.byte_order.get() != 0xFFFE)           break :narc_read;
         if (header.chunk_size.get() != 0x0010)           break :narc_read;
@@ -248,32 +257,33 @@ pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, 
 
         // If we have a valid narc header, then we assume we are reading a narc
         // file. All error from here, are therefore bubbled up.
-        const fat_chunk = try utils.file.read(file, formats.FatChunk);
-        const fat_size = math.sub(u32, fat_chunk.header.size.get(), @sizeOf(formats.FatChunk)) catch return error.InvalidChunkSize;
+        const fat_header = try utils.stream.read(stream, formats.FatChunk);
+        const fat_size = math.sub(u32, fat_header.header.size.get(), @sizeOf(formats.FatChunk)) catch return error.InvalidChunkSize;
 
-        if (!mem.eql(u8, fat_chunk.header.name, names.fat)) return error.InvalidChunkName;
+        if (!mem.eql(u8, fat_header.header.name, names.fat)) return error.InvalidChunkName;
         if (fat_size % @sizeOf(FatEntry) != 0) return error.InvalidChunkSize;
-        if (fat_size / @sizeOf(FatEntry) != fat_chunk.file_count.get()) return error.InvalidChunkSize;
+        if (fat_size / @sizeOf(FatEntry) != fat_header.file_count.get()) return error.InvalidChunkSize;
 
-        const fat = try utils.file.allocRead(file, tmp_allocator, FatEntry, fat_chunk.file_count.get());
+        const fat = try utils.stream.allocRead(stream, tmp_allocator, FatEntry, fat_header.file_count.get());
         defer tmp_allocator.free(fat);
 
-        const fnt_header = try utils.file.read(file, formats.Chunk);
+        const fnt_header = try utils.stream.read(stream, formats.Chunk);
         const fnt_size = math.sub(u32, fnt_header.size.get(), @sizeOf(formats.Chunk)) catch return error.InvalidChunkSize;
 
         if (!mem.eql(u8, fnt_header.name, names.fnt)) return error.InvalidChunkName;
 
-        const fnt = try utils.file.allocRead(file, tmp_allocator, u8, fnt_size);
+        const fnt = try utils.stream.allocRead(stream, tmp_allocator, u8, fnt_size);
         defer tmp_allocator.free(fnt);
-
-        const fnt_end = try file.getPos();
-        debug.assert(fnt_end % 4 == 0);
 
         const first_fnt = utils.slice.atOrNull(([]FntMainEntry)(fnt[0..fnt.len - (fnt.len % @sizeOf(FntMainEntry))]), 0) ?? return error.InvalidChunkSize;
 
-        const file_data_header = try utils.file.read(file, formats.Chunk);
-        const narc_img_base    = try file.getPos();
+        const file_data_header = try utils.stream.read(stream, formats.Chunk);
         if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
+
+        // Since we are using buffered input, be have to seek back to the narc_img_base,
+        // when we start reading the file system
+        const narc_img_base = file_start + @sizeOf(formats.Header) + fat_header.header.size.get() + fnt_header.size.get() + @sizeOf(formats.Chunk);
+        try file.seekTo(narc_img_base);
 
         // If the first_fnt's offset points into it self, then there doesn't exist an
         // fnt sub table and files don't have names. We therefore can't use our normal
@@ -281,7 +291,7 @@ pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, 
         if (first_fnt.offset_to_subtable.get() < @sizeOf(FntMainEntry)) {
             const sub_fs = try Narc.alloc(&fs.arena.allocator);
             const files = &sub_fs.root.files;
-            try files.ensureCapacity(fat_chunk.file_count.get());
+            try files.ensureCapacity(fat_header.file_count.get());
 
             for (fat) |entry, i| {
                 const sub_file_name = try fmt.allocPrint(&sub_fs.arena.allocator, "{}", i);
@@ -424,9 +434,13 @@ pub fn writeNitroFile(file: &os.File, allocator: &mem.Allocator, fs_file: &const
                 break :blk res;
             };
 
-            try file.write(utils.toBytes(formats.Header, formats.Header.narc(u32(file_end - file_start))));
-            assert(fat_start == try file.getPos());
-            try file.write(
+            var file_out_stream = io.FileOutStream.init(file);
+            var buffered_out_stream = io.BufferedOutStream(io.FileOutStream.Error).init(&file_out_stream.stream);
+
+            const stream = &buffered_out_stream.stream;
+
+            try stream.write(utils.toBytes(formats.Header, formats.Header.narc(u32(file_end - file_start))));
+            try stream.write(
                 utils.toBytes(formats.FatChunk, formats.FatChunk {
                     .header = formats.Chunk {
                         .name = formats.Chunk.names.fat,
@@ -440,34 +454,34 @@ pub fn writeNitroFile(file: &os.File, allocator: &mem.Allocator, fs_file: &const
             var start = u32(0);
             for (files) |f| {
                 const fat_entry = FatEntry.init(start, u32(f.data.len));
-                try file.write(utils.toBytes(FatEntry, fat_entry));
+                try stream.write(utils.toBytes(FatEntry, fat_entry));
                 start += u32(f.data.len);
             }
 
-            assert(fnt_start == try file.getPos());
-            try file.write(
+            try stream.write(
                 utils.toBytes(formats.Chunk, formats.Chunk {
                     .name = formats.Chunk.names.fnt,
                     .size = toLittle(u32(file_image_start - fnt_start)),
                 })
             );
-            try file.write(([]u8)(main_fnt));
-            try file.write(sub_fnt);
+            try stream.write(([]u8)(main_fnt));
+            try stream.write(sub_fnt);
+
+            // Flush here, so we can align our fnt
+            try buffered_out_stream.flush();
             try file.seekTo(common.@"align"(try file.getPos(), 4));
 
-            assert(file_image_start == try file.getPos());
-            try file.write(
+            try stream.write(
                 utils.toBytes(formats.Chunk, formats.Chunk {
                     .name = formats.Chunk.names.file_data,
                     .size = toLittle(u32(file_end - file_image_start)),
                 })
             );
-            assert(narc_img_base == try file.getPos());
             for (files) |f| {
-                try file.write(f.data);
+                try stream.write(f.data);
             }
 
-            assert(file_end == try file.getPos());
+            try buffered_out_stream.flush();
         },
     }
 }

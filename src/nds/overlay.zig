@@ -22,7 +22,7 @@ pub const Overlay = packed struct {
     reserved: [4]u8,
 };
 
-pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat_offset: usize) ![][]u8 {
+pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Overlay, fat: []fs.FatEntry) ![][]u8 {
     var results = std.ArrayList([]u8).init(allocator);
     try results.ensureCapacity(overlay_table.len);
     errdefer {
@@ -30,17 +30,13 @@ pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Ove
         results.deinit();
     }
 
-    var file_stream = io.FileInStream.init(file);
-    var stream = &file_stream.stream;
-
     for (overlay_table) |overlay, i| {
-        const offset = (overlay.file_id.get() & 0x0FFF) * @sizeOf(fs.FatEntry);
+        const id = overlay.file_id.get() & 0x0FFF;
 
-        var fat_entry : fs.FatEntry = undefined;
-        try file.seekTo(fat_offset + offset);
-        try stream.readNoEof(utils.asBytes(fs.FatEntry, &fat_entry));
+        const start = fat[id].start.get();
+        const size = fat[id].getSize();
 
-        const overay_file = try utils.file.seekToAllocRead(file, fat_entry.start.get(), allocator, u8, fat_entry.getSize());
+        const overay_file = try utils.file.seekToAllocRead(file, start, allocator, u8, size);
         try results.append(overay_file);
     }
 
