@@ -7,6 +7,7 @@ const heap  = std.heap;
 const os    = std.os;
 const io    = std.io;
 const fmt   = std.fmt;
+const mem   = std.mem;
 const debug = std.debug;
 const path  = os.path;
 
@@ -53,76 +54,90 @@ pub fn main() !void {
     try os.makePath(&path_allocator.allocator, arm7_overlay_folder);
     try os.makePath(&path_allocator.allocator, root_folder);
 
-    try writeToFileInFolder(out_folder, "arm9", rom.arm9);
-    try writeToFileInFolder(out_folder, "arm7", rom.arm7);
-    try writeToFileInFolder(out_folder, "banner", utils.toBytes(nds.Banner, rom.banner));
+    try writeToFileInFolder(out_folder, "arm9", rom.arm9, allocator);
+    try writeToFileInFolder(out_folder, "arm7", rom.arm7, allocator);
+    try writeToFileInFolder(out_folder, "banner", utils.toBytes(nds.Banner, rom.banner), allocator);
 
     if (rom.hasNitroFooter())
-        try writeToFileInFolder(out_folder, "nitro_footer", utils.toBytes(@typeOf(rom.nitro_footer), rom.nitro_footer));
+        try writeToFileInFolder(out_folder, "nitro_footer", utils.toBytes(@typeOf(rom.nitro_footer), rom.nitro_footer), allocator);
 
-    try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files);
-    try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files);
+    try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files, allocator);
+    try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files, allocator);
 
     try writeFs(root_folder, rom.file_system, allocator);
 }
 
-fn writeFs(folder: []const u8, fs: &const nds.fs.Nitro, allocator: &std.mem.Allocator) error!void {
-    for (fs.root.files.toSliceConst()) |f| {
-        var buffer : [1024 * 4]u8 = undefined;
-        var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
-        var file = try os.File.openWrite(&fixed_allocator.allocator, try path.join(&fixed_allocator.allocator, folder, f.name));
-        defer file.close();
-        try nds.fs.writeNitroFile(&file, allocator, f);
-    }
+fn writeFs(folder: []const u8, fs: &const nds.fs.Nitro, allocator: &mem.Allocator) !void {
+    const State = struct {
+        path: []const u8,
+        folder: &nds.fs.Nitro.Folder,
+    };
 
-    for (fs.root.folders.toSliceConst()) |f| {
-        var buffer : [1024 * 4]u8 = undefined;
-        var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
-        const sub_folder = try path.join(&fixed_allocator.allocator, folder, f.name);
-        try os.makePath(&fixed_allocator.allocator, sub_folder);
-        try writeFs(sub_folder, nds.fs.Nitro {
-            .arena = fs.arena,
-            .root = f,
-        }, allocator);
-    }
-}
+    var stack = std.ArrayList(State).init(allocator);
+    defer stack.deinit();
 
-fn writeOverlays(folder: []const u8, overlays: []const nds.Overlay, files: []const []const u8) !void {
-    {
-        var path_buffer : [1024 * 6]u8 = undefined;
-        var path_allocator = heap.FixedBufferAllocator.init(path_buffer[0..]);
-        const overlay_path  = try path.join(&path_allocator.allocator, folder, "overlay");
+    try stack.append(State {
+        .path = try mem.dupe(allocator, u8, folder),
+        .folder = fs.root,
+    });
 
-        for (overlays) |overlay, i| {
-            var buffer : [1024 * 2]u8 = undefined;
-            var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
-            try writeToFile(try fmt.allocPrint(&fixed_allocator.allocator, "{}{}", overlay_path, i), utils.toBytes(nds.Overlay, overlay));
+    while (stack.popOrNull()) |state| {
+        defer allocator.free(state.path);
+
+        for (state.folder.files.toSliceConst()) |f| {
+            const file_path = try path.join(allocator, state.path, f.name);
+            defer allocator.free(file_path);
+
+            var file = try os.File.openWrite(allocator, file_path);
+            defer file.close();
+
+            try nds.fs.writeNitroFile(&file, allocator, f);
         }
-    }
 
-    {
-        var path_buffer : [1024 * 6]u8 = undefined;
-        var path_allocator = heap.FixedBufferAllocator.init(path_buffer[0..]);
-        const file_path    = try path.join(&path_allocator.allocator, folder, "file");
+        for (state.folder.folders.toSliceConst()) |f| {
+            const folder_path = try path.join(allocator, state.path, f.name);
 
-        for (files) |file, i| {
-            var buffer : [1024 * 2]u8 = undefined;
-            var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
-            try writeToFile(try fmt.allocPrint(&fixed_allocator.allocator, "{}{}", file_path, i), file);
+            try os.makePath(allocator, folder_path);
+            try stack.append(State {
+                .path = folder_path,
+                .folder = f,
+            });
         }
     }
 }
 
-fn writeToFileInFolder(folder_path: []const u8, file: []const u8, data: []const u8) !void {
-    var buffer : [1024 * 2]u8 = undefined;
-    var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
-    try writeToFile(try path.join(&fixed_allocator.allocator, folder_path, file), data);
+fn writeOverlays(folder: []const u8, overlays: []const nds.Overlay, files: []const []const u8, allocator: &mem.Allocator) !void {
+    const overlay_folder_path = try path.join(allocator, folder, "overlay");
+    defer allocator.free(overlay_folder_path);
+
+    for (overlays) |overlay, i| {
+        const overlay_path = try fmt.allocPrint(allocator, "{}{}", overlay_folder_path, i);
+        defer allocator.free(overlay_path);
+
+        try writeToFile(overlay_path, utils.toBytes(nds.Overlay, overlay), allocator);
+    }
+
+    const file_folder_path = try path.join(allocator, folder, "file");
+    defer allocator.free(file_folder_path);
+
+    for (files) |file, i| {
+        const file_path = try fmt.allocPrint(allocator, "{}{}", file_folder_path, i);
+        defer allocator.free(file_path);
+
+        try writeToFile(file_path, file, allocator);
+    }
 }
 
-fn writeToFile(file_path: []const u8, data: []const u8) !void {
-    var buffer : [1024 * 2]u8 = undefined;
-    var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
-    var file = try os.File.openWrite(&fixed_allocator.allocator, file_path);
+fn writeToFileInFolder(folder_path: []const u8, file: []const u8, data: []const u8, allocator: &mem.Allocator) !void {
+    const joined_path = try path.join(allocator, folder_path, file);
+    defer allocator.free(joined_path);
+
+    try writeToFile(joined_path, data, allocator);
+}
+
+fn writeToFile(file_path: []const u8, data: []const u8, allocator: &mem.Allocator) !void {
+    var file = try os.File.openWrite(allocator, file_path);
     defer file.close();
+
     try file.write(data);
 }
