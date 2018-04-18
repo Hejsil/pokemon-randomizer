@@ -423,7 +423,8 @@ pub fn writeNitroFile(file: &os.File, allocator: &mem.Allocator, fs_file: &const
             const file_start = try file.getPos();
             const fat_start = file_start + @sizeOf(formats.Header);
             const fnt_start = fat_start + @sizeOf(formats.FatChunk) + files.len * @sizeOf(FatEntry);
-            const file_image_start = common.@"align"(fnt_start + @sizeOf(formats.Chunk) + sub_fnt.len + main_fnt.len * @sizeOf(FntMainEntry), u32(0x4));
+            const fnt_end = fnt_start + @sizeOf(formats.Chunk) + sub_fnt.len + main_fnt.len * @sizeOf(FntMainEntry);
+            const file_image_start = common.@"align"(fnt_end, u32(0x4));
             const narc_img_base = file_image_start + @sizeOf(formats.Chunk);
             const file_end = blk: {
                 var res = narc_img_base;
@@ -466,10 +467,7 @@ pub fn writeNitroFile(file: &os.File, allocator: &mem.Allocator, fs_file: &const
             );
             try stream.write(([]u8)(main_fnt));
             try stream.write(sub_fnt);
-
-            // Flush here, so we can align our fnt
-            try buffered_out_stream.flush();
-            try file.seekTo(common.@"align"(try file.getPos(), 4));
+            try stream.writeByteNTimes(0xFF, file_image_start - fnt_end);
 
             try stream.write(
                 utils.toBytes(formats.Chunk, formats.Chunk {
