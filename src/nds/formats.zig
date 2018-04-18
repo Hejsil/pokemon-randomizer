@@ -33,3 +33,9 @@ pub const Chunk = packed struct {
         const file_data = "GMIF";
     };
 };
+
+pub const FatChunk = packed struct {
+    header: Chunk,
+    file_count: Little(u16),
+    reserved: Little(u16),
+};

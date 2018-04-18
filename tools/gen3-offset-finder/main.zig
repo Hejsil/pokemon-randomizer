@@ -93,12 +93,10 @@ pub fn main() !void {
                 error.UnableToFindHmOffset              => debug.warn("Unable to find hms offset.\n"),
                 error.UnableToFindTmOffset              => debug.warn("Unable to find tms offset.\n"),
                 error.UnableToFindItemsOffset           => debug.warn("Unable to find items offset.\n"),
-                error.Io                                => debug.warn("Io.\n"),
                 error.OutOfMemory                       => debug.warn("Ran out of memory.\n"),
                 error.BadFd                             => debug.warn("BadFd.\n"),
                 error.Unexpected                        => debug.warn("An unexpected error occured.\n"),
                 error.StreamTooLong                     => debug.warn("StreamTooLong.\n"),
-                error.Unseekable                        => debug.warn("Unseekable.\n"),
                 error.Overflow                          => debug.warn("Overflow.\n"),
                 error.EndOfStream                       => debug.warn("EndOfStream.\n"),
             }

@@ -144,11 +144,11 @@ pub const LevelUpMove = packed struct {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
-    base_stats: []nds.fs.File,
-    moves: []nds.fs.File,
-    level_up_moves: []nds.fs.File,
-    trainer_data: []nds.fs.File,
-    trainer_pokemons: []nds.fs.File,
+    base_stats: []const &nds.fs.Narc.File,
+    moves: []const &nds.fs.Narc.File,
+    level_up_moves: []const &nds.fs.Narc.File,
+    trainer_data: []const &nds.fs.Narc.File,
+    trainer_pokemons: []const &nds.fs.Narc.File,
     tms1: []Little(u16),
     hms: []Little(u16),
     tms2: []Little(u16),
@@ -162,39 +162,31 @@ pub const Game = struct {
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(tm_count + hm_count) * @sizeOf(u16)]);
 
         return Game {
-            .base_stats       = getNarcFiles(rom.root, "a/0/1/6") ?? return error.Err,
-            .level_up_moves   = getNarcFiles(rom.root, "a/0/1/8") ?? return error.Err,
-            .moves            = getNarcFiles(rom.root, "a/0/2/1") ?? return error.Err,
-            .trainer_data     = getNarcFiles(rom.root, "a/0/9/1") ?? return error.Err,
-            .trainer_pokemons = getNarcFiles(rom.root, "a/0/9/2") ?? return error.Err,
+            .base_stats       = getNarcFiles(rom.file_system, "a/0/1/6") ?? return error.Err,
+            .level_up_moves   = getNarcFiles(rom.file_system, "a/0/1/8") ?? return error.Err,
+            .moves            = getNarcFiles(rom.file_system, "a/0/2/1") ?? return error.Err,
+            .trainer_data     = getNarcFiles(rom.file_system, "a/0/9/1") ?? return error.Err,
+            .trainer_pokemons = getNarcFiles(rom.file_system, "a/0/9/2") ?? return error.Err,
             .tms1             = hm_tms[0..92],
             .hms              = hm_tms[92..98],
             .tms2             = hm_tms[98..],
         };
     }
 
-    fn getNarcFiles(folder: &const nds.fs.Folder, path: []const u8) ?[]nds.fs.File {
-        const file = folder.getFile(path) ?? return null;
+    fn getNarcFiles(file_system: &const nds.fs.Nitro, path: []const u8) ?[]const &nds.fs.Narc.File {
+        const file = file_system.getFile(path) ?? return null;
 
         switch (file.@"type") {
-            nds.fs.File.Type.Binary => return null,
-            nds.fs.File.Type.Narc => |f| return f.files,
+            nds.fs.Nitro.File.Type.Binary => return null,
+            nds.fs.Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
         }
     }
 
-    fn getFileAsType(comptime T: type, files: []nds.fs.File, index: usize) ?&T {
-        const data = getBinary(files, index) ?? return null;
+    fn getFileAsType(comptime T: type, files: []const &nds.fs.Narc.File, index: usize) ?&T {
+        const file = utils.slice.atOrNull(files, index) ?? return null;
+        const data = file.data;
         const len = data.len - (data.len % @sizeOf(T));
         return utils.slice.ptrAtOrNull(([]T)(data[0..len]), 0);
-    }
-
-    fn getBinary(files: []nds.fs.File, index: usize) ?[]u8 {
-        const file = utils.slice.atOrNull(files, index) ?? return null;
-
-        switch (file.@"type") {
-            nds.fs.File.Type.Binary => |data| return data,
-            nds.fs.File.Type.Narc   =>        return null,
-        }
     }
 
     pub fn getBasePokemon(game: &const Game, index: usize) ?&BasePokemon {
@@ -207,13 +199,13 @@ pub const Game = struct {
 
     pub fn getTrainerPokemon(game: &const Game, trainer_index: usize, party_member_index: usize) ?&PartyMember {
         const trainer = getTrainer(game, trainer_index) ?? return null;
-        const trainer_party_data = getBinary(game.trainer_pokemons, trainer_index) ?? return null;
+        const trainer_party = utils.slice.atOrNull(game.trainer_pokemons, trainer_index) ?? return null;
 
         return switch (trainer.party_type) {
-            PartyType.Standard  => getPartyMember(PartyMember, trainer_party_data, party_member_index),
-            PartyType.WithMoves => getPartyMember(PartyMemberWithMoves, trainer_party_data, party_member_index),
-            PartyType.WithHeld  => getPartyMember(PartyMemberWithHeld, trainer_party_data, party_member_index),
-            PartyType.WithBoth  => getPartyMember(PartyMemberWithBoth, trainer_party_data, party_member_index),
+            PartyType.Standard  => getPartyMember(PartyMember, trainer_party.data, party_member_index),
+            PartyType.WithMoves => getPartyMember(PartyMemberWithMoves, trainer_party.data, party_member_index),
+            PartyType.WithHeld  => getPartyMember(PartyMemberWithHeld, trainer_party.data, party_member_index),
+            PartyType.WithBoth  => getPartyMember(PartyMemberWithBoth, trainer_party.data, party_member_index),
             else => null,
         };
     }

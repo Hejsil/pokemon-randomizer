@@ -183,6 +183,7 @@ pub fn main() !void {
         var rom_file = try os.File.openRead(allocator, input_file);
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
+        //defer nds_rom.deinit(); error: unreachable code
 
         var game = try gen5.Game.fromRom(&nds_rom);
 

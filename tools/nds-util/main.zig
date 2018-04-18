@@ -38,7 +38,7 @@ pub fn main() !void {
     var rom_file = try os.File.openRead(allocator, args[1]);
     defer rom_file.close();
     var rom = try nds.Rom.fromFile(&rom_file, allocator);
-    defer rom.destroy(allocator);
+    defer rom.deinit();
 
     // TODO: No hardcoding in here!
     const out_folder = "rom";
@@ -63,24 +63,27 @@ pub fn main() !void {
     try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files);
     try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files);
 
-    try writeFs(root_folder, rom.root);
+    try writeFs(root_folder, rom.file_system, allocator);
 }
 
-fn writeFs(folder: []const u8, fs: &const nds.fs.Folder) error!void {
-    for (fs.files) |f| {
+fn writeFs(folder: []const u8, fs: &const nds.fs.Nitro, allocator: &std.mem.Allocator) error!void {
+    for (fs.root.files.toSliceConst()) |f| {
         var buffer : [1024 * 4]u8 = undefined;
         var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
         var file = try os.File.openWrite(&fixed_allocator.allocator, try path.join(&fixed_allocator.allocator, folder, f.name));
         defer file.close();
-        _ = try nds.fs.writeFile(&file, f);
+        try nds.fs.writeNitroFile(&file, allocator, f);
     }
 
-    for (fs.folders) |f| {
+    for (fs.root.folders.toSliceConst()) |f| {
         var buffer : [1024 * 4]u8 = undefined;
         var fixed_allocator = heap.FixedBufferAllocator.init(buffer[0..]);
         const sub_folder = try path.join(&fixed_allocator.allocator, folder, f.name);
         try os.makePath(&fixed_allocator.allocator, sub_folder);
-        try writeFs(sub_folder, f);
+        try writeFs(sub_folder, nds.fs.Nitro {
+            .arena = fs.arena,
+            .root = f,
+        }, allocator);
     }
 }
 
