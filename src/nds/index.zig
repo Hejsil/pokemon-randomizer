@@ -26,6 +26,8 @@ pub const Rom = struct {
     //       Info like offsets, the user of the lib shouldn't touch, but other info, are allowed.
     //       Instead of storing the header. Only store info relevant for customization, and let
     //       the writeToFile function generate the offsets
+    //       Or maybe the user of the lib should be able to set the offsets manually. Maybe they want
+    //       to have the rom change as little as possible so they can share small patches.
     header: Header,
     arm9: []u8,
 
@@ -57,7 +59,9 @@ pub const Rom = struct {
             const raw = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
             // defer allocator.free(raw); TODO: error: unreachable code
 
-            break :blk try blz.decode(raw, allocator);
+            // If blz.decode failes, we assume that the arm9 is not encoded and just use the raw data
+            const result = blz.decode(raw, allocator) catch raw;
+            break :blk result;
         };
         errdefer allocator.free(arm9);
         const nitro_footer = try utils.file.read(file, [3]Little(u32));
@@ -116,12 +120,12 @@ pub const Rom = struct {
 
         const arm9_pos = 0x4000;
         try file.seekTo(arm9_pos);
-        try file.write(blk: {
-            const encoded = try blz.encode(rom.arm9, blz.Mode.Normal, true, allocator);
-            // defer allocator.free(encoded);
 
-            break :blk encoded;
-        });
+        // TODO: There might be times when people want/need to encode the arm9 again when saving,
+        //       so we should probably give them the option to do so.
+        //       Maybe encoding and decoding, is something that should be done outside the loading/saving
+        //       of roms. Hmmm :thinking:
+        try file.write(rom.arm9);
         if (rom.hasNitroFooter()) {
             try file.write(([]u8)(rom.nitro_footer[0..]));
         }
