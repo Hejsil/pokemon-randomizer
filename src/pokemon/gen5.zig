@@ -16,7 +16,7 @@ pub const BasePokemon = packed struct {
     sp_attack:  u8,
     sp_defense: u8,
 
-    types: [2]common.Type,
+    types: [2]Type,
 
     catch_rate:     u8,
 
@@ -111,7 +111,7 @@ pub const Trainer = packed struct {
 
 // https://projectpokemon.org/home/forums/topic/14212-bw-move-data/?do=findComment&comment=123606
 pub const Move = packed struct {
-    @"type": common.Type,
+    @"type": Type,
     effect_category: u8,
     category: common.MoveCategory,
     power: u8,
@@ -141,7 +141,29 @@ pub const LevelUpMove = packed struct {
     level: Little(u16),
 };
 
+pub const Type = enum(u8) {
+    Normal   = 0x00,
+    Fighting = 0x01,
+    Flying   = 0x02,
+    Poison   = 0x03,
+    Ground   = 0x04,
+    Rock     = 0x05,
+    Bug      = 0x06,
+    Ghost    = 0x07,
+    Steel    = 0x08,
+    Fire     = 0x09,
+    Water    = 0x0A,
+    Grass    = 0x0B,
+    Electric = 0x0C,
+    Psychic  = 0x0D,
+    Ice      = 0x0E,
+    Dragon   = 0x0F,
+    Dark     = 0x10,
+};
+
 pub const Game = struct {
+    const PokemonType = Type;
+
     const legendaries = common.legendaries;
 
     base_stats: []const &nds.fs.Narc.File,

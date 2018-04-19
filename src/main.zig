@@ -15,6 +15,8 @@ const rand  = std.rand;
 const fmt   = std.fmt;
 const path  = os.path;
 
+const Randomizer = randomizer.Randomizer;
+
 // TODO: put into struct. There is no reason this should be global.
 var help = false;
 var input_file  : []const u8 = "input";
@@ -168,7 +170,7 @@ pub fn main() !void {
         //defer rom_file.close(); error: unreachable code
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
-        try randomizer.randomize(game, options, &random.random, allocator);
+        try Randomizer(gen3).randomize(game, options, &random.random, allocator);
 
         var file_stream = io.FileOutStream.init(&out_file);
         game.writeToStream(&file_stream.stream) catch |err| {
@@ -184,10 +186,8 @@ pub fn main() !void {
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
         //defer nds_rom.deinit(); error: unreachable code
-
         var game = try gen5.Game.fromRom(&nds_rom);
-
-        try randomizer.randomize(game, options, &random.random, allocator);
+        try Randomizer(gen5).randomize(game, options, &random.random, allocator);
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
             debug.warn("Unable to write nds to {}\n", output_file);
