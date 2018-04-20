@@ -170,7 +170,10 @@ pub fn main() !void {
         //defer rom_file.close(); error: unreachable code
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
-        try Randomizer(gen3).randomize(game, options, &random.random, allocator);
+        var r = Randomizer(gen3).init(game, &random.random, allocator);
+        //defer r.deinit(); error: unreachable code
+
+        try r.randomize(options);
 
         var file_stream = io.FileOutStream.init(&out_file);
         game.writeToStream(&file_stream.stream) catch |err| {
@@ -186,8 +189,12 @@ pub fn main() !void {
         //defer rom_file.close(); error: unreachable code
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
         //defer nds_rom.deinit(); error: unreachable code
+
         var game = try gen5.Game.fromRom(&nds_rom);
-        try Randomizer(gen5).randomize(game, options, &random.random, allocator);
+        var r = Randomizer(gen5).init(game, &random.random, allocator);
+        //defer r.deinit(); error: unreachable code
+
+        try r.randomize(options);
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
             debug.warn("Unable to write nds to {}\n", output_file);

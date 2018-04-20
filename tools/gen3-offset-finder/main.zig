@@ -267,7 +267,7 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
             gen3.Move {
                 .effect = 0,
                 .power = 0,
-                .@"type" = common.Type.Normal,
+                .@"type" = gen3.Type.Normal,
                 .accuracy = 0,
                 .pp = 0,
                 .side_effect_chance = 0,
@@ -279,7 +279,7 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
             gen3.Move {
                 .effect = 0,
                 .power = 40,
-                .@"type" = common.Type.Normal,
+                .@"type" = gen3.Type.Normal,
                 .accuracy = 100,
                 .pp = 35,
                 .side_effect_chance = 0,
@@ -293,7 +293,7 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
             gen3.Move {
                 .effect = 204,
                 .power = 140,
-                .@"type" = common.Type.Psychic,
+                .@"type" = gen3.Type.Psychic,
                 .accuracy = 90,
                 .pp = 5,
                 .side_effect_chance = 100,
@@ -332,7 +332,7 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
                 .sp_attack  = 0,
                 .sp_defense = 0,
 
-                .types = []common.Type { common.Type.Normal, common.Type.Normal },
+                .types = []gen3.Type { gen3.Type.Normal, gen3.Type.Normal },
 
                 .catch_rate     = 0,
                 .base_exp_yield = 0,
@@ -377,7 +377,7 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
                 .sp_attack  = 65,
                 .sp_defense = 65,
 
-                .types = []common.Type { common.Type.Grass, common.Type.Poison },
+                .types = []gen3.Type { gen3.Type.Grass, gen3.Type.Poison },
 
                 .catch_rate     = 45,
                 .base_exp_yield = 64,
@@ -424,7 +424,7 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
                 .sp_attack  = 95,
                 .sp_defense = 80,
 
-                .types = []common.Type { common.Type.Psychic, common.Type.Psychic },
+                .types = []gen3.Type { gen3.Type.Psychic, gen3.Type.Psychic },
 
                 .catch_rate     = 45,
                 .base_exp_yield = 147,

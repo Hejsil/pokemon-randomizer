@@ -63,7 +63,7 @@ pub const BasePokemon = packed struct {
 };
 
 // https://projectpokemon.org/home/forums/topic/22629-b2w2-general-rom-info/?do=findComment&comment=153174
-pub const PartyMember = packed struct {
+pub const PartyMemberBase = packed struct {
     iv: u8,
     gender: u4,
     ability: u4,
@@ -74,17 +74,17 @@ pub const PartyMember = packed struct {
 };
 
 pub const PartyMemberWithMoves = packed struct {
-    base: PartyMember,
+    base: PartyMemberBase,
     moves: [4]Little(u16),
 };
 
 pub const PartyMemberWithHeld = packed struct {
-    base: PartyMember,
+    base: PartyMemberBase,
     held_item: Little(u16),
 };
 
 pub const PartyMemberWithBoth = packed struct {
-    base: PartyMember,
+    base: PartyMemberBase,
     held_item: Little(u16),
     moves: [4]Little(u16),
 };
@@ -219,12 +219,12 @@ pub const Game = struct {
         return getFileAsType(Trainer, game.trainer_data, index);
     }
 
-    pub fn getTrainerPokemon(game: &const Game, trainer_index: usize, party_member_index: usize) ?&PartyMember {
+    pub fn getTrainerPokemon(game: &const Game, trainer_index: usize, party_member_index: usize) ?&PartyMemberBase {
         const trainer = getTrainer(game, trainer_index) ?? return null;
         const trainer_party = utils.slice.atOrNull(game.trainer_pokemons, trainer_index) ?? return null;
 
         return switch (trainer.party_type) {
-            PartyType.Standard  => getPartyMember(PartyMember, trainer_party.data, party_member_index),
+            PartyType.Standard  => getPartyMember(PartyMemberBase, trainer_party.data, party_member_index),
             PartyType.WithMoves => getPartyMember(PartyMemberWithMoves, trainer_party.data, party_member_index),
             PartyType.WithHeld  => getPartyMember(PartyMemberWithHeld, trainer_party.data, party_member_index),
             PartyType.WithBoth  => getPartyMember(PartyMemberWithBoth, trainer_party.data, party_member_index),
@@ -232,9 +232,9 @@ pub const Game = struct {
         };
     }
 
-    fn getPartyMember(comptime TMember: type, data: []u8, index: usize) ?&PartyMember {
+    fn getPartyMember(comptime TMember: type, data: []u8, index: usize) ?&PartyMemberBase {
         const member = utils.slice.ptrAtOrNull(([]TMember)(data), index) ?? return null;
-        return if (TMember == PartyMember) member else &member.base;
+        return if (TMember == PartyMemberBase) member else &member.base;
     }
 
     pub fn getMove(game: &const Game, index: usize) ?&Move {
