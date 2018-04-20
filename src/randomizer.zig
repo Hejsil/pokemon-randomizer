@@ -196,12 +196,12 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                             trainer_pokemon.species.set(new_pokemon);
                         },
                         Options.Trainer.Pokemon.Legendaries => {
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon, options.same_total_stats, @typeOf(*game).legendaries);
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon, options.same_total_stats, Game.legendaries);
                             trainer_pokemon.species.set(new_pokemon);
                         }
                     }
 
-                    switch (@typeOf(*game)) {
+                    switch (Game) {
                         gen3.Game => {
                             switch (trainer.party_type) {
                                 gen3.PartyType.WithHeld => {
@@ -389,7 +389,7 @@ pub fn Randomizer(comptime Gen: Namespace) type {
         fn randomType(randomizer: &Self) Type {
             const choice = randomizer.random.range(u8, 0, @memberCount(Type));
             comptime var i = 0;
-            while (i < @memberCount(Type)) : (i += 1) {
+            inline while (i < @memberCount(Type)) : (i += 1) {
                 if (i == choice) return @field(Type, @memberName(Type, i));
             }
 
@@ -443,8 +443,9 @@ pub fn Randomizer(comptime Gen: Namespace) type {
             errdefer freeSpeciesByType(&species_by_type);
 
             comptime var i = 0;
-            while (i < @memberCount(Type)) : (i += 1) {
-                const should_be_null = try species_by_type.put(@field(Type, @memberName(Type, i)), std.ArrayList(u16).init(randomizer.allocator));
+            inline while (i < @memberCount(Type)) : (i += 1) {
+                const t = @field(Type, @memberName(Type, i));
+                const should_be_null = try species_by_type.put(t, std.ArrayList(u16).init(randomizer.allocator));
                 // This loop should only insert unique keys. If this is not the case, we have a bug somewhere.
                 if (should_be_null) |_| unreachable;
             }
@@ -459,6 +460,9 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                     try entry.value.append(species);
                 }
             }
+
+            randomizer.species_by_type = species_by_type;
+            return &??randomizer.species_by_type;
         }
 
         fn freeSpeciesByType(by_type: &SpeciesByType) void {
