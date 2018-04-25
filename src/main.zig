@@ -168,11 +168,11 @@ pub fn main() !void {
 
     gba_blk: {
         var rom_file = try os.File.openRead(allocator, input_file);
-        //defer rom_file.close(); error: unreachable code
+        defer rom_file.close();
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
         var r = Randomizer(pokemon.Gen3).init(game, &random.random, allocator);
-        //defer r.deinit(); error: unreachable code
+        defer r.deinit();
 
         try r.randomize(options);
 
@@ -187,9 +187,9 @@ pub fn main() !void {
 
     nds_blk: {
         var rom_file = try os.File.openRead(allocator, input_file);
-        //defer rom_file.close(); error: unreachable code
+        defer rom_file.close();
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
-        //defer nds_rom.deinit(); error: unreachable code
+        defer nds_rom.deinit();
 
         //var game = try gen5.Game.fromRom(&nds_rom);
         //var r = Randomizer(gen5).init(game, &random.random, allocator);

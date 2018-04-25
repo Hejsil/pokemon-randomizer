@@ -57,11 +57,10 @@ pub const Rom = struct {
 
         const arm9 = blk: {
             const raw = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
-            // defer allocator.free(raw); TODO: error: unreachable code
+            defer allocator.free(raw);
 
             // If blz.decode failes, we assume that the arm9 is not encoded and just use the raw data
-            const result = blz.decode(raw, allocator) catch raw;
-            break :blk result;
+            break :blk blz.decode(raw, allocator) catch raw;
         };
         errdefer allocator.free(arm9);
         const nitro_footer = try utils.file.read(file, [3]Little(u32));
