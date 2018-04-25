@@ -113,16 +113,13 @@ pub const Options = struct {
     }
 };
 
-// TODO: Refactor this. Let's just say that I don't like the namespace parameter idea
-// but it'll do for now.
-const Namespace = @typeOf(@import("std"));
-pub fn Randomizer(comptime Gen: Namespace) type {
+pub fn Randomizer(comptime Gen: type) type {
     return struct {
         const Self = this;
         const Game = Gen.Game;
         const BasePokemon = Gen.BasePokemon;
         const Type = Gen.Type;
-        const PartyMember = Gen.PartyMemberBase;
+        const PartyMember = Gen.PartyMember;
 
         fn hash_type(t: Type) u32 { return @TagType(Type)(t); }
         fn type_eql(t1: Type, t2: Type) bool { return t1 == t2; }
@@ -156,18 +153,21 @@ pub fn Randomizer(comptime Gen: Namespace) type {
             const game = randomizer.game;
             var by_type = try randomizer.speciesByType();
 
-            var trainer_id : usize = 0;
-            while (game.getTrainer(trainer_id)) |trainer| : (trainer_id += 1) {
+            const base_pokemons = Gen.basePokemons(game);
+            const trainers = Gen.trainers(game);
+
+            var trainer_it = trainers.iterator();
+            while (trainer_it.nextNoError()) |trainer| {
                 const trainer_theme = switch (options.pokemon) {
                     Options.Trainer.Pokemon.TypeThemed => randomizer.randomType(),
                     else => null,
                 };
 
-                var species : usize = 0;
-                while (game.getTrainerPokemon(trainer_id, species)) |trainer_pokemon| : (species += 1) {
-                    // TODO: Handle when a trainers Pokémon does not point on a valid species.
-                    //                                                                         VVVVVVVVVVV
-                    const curr_pokemon = game.getBasePokemon(trainer_pokemon.species.get()) ?? unreachable;
+                const party = try Gen.party(game, trainer);
+                var party_it = party.iterator();
+
+                while (party_it.nextNoError()) |trainer_pokemon| {
+                    const curr_pokemon = try base_pokemons.at(trainer_pokemon.species.get());
                     switch (options.pokemon) {
                         Options.Trainer.Pokemon.Same => {},
                         Options.Trainer.Pokemon.Random => {
@@ -242,6 +242,8 @@ pub fn Randomizer(comptime Gen: Namespace) type {
 
         fn randomTrainerPokemon(randomizer: &Self, curr_pokemom: &const BasePokemon, same_total_stats: bool, pokemons: []const u16) !u16 {
             const game = randomizer.game;
+            const base_pokemons = Gen.basePokemons(game);
+
             if (same_total_stats) {
                 var min_total = totalStats(curr_pokemom);
                 var max_total = min_total;
@@ -256,7 +258,7 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                     max_total = math.add(u16, max_total, 5) catch max_total;
 
                     for (pokemons) |species| {
-                        const pokemon = game.getBasePokemon(species) ?? unreachable; // TODO: FIX
+                        const pokemon = try base_pokemons.at(species);
                         const total = totalStats(pokemon);
                         if (min_total <= total and total <= max_total)
                             try matches.append(species);
@@ -297,11 +299,11 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                     if (option.pokemon != Options.Trainer.Pokemon.Same) {
                         const MoveLevelPair = struct { level: u8, move_id: u16 };
                         const new_moves = blk: {
-                            // TODO: Handle not getting any level up moves.
-                            const level_up_moves = game.getLevelupMoves(trainer_pokemon.base.species.get()) ?? return;
+                            const level_up_moves = try Gen.levelUpMoves(game, trainer_pokemon.base.species.get());
+                            var it = level_up_moves.iterator();
                             var moves = []MoveLevelPair { MoveLevelPair { .level = 0, .move_id = 0, } } ** 4;
 
-                            for (level_up_moves) |level_up_move| {
+                            while (it.nextNoError()) |level_up_move| {
                                 for (moves) |*move| {
                                     if (move.level < level_up_move.level and level_up_move.level < trainer_pokemon.base.level.get()) {
                                         move.level = level_up_move.level;
@@ -335,8 +337,9 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                     }
                 },
                 Options.Trainer.Moves.Best => {
-                    // TODO: How do we handle, if trainer Pokémon does not have a valid species?
-                    const pokemon = game.getBasePokemon(trainer_pokemon.base.species.get()) ?? return;
+                    const base_pokemons = Gen.basePokemons(game);
+                    const moves = Gen.moves(game);
+                    const pokemon = try base_pokemons.at(trainer_pokemon.base.species.get());
                     const learned_moves = try randomizer.movesLearned(trainer_pokemon.base.species.get());
                     defer randomizer.allocator.free(learned_moves);
 
@@ -344,17 +347,11 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                         move.set(0);
 
                     for (learned_moves) |learned| {
-                        const learned_move = game.getMove(learned) ?? continue;
+                        const learned_move = try moves.at(learned);
 
                         pokemon_moves_loop:
                         for (trainer_pokemon.moves) |*move_id| {
-                            // If, for some reason, the Pokémon has a move we can't get
-                            // the information for, then we replace that move, with the
-                            // learned move.
-                            const move = game.getMove(move_id.get()) ?? {
-                                move_id.set(learned);
-                                break :pokemon_moves_loop;
-                            };
+                            const move = try moves.at(move_id.get());
 
                             // TODO: Rewrite to work with Pokémons that can have N types
                             const move_stab    = if (move.@"type"         == pokemon.types[0] or move.@"type"         == pokemon.types[1]) f32(1.5) else f32(1.0);
@@ -397,12 +394,12 @@ pub fn Randomizer(comptime Gen: Namespace) type {
         }
 
         fn randomMoveId(randomizer: &Self) u16 {
-            const game = randomizer.game;
+            const moves = Gen.moves(randomizer.game);
             while (true) {
-                const move_id = randomizer.random.range(u16, 0, u16(game.getMoveCount()));
+                const move_id = randomizer.random.range(u16, 0, u16(moves.count()));
 
                 // We assume, that if the id is between 0..len, then we'll never get null from this function.
-                const move = game.getMove(move_id) ?? unreachable;
+                const move = moves.at(move_id) catch unreachable;
 
                 // A move with 0 pp is useless, so we will assume it's a dummy move.
                 if (move.pp == 0) continue;
@@ -413,24 +410,32 @@ pub fn Randomizer(comptime Gen: Namespace) type {
         /// Caller owns memory returned
         fn movesLearned(randomizer: &const Self, species: u16) ![]u16 {
             const game = randomizer.game;
-            const levelup_learnset = game.getLevelupMoves(species) ?? unreachable;
-            var res = std.ArrayList(u16).init(randomizer.allocator);
-            try res.ensureCapacity(levelup_learnset.len);
+            const levelup_learnset = try Gen.levelUpMoves(game, species);
+            const tm_learnset = try Gen.tmLearnset(game, species);
+            const hm_learnset = try Gen.hmLearnset(game, species);
+            const tms = Gen.tms(game);
+            const hms = Gen.hms(game);
 
-            for (levelup_learnset) |level_up_move| {
+            var res = std.ArrayList(u16).init(randomizer.allocator);
+            try res.ensureCapacity(levelup_learnset.count());
+
+            var lvl_it = levelup_learnset.iterator();
+            while (lvl_it.nextNoError()) |level_up_move| {
                 try res.append(u16(level_up_move.move_id));
             }
 
-            var tm = usize(0);
-            while (game.getTmMove(tm)) |move| : (tm += 1) {
-                if (game.learnsTm(species, tm) ?? unreachable)
-                    try res.append(move.get());
+            var tm_learnset_it = tm_learnset.iterator();
+            while (tm_learnset_it.nextNoError()) |learns| {
+                const move = tm_learnset_it.current;
+                if (learns)
+                    try res.append(u16(move));
             }
 
-            var hm = usize(0);
-            while (game.getHmMove(hm)) |move| : (hm += 1) {
-                if (game.learnsHm(species, hm) ?? unreachable)
-                    try res.append(move.get());
+            var hm_learnset_it = hm_learnset.iterator();
+            while (hm_learnset_it.nextNoError()) |learns| {
+                const move = hm_learnset_it.current;
+                if (learns)
+                    try res.append(u16(move));
             }
 
             return res.toOwnedSlice();
@@ -450,14 +455,15 @@ pub fn Randomizer(comptime Gen: Namespace) type {
                 if (should_be_null) |_| unreachable;
             }
 
-            const game = randomizer.game;
-            var species : u16 = 0;
-            while (game.getBasePokemon(species)) |pokemon| : (species += 1) {
+            const base_pokemons = Gen.basePokemons(randomizer.game);
+            var it = base_pokemons.iterator();
+            while (it.nextNoError()) |pokemon| {
+                const species = it.current;
                 for (pokemon.types) |t| {
                     // Asume that Pokémons with 0 hp are dummy Pokémon
                     if (pokemon.hp == 0) continue;
                     const entry = species_by_type.get(t) ?? continue;
-                    try entry.value.append(species);
+                    try entry.value.append(u16(species));
                 }
             }
 

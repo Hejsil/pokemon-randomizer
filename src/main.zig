@@ -4,8 +4,9 @@ const nds        = @import("nds/index.zig");
 const utils      = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
 const clap       = @import("clap.zig");
-const gen3       = @import("pokemon/gen3.zig");
-const gen5       = @import("pokemon/gen5.zig");
+const pokemon    = @import("pokemon/index.zig");
+const gen3       = pokemon.gen3;
+const gen5       = pokemon.gen5;
 
 const os    = std.os;
 const debug = std.debug;
@@ -170,7 +171,7 @@ pub fn main() !void {
         //defer rom_file.close(); error: unreachable code
         var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
 
-        var r = Randomizer(gen3).init(game, &random.random, allocator);
+        var r = Randomizer(pokemon.Gen3).init(game, &random.random, allocator);
         //defer r.deinit(); error: unreachable code
 
         try r.randomize(options);
@@ -190,11 +191,11 @@ pub fn main() !void {
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
         //defer nds_rom.deinit(); error: unreachable code
 
-        var game = try gen5.Game.fromRom(&nds_rom);
-        var r = Randomizer(gen5).init(game, &random.random, allocator);
-        //defer r.deinit(); error: unreachable code
+        //var game = try gen5.Game.fromRom(&nds_rom);
+        //var r = Randomizer(gen5).init(game, &random.random, allocator);
+        ////defer r.deinit(); error: unreachable code
 
-        try r.randomize(options);
+        //try r.randomize(options);
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
             debug.warn("Unable to write nds to {}\n", output_file);
