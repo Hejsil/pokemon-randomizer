@@ -140,7 +140,7 @@ pub fn Randomizer(comptime Gen: type) type {
         }
 
         pub fn deinit(randomizer: &Self) void {
-            if (randomizer.species_by_type) |by_type| {
+            if (randomizer.species_by_type) |*by_type| {
                 freeSpeciesByType(by_type);
             }
         }
