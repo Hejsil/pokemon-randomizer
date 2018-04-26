@@ -98,11 +98,25 @@ pub const Gen3 = struct {
     const BasePokemonCollection = SliceCollection([]BasePokemon);
     const TrainerCollection = SliceCollection([]Trainer);
     const PartyMemberCollection = Collection(
-        &PartyMember,
         PartyMemberContext,
-        error{},
-        partyMemberAt,
-        partyMemberCount,
+        struct {
+            fn at(context: &const PartyMemberContext, index: usize) (error{}!&PartyMember) {
+                const trainer = context.trainer;
+                const data = context.data;
+
+                return switch (trainer.party_type) {
+                    PartyType.Standard =>  basePartyMember(gen3.PartyMember,          data, index),
+                    PartyType.WithMoves => basePartyMember(gen3.PartyMemberWithMoves, data, index),
+                    PartyType.WithHeld =>  basePartyMember(gen3.PartyMemberWithHeld,  data, index),
+                    PartyType.WithBoth =>  basePartyMember(gen3.PartyMemberWithBoth,  data, index),
+                    else => unreachable,
+                };
+            }
+
+            fn count(context: &const PartyMemberContext) usize {
+                return context.trainer.party_size.get();
+            }
+        }
     );
 
     const PartyMemberContext = struct {
@@ -110,26 +124,9 @@ pub const Gen3 = struct {
         trainer: &const Trainer,
     };
 
-    fn partyMemberAt(context: &const PartyMemberContext, index: usize) (error{}!&PartyMember) {
-        const trainer = context.trainer;
-        const data = context.data;
-
-        return switch (trainer.party_type) {
-            PartyType.Standard =>  basePartyMember(gen3.PartyMember,          data, index),
-            PartyType.WithMoves => basePartyMember(gen3.PartyMemberWithMoves, data, index),
-            PartyType.WithHeld =>  basePartyMember(gen3.PartyMemberWithHeld,  data, index),
-            PartyType.WithBoth =>  basePartyMember(gen3.PartyMemberWithBoth,  data, index),
-            else => unreachable,
-        };
-    }
-
     fn basePartyMember(comptime TMember: type, data: []u8, index: usize) &PartyMember {
         const p = ([]TMember)(data);
         return &p[index].base;
-    }
-
-    fn partyMemberCount(context: &const PartyMemberContext) usize {
-        return context.trainer.party_size.get();
     }
 
     fn partyMemberData(comptime Member: type, data: []u8, offset: usize, size: usize) ![]u8 {
@@ -143,11 +140,17 @@ pub const Gen3 = struct {
     const LevelUpMoveCollection = SliceCollection([]LevelUpMove);
     const MachineCollection = SliceCollection([]little.Little(u16));
     const LearnsetCollection = Collection(
-        bool,
         LearnsetContext,
-        error{},
-        learnsetAt,
-        learnsetCount,
+        struct {
+            fn at(context: &const LearnsetContext, index: usize) (error{}!bool) {
+                debug.assert(context.count <= context.offset + index);
+                return bits.get(u64, context.learnset.get(), u6(context.offset + index));
+            }
+
+            fn count(context: &const LearnsetContext) usize {
+                return context.count;
+            }
+        }
     );
 
     const LearnsetContext = struct {
@@ -155,25 +158,15 @@ pub const Gen3 = struct {
         count: usize,
         learnset: little.Little(u64),
     };
-
-    fn learnsetAt(context: &const LearnsetContext, index: usize) (error{}!bool) {
-        debug.assert(context.count <= context.offset + index);
-        return bits.get(u64, context.learnset.get(), u6(context.offset + index));
-    }
-
-    fn learnsetCount(context: &const LearnsetContext) usize {
-        return context.count;
-    }
 };
 
 pub fn Collection(
-    comptime Item: type,
     comptime Context: type,
-    comptime AtErrors: type,
-    comptime atFn: fn(&const Context, usize) AtErrors!Item,
-    comptime countFn: fn(&const Context) usize) type
+    comptime Functions: type) type
 {
     return struct {
+        const Item = @typeOf(Functions.at).ReturnType.Payload;
+        const Errors = @typeOf(Functions.at).ReturnType.ErrorSet;
         const Self = this;
         context: Context,
 
@@ -181,32 +174,32 @@ pub fn Collection(
             return Self { .context = *context };
         }
 
-        pub fn at(coll: &const Self, index: usize) AtErrors!Item {
-            return atFn(coll.context, index);
+        pub fn at(coll: &const Self, index: usize) Errors!Item {
+            return Functions.at(coll.context, index);
         }
 
         pub fn count(coll: &const Self) usize {
-            return countFn(coll.context);
+            return Functions.count(coll.context);
         }
 
         pub fn iterator(coll: &const Self) Iterator {
             return Iterator {
-                .context = coll.context,
+                .collection = *coll,
                 .current = 0,
             };
         }
 
         const Iterator = struct {
-            context: Context,
+            collection: Self,
             current: usize,
 
-            pub fn next(it: &Iterator) AtErrors!?Item {
-                if (countFn(it.context) <= it.current) {
+            pub fn next(it: &Iterator) Errors!?Item {
+                if (it.collection.count() <= it.current) {
                     return null;
                 }
 
                 defer it.current += 1;
-                return try atFn(it.context, it.current);
+                return try it.collection.at(it.current);
             }
 
             pub fn nextNoError(it: &Iterator) ?Item {
@@ -223,10 +216,10 @@ pub fn SliceCollection(comptime Slice: type) type {
     comptime debug.assert(Slice == []Item or Slice == []const Item);
 
     return Collection(
-        &Item,
         Slice,
-        error{},
-        struct { fn at(s: &const Slice, index: usize) (error{}!&Item) { return &(*s)[index]; } }.at,
-        struct { fn count(v: &const Slice) usize { return v.len; } }.count,
+        struct {
+            fn at(s: &const Slice, index: usize) (error{}!&Item) { return &(*s)[index]; }
+            fn count(v: &const Slice) usize { return v.len; }
+        }
     );
 }
