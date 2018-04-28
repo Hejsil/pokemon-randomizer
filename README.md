@@ -7,8 +7,8 @@ programming language and its features.
 
 ## Supported games
 
-* :heavy_check_mark: means that the game is implemented in code and is completable without any major issues.
-* :heavy_minus_sign: means that the game is implemented in code but haven't been tested.
+If the randomizer does not work for any of the games it claim to support, there is a bug.
+For games it doesn't claim to support, you might be lucky if it works.
 
 | Version:    | International (O)  | English/USA (E)    |
 |-------------|--------------------|--------------------|
@@ -22,11 +22,11 @@ programming language and its features.
 | Silver      |                    |                    |
 | Crystal     |                    |                    |
 |             |                    |                    |
-| Ruby        |                    | :heavy_minus_sign: |
-| Sapphire    |                    | :heavy_minus_sign: |
+| Ruby        |                    | :heavy_check_mark: |
+| Sapphire    |                    | :heavy_check_mark: |
 | Emerald     |                    | :heavy_check_mark: |
-| Fire Red    |                    | :heavy_minus_sign: |
-| Leaf Green  |                    | :heavy_minus_sign: |
+| Fire Red    |                    | :heavy_check_mark: |
+| Leaf Green  |                    | :heavy_check_mark: |
 |             |                    |                    |
 | Diamon      |                    |                    |
 | Pearl       |                    |                    |
@@ -36,7 +36,7 @@ programming language and its features.
 |             |                    |                    |
 | Black       |                    |                    |
 | White       |                    |                    |
-| Black 2     | :heavy_minus_sign: |                    |
+| Black 2     | :heavy_check_mark: |                    |
 | White 2     |                    |                    |
 
 ## Build

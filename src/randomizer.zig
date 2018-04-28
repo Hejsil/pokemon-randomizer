@@ -157,7 +157,8 @@ pub fn Randomizer(comptime Gen: type) type {
             const trainers = Gen.trainers(game);
 
             var trainer_it = trainers.iterator();
-            while (trainer_it.next()) |trainer| {
+            while (trainer_it.next()) |trainer_item| {
+                const trainer = trainer_item.value;
                 const trainer_theme = switch (options.pokemon) {
                     Options.Trainer.Pokemon.TypeThemed => randomizer.randomType(),
                     else => null,
@@ -166,7 +167,8 @@ pub fn Randomizer(comptime Gen: type) type {
                 const party = trainer.party();
                 var party_it = party.iterator();
 
-                while (party_it.next()) |trainer_pokemon| {
+                while (party_it.next()) |party_item| {
+                    const trainer_pokemon = party_item.value;
                     const curr_pokemon = try pokemons.at(trainer_pokemon.species.get());
                     switch (options.pokemon) {
                         Options.Trainer.Pokemon.Same => {},
@@ -304,7 +306,8 @@ pub fn Randomizer(comptime Gen: type) type {
                             var it = level_up_moves.iterator();
                             var moves = []MoveLevelPair { MoveLevelPair { .level = 0, .move_id = 0, } } ** 4;
 
-                            while (it.next()) |level_up_move| {
+                            while (it.next()) |item| {
+                                const level_up_move = item.value;
                                 for (moves) |*move| {
                                     if (move.level < level_up_move.level and level_up_move.level < trainer_pokemon.base.level.get()) {
                                         move.level = level_up_move.level;
@@ -422,22 +425,24 @@ pub fn Randomizer(comptime Gen: type) type {
             try res.ensureCapacity(levelup_learnset.length());
 
             var lvl_it = levelup_learnset.iterator();
-            while (lvl_it.next()) |level_up_move| {
-                try res.append(u16(level_up_move.move_id));
+            while (lvl_it.next()) |item| {
+                try res.append(u16(item.value.move_id));
             }
 
             var tm_learnset_it = tm_learnset.iterator();
-            while (tm_learnset_it.next()) |learns| {
-                const move = tm_learnset_it.current;
-                if (learns)
-                    try res.append(u16(move));
+            while (tm_learnset_it.next()) |item| {
+                if (item.value) {
+                    const move_id = try tms.at(item.index);
+                    try res.append(move_id.get());
+                }
             }
 
             var hm_learnset_it = hm_learnset.iterator();
-            while (hm_learnset_it.next()) |learns| {
-                const move = hm_learnset_it.current;
-                if (learns)
-                    try res.append(u16(move));
+            while (hm_learnset_it.next()) |item| {
+                if (item.value) {
+                    const move_id = try hms.at(item.index);
+                    try res.append(move_id.get());
+                }
             }
 
             return res.toOwnedSlice();
@@ -459,8 +464,10 @@ pub fn Randomizer(comptime Gen: type) type {
 
             const pokemons = Gen.pokemons(randomizer.game);
             var it = pokemons.iterator();
-            while (it.next()) |pokemon| {
-                const species = it.current;
+            while (it.next()) |item| {
+                const pokemon = item.value;
+                const species = item.index;
+
                 for (pokemon.base.types) |t| {
                     // Asume that Pokémons with 0 hp are dummy Pokémon
                     if (pokemon.base.hp == 0) continue;

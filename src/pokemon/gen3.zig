@@ -141,8 +141,8 @@ pub const Move = packed struct {
 };
 
 pub const LevelUpMove = packed struct {
-    level: u7,
     move_id: u9,
+    level: u7,
 };
 
 pub const Item = packed struct {
@@ -288,11 +288,12 @@ pub const Game = struct {
         .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC, },
         .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C, },
         .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC, },
-        .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFC, },
-        .tms                        = Offset { .start = 0x0615B94, .end = 0x0615C08, },
+        .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFA, },
+        .tms                        = Offset { .start = 0x0615B94, .end = 0x0615BF8, },
         .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C, },
     };
 
+    // TODO: This table is invalid.
     // game_title: POKEMON RUBY
     // gamecode: AXVE
     const ruby_us_offsets = Offsets {
@@ -307,6 +308,7 @@ pub const Game = struct {
         .items                      = Offset { .start = 0x03C5580, .end = 0x03C917C, },
     };
 
+    // TODO: This table is invalid.
     // game_title: POKEMON SAPP
     // gamecode: AXPE
     const sapphire_us_offsets = Offsets {
@@ -321,6 +323,7 @@ pub const Game = struct {
         .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
     };
 
+    // TODO: This table is invalid.
     // game_title: POKEMON FIRE
     // gamecode: BPRE
     const fire_us_offsets = Offsets {
@@ -335,6 +338,7 @@ pub const Game = struct {
         .items                      = Offset { .start = 0x03DB098, .end = 0x03DF0E0, },
     };
 
+    // TODO: This table is invalid.
     // game_title: POKEMON LEAF
     // gamecode: BPGE
     const leaf_us_offsets = Offsets {
