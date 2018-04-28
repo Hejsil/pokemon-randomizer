@@ -13,6 +13,7 @@ pub fn Little(comptime Int: type) type {
 
     return packed struct {
         const Self = this;
+        const Base = Int;
         bytes: [@sizeOf(Int)]u8,
 
         pub fn init(value: Int) Self {

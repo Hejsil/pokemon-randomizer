@@ -1,5 +1,5 @@
 
-pub const MoveCategory = packed struct {
+pub const MoveCategory = enum(u8) {
     Status   = 0x00,
     Physical = 0x01,
     Special  = 0x02,

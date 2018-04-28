@@ -1,12 +1,17 @@
 const std     = @import("std");
-const common  = @import("pokemon/common.zig");
-const gen3    = @import("pokemon/gen3.zig");
 const bits    = @import("bits.zig");
+const little = @import("little.zig");
 
 const math  = std.math;
 const mem   = std.mem;
 const rand  = std.rand;
 const debug = std.debug;
+
+const common = @import("pokemon/index.zig").common;
+const gen3   = @import("pokemon/index.zig").gen3;
+const gen5   = @import("pokemon/index.zig").gen5;
+
+const Little = little.Little;
 
 const assert = debug.assert;
 
@@ -222,22 +227,43 @@ pub fn Randomizer(comptime Gen: type) type {
                                 else => {}
                             }
                         },
-                        else => unreachable,
+                        gen5.Game => {
+                            switch (trainer.base.party_type) {
+                                gen5.PartyType.WithHeld => {
+                                    const member = @fieldParentPtr(gen5.PartyMemberWithHeld, "base", trainer_pokemon);
+                                    randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
+                                },
+                                gen5.PartyType.WithMoves => {
+                                    const member = @fieldParentPtr(gen5.PartyMemberWithMoves, "base", trainer_pokemon);
+                                    try randomizer.randomizeTrainerPokemonMoves(member, options);
+                                },
+                                gen5.PartyType.WithBoth => {
+                                    const member = @fieldParentPtr(gen5.PartyMemberWithBoth, "base", trainer_pokemon);
+                                    randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
+                                    try randomizer.randomizeTrainerPokemonMoves(member, options);
+                                },
+                                else => {}
+                            }
+                        },
+                        else => comptime unreachable,
                     }
 
+                    const IvType = @IntType(false, @sizeOf(@typeOf(trainer_pokemon.iv)) * 8);
+                    const iv_max = @maxValue(IvType);
                     switch (options.iv) {
                         GenericOption.Same => {},
-                        GenericOption.Random => trainer_pokemon.iv.set(randomizer.random.range(u16, 0, @maxValue(u16))),
-                        GenericOption.Best => trainer_pokemon.iv.set(@maxValue(u16)),
+                        GenericOption.Random => trainer_pokemon.iv = toLittle(@typeOf(trainer_pokemon.iv), randomizer.random.range(IvType, 0, iv_max)),
+                        GenericOption.Best => trainer_pokemon.iv = toLittle(@typeOf(trainer_pokemon.iv), iv_max),
                     }
 
                     const new_level = blk: {
-                        var res = f64(trainer_pokemon.level.get()) * options.level_modifier;
+                        // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                        var res = f64(toInt(@typeOf(trainer_pokemon.level), trainer_pokemon.level)) * options.level_modifier;
                         res = math.min(res, f64(100));
                         res = math.max(res, f64(1));
                         break :blk u8(math.round(res));
                     };
-                    trainer_pokemon.level.set(new_level);
+                    trainer_pokemon.level = toLittle(@typeOf(trainer_pokemon.level), new_level);
                 }
             }
         }
@@ -309,9 +335,12 @@ pub fn Randomizer(comptime Gen: type) type {
                             while (it.next()) |item| {
                                 const level_up_move = item.value;
                                 for (moves) |*move| {
-                                    if (move.level < level_up_move.level and level_up_move.level < trainer_pokemon.base.level.get()) {
-                                        move.level = level_up_move.level;
-                                        move.move_id = level_up_move.move_id;
+                                    // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                                    const move_level = toInt(@typeOf(level_up_move.level), level_up_move.level);
+                                    const trainer_pkm_level = u8(toInt(@typeOf(trainer_pokemon.base.level), trainer_pokemon.base.level));
+                                    if (move.level < move_level and move_level < trainer_pkm_level) {
+                                        move.level = u8(move_level);
+                                        move.move_id = u16(toInt(@typeOf(level_up_move.move_id), level_up_move.move_id));
                                         break;
                                     }
                                 }
@@ -426,7 +455,8 @@ pub fn Randomizer(comptime Gen: type) type {
 
             var lvl_it = levelup_learnset.iterator();
             while (lvl_it.next()) |item| {
-                try res.append(u16(item.value.move_id));
+                // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                try res.append(toInt(@typeOf(item.value.move_id), item.value.move_id));
             }
 
             var tm_learnset_it = tm_learnset.iterator();
@@ -488,4 +518,25 @@ pub fn Randomizer(comptime Gen: type) type {
             by_type.deinit();
         }
     };
+}
+
+const builtin = @import("builtin");
+fn toInt(comptime T: type, value: &const T) @IntType(false, @sizeOf(T) * 8) {
+    if (@typeId(T) == builtin.TypeId.Int) {
+        return *value;
+    } else if (Little(T.Base) == T) {
+        return value.get();
+    }
+
+    comptime unreachable;
+}
+
+fn toLittle(comptime T: type, int: var) T {
+    if (@typeId(T) == builtin.TypeId.Int) {
+        return T(int);
+    } else if (Little(T.Base) == T) {
+        return Little(T.Base).init(int);
+    }
+
+    comptime unreachable;
 }

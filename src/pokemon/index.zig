@@ -3,12 +3,15 @@ pub const gen3   = @import("gen3.zig");
 pub const gen5   = @import("gen5.zig");
 
 const std    = @import("std");
+const nds    = @import("../nds/index.zig");
 const utils  = @import("../utils/index.zig");
 const little = @import("../little.zig");
 const bits   = @import("../bits.zig");
 
 const math = std.math;
 const debug = std.debug;
+
+const Collection = utils.Collection;
 
 test "pokemon" {
     _ = @import("common.zig");
@@ -203,110 +206,227 @@ pub const Gen3 = struct {
     }
 };
 
-pub fn Collection(comptime Item: type, comptime Errors: type) type {
-    const VTable = struct {
-        const Self = this;
 
-        at: fn(&const u8, usize) Errors!Item,
-        length: fn(&const u8) usize,
 
-        fn init(comptime Functions: type, comptime Context: type) Self {
-            return Self {
-                .at = struct {
-                    fn at(d: &const u8, i: usize) Errors!Item {
-                        return Functions.at(cast(Context, d), i);
-                    }
-                }.at,
+pub const Gen5 = struct {
+    pub const Game = gen5.Game;
+    pub const BasePokemon = gen5.BasePokemon;
+    pub const EvolutionType = gen5.EvolutionType;
+    pub const Evolution = gen5.Evolution;
+    pub const PartyType = gen5.PartyType;
+    pub const BaseTrainer = gen5.Trainer;
+    pub const PartyMember = gen5.PartyMemberBase;
+    pub const Move = gen5.Move;
+    pub const LevelUpMove = gen5.LevelUpMove;
+    pub const Item = gen5.Item;
+    pub const Type = gen5.Type;
 
-                .length = struct {
-                    fn length(d: &const u8) usize {
-                        return Functions.length(cast(Context, d));
-                    }
-                }.length,
-            };
-        }
+    pub const Pokemons = Collection(Pokemon, error{DataTooSmall});
+    pub fn pokemons(game: &const Game) Pokemons {
+        return Pokemons.initExternFunctionsAndContext(
+            struct {
+                fn at(g: &const Game, index: usize) !Pokemon {
+                    const base_pokemon = try getFileAsType(BasePokemon, g.base_stats, index);
+                    const level_up_moves = blk: {
+                        var tmp = g.level_up_moves[index].data;
+                        const res = ([]LevelUpMove)(tmp[0..tmp.len - (tmp.len % @sizeOf(LevelUpMove))]);
 
-        fn cast(comptime Context: type, ptr: &const u8) &const Context {
-            return @ptrCast(&const Context, @alignCast(@alignOf(Context), ptr));
-        }
-    };
+                        // Even though each level up move have it's own file, level up moves still
+                        // end with 0xFFFF 0xFFFF.
+                        for (res) |level_up_move, i| {
+                            if (level_up_move.move_id.get() == 0xFFFF and level_up_move.level.get() == 0xFFFF)
+                                break :blk res[0..i];
+                        }
 
-    return struct {
-        const Self = this;
+                        // In the case where we don't find the end 0xFFFF 0xFFFF, we just
+                        // return the level up moves, and assume things are correct.
+                        break :blk res;
+                    };
 
-        data: &const u8,
-        vtable: &const VTable,
 
-        pub fn initContext(context: var) Self {
-            return initExternFunctionsAndContext(@TypeOf(*context), @TypeOf(*context), context);
-        }
-
-        pub fn initSlice(comptime T: type, slice: &const []T) Self {
-            return initExternFunctionsAndContext(
-                struct {
-                    fn at(s: &const []T, index: usize) (Errors!&T) { return &(*s)[index]; }
-                    fn length(s: &const []T) usize { return s.len; }
-                },
-                []T, slice);
-        }
-
-        pub fn initSliceConst(comptime T: type, slice: &const []const T) Self {
-            return initExternFunctionsAndContext(
-                struct {
-                    fn at(s: []const T, index: usize) (Errors!&const T) { return &s[index]; }
-                    fn length(s: []T) usize { return s.len; }
-                },
-                []const T, slice);
-        }
-
-        pub fn initExternFunctionsAndContext(comptime Functions: type, comptime Context: type, context: &const Context) Self {
-            return Self {
-                .data = @ptrCast(&const u8, context),
-                .vtable = &comptime VTable.init(Functions, Context),
-            };
-        }
-
-        pub fn at(coll: &const Self, index: usize) Errors!Item {
-            return coll.vtable.at(coll.data, index);
-        }
-
-        pub fn length(coll: &const Self) usize {
-            return coll.vtable.length(coll.data);
-        }
-
-        pub fn iterator(coll: &const Self) Iterator {
-            return Iterator {
-                .current = 0,
-                .collection = coll,
-            };
-        }
-
-        const Iterator = struct {
-            current: usize,
-            collection: &const Self,
-
-            const Pair = struct {
-                value: Item,
-                index: usize,
-            };
-
-            pub fn next(it: &Iterator) ?Pair {
-                while (true) {
-                    const res = it.nextWithErrors() catch continue;
-                    return res;
+                    return Pokemon {
+                        .base = base_pokemon,
+                        .level_up_moves = level_up_moves,
+                        .tm1_count = g.tms1.len,
+                        .tm2_count = g.tms2.len,
+                        .hm_count = g.hms.len,
+                    };
                 }
-            }
 
-            pub fn nextWithErrors(it: &Iterator) Errors!?Pair {
-                const l = it.collection.length();
-                if (l <= it.current) return null;
+                fn length(g: &const Game) usize {
+                    return math.min(g.base_stats.len, g.level_up_moves.len);
+                }
+            },
+            Game,
+            game,
+        );
+    }
 
-                defer it.current += 1;
-                return Pair {
-                    .value = try it.collection.at(it.current),
-                    .index = it.current,
-                };
-            }
-        };
+    pub const Pokemon = struct {
+        base: &BasePokemon,
+        level_up_moves: []LevelUpMove,
+        tm1_count: usize,
+        tm2_count: usize,
+        hm_count: usize,
+
+        pub const LevelUpMoves = Collection(&LevelUpMove, error{});
+        pub fn levelUpMoves(pokemon: &const Pokemon) LevelUpMoves {
+            return LevelUpMoves.initSlice(LevelUpMove, pokemon.level_up_moves);
+        }
+
+        pub const Learnset = Collection(bool, error{});
+        pub fn tmLearnset(pokemon: &const Pokemon) Learnset {
+            return Learnset.initExternFunctionsAndContext(
+                struct {
+                    fn at(p: &const Pokemon, index: usize) (error{}!bool) {
+                        debug.assert(index < p.tm1_count + p.tm2_count);
+                        if (index < p.tm1_count) {
+                            return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
+                        }
+
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm1_count + p.hm_count));
+                    }
+
+                    fn length(p: &const Pokemon) usize {
+                        return p.tm1_count + p.tm2_count;
+                    }
+                },
+                Pokemon,
+                pokemon
+            );
+        }
+
+        pub fn hmLearnset(pokemon: &const Pokemon) Learnset {
+            return Learnset.initExternFunctionsAndContext(
+                struct {
+                    fn at(p: &const Pokemon, index: usize) (error{}!bool) {
+                        debug.assert(index < p.hm_count);
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm1_count));
+                    }
+
+                    fn length(p: &const Pokemon) usize {
+                        return p.hm_count;
+                    }
+                },
+                Pokemon,
+                pokemon
+            );
+        }
     };
-}
+
+    pub const Trainers = Collection(Trainer, error{DataTooSmall,InvalidPartyType,InvalidPartySize});
+    pub fn trainers(game: &const Game) Trainers {
+        return Trainers.initExternFunctionsAndContext(
+            struct {
+                fn at(g: &const Game, index: usize) !Trainer {
+                    const trainer = try getFileAsType(BaseTrainer, g.trainer_data, index);
+                    const party = g.trainer_pokemons[index].data;
+
+                    const data = switch (trainer.party_type) {
+                        PartyType.Standard  => try partyMemberData(gen5.PartyMemberBase,      party, trainer.party_size),
+                        PartyType.WithMoves => try partyMemberData(gen5.PartyMemberWithMoves, party, trainer.party_size),
+                        PartyType.WithHeld  => try partyMemberData(gen5.PartyMemberWithHeld,  party, trainer.party_size),
+                        PartyType.WithBoth  => try partyMemberData(gen5.PartyMemberWithBoth,  party, trainer.party_size),
+                        else => return error.InvalidPartyType,
+                    };
+
+                    return Trainer { .base = trainer, .party_data = data };
+                }
+
+                fn length(g: &const Game) usize {
+                    return math.min(g.trainer_data.len, g.trainer_pokemons.len);
+                }
+
+                fn partyMemberData(comptime Member: type, data: []u8, size: usize) ![]u8 {
+                    const byte_size = size * @sizeOf(Member);
+                    if (data.len < byte_size) return error.InvalidPartySize;
+
+                    return data[0..byte_size];
+                }
+            },
+            Game,
+            game,
+        );
+    }
+
+    pub const Trainer = struct {
+        base: &BaseTrainer,
+        party_data: []u8,
+
+        pub const PartyMembers = Collection(&PartyMember, error{});
+        pub fn party(trainer: &const Trainer) PartyMembers {
+            return PartyMembers.initExternFunctionsAndContext(
+                struct {
+                    fn at(t: &const Trainer, index: usize) (error{}!&PartyMember) {
+                        return switch (t.base.party_type) {
+                            PartyType.Standard  => basePartyMember(gen5.PartyMemberBase,      t.party_data, index),
+                            PartyType.WithMoves => basePartyMember(gen5.PartyMemberWithMoves, t.party_data, index),
+                            PartyType.WithHeld  => basePartyMember(gen5.PartyMemberWithHeld,  t.party_data, index),
+                            PartyType.WithBoth  => basePartyMember(gen5.PartyMemberWithBoth,  t.party_data, index),
+                            else => unreachable,
+                        };
+                    }
+
+                    fn length(t: &const Trainer) usize {
+                        return t.base.party_size;
+                    }
+
+                    fn basePartyMember(comptime TMember: type, data: []u8, index: usize) &PartyMember {
+                        const member = ??utils.slice.ptrAtOrNull(([]TMember)(data), index);
+                        return if (TMember == PartyMember) member else &member.base;
+                    }
+                },
+                Trainer,
+                trainer,
+            );
+        }
+    };
+
+    const Moves = Collection(&Move, error{DataTooSmall});
+    pub fn moves(game: &const Game) Moves {
+        return Moves.initExternFunctionsAndContext(
+            struct {
+                fn at(m: &const []const &nds.fs.Narc.File, index: usize) !&Move {
+                    return try getFileAsType(Move, *m, index);
+                }
+
+                fn length(m: &const []const &nds.fs.Narc.File) usize {
+                    return m.len;
+                }
+            },
+            []const &nds.fs.Narc.File,
+            game.moves,
+        );
+    }
+
+    const Machines = Collection(&little.Little(u16), error{});
+    pub fn tms(game: &const Game) Machines {
+        return Machines.initExternFunctionsAndContext(
+            struct {
+                fn at(g: &const Game, index: usize) (error{}!&little.Little(u16)) {
+                    debug.assert(index < g.tms1.len + g.tms2.len);
+                    if (index < g.tms1.len)
+                        return &g.tms1[index];
+
+                    return &g.tms2[index - g.tms1.len];
+                }
+
+                fn length(g: &const Game) usize {
+                    return g.tms1.len + g.tms2.len;
+                }
+            },
+            Game,
+            game,
+        );
+    }
+
+    pub fn hms(game: &const Game) Machines {
+        return Machines.initSlice(little.Little(u16), game.hms);
+    }
+
+    fn getFileAsType(comptime T: type, files: []const &nds.fs.Narc.File, index: usize) !&T {
+        const data = files[index].data;
+        const len = data.len - (data.len % @sizeOf(T));
+        return utils.slice.ptrAtOrNull(([]T)(data[0..len]), 0) ?? error.DataTooSmall;
+    }
+};

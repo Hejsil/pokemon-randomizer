@@ -191,11 +191,11 @@ pub fn main() !void {
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
         defer nds_rom.deinit();
 
-        //var game = try gen5.Game.fromRom(&nds_rom);
-        //var r = Randomizer(gen5).init(game, &random.random, allocator);
-        ////defer r.deinit(); error: unreachable code
+        var game = try gen5.Game.fromRom(&nds_rom);
+        var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator);
+        defer r.deinit();
 
-        //try r.randomize(options);
+        try r.randomize(options);
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
             debug.warn("Unable to write nds to {}\n", output_file);

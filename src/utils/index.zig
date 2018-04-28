@@ -6,6 +6,8 @@ pub const slice  = @import("slice.zig");
 pub const file   = @import("file.zig");
 pub const stream = @import("stream.zig");
 
+pub const Collection = @import("collection.zig").Collection;
+
 test "utils" {
     _ = @import("slice.zig");
     _ = @import("file.zig");
