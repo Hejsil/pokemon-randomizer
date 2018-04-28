@@ -22,204 +22,283 @@ pub const Gen3 = struct {
     pub const EvolutionType = gen3.EvolutionType;
     pub const Evolution = gen3.Evolution;
     pub const PartyType = gen3.PartyType;
-    pub const Trainer = gen3.Trainer;
+    pub const BaseTrainer = gen3.Trainer;
     pub const PartyMember = gen3.PartyMemberBase;
     pub const Move = gen3.Move;
     pub const LevelUpMove = gen3.LevelUpMove;
     pub const Item = gen3.Item;
     pub const Type = gen3.Type;
 
-    pub fn basePokemons(game: &const Game) BasePokemonCollection {
-        return BasePokemonCollection.init(game.base_stats);
+    pub const Pokemons = Collection(Pokemon, error{InvalidOffset});
+    pub fn pokemons(game: &const Game) Pokemons {
+        return Pokemons.initExternFunctionsAndContext(
+            struct {
+                fn at(g: &const Game, index: usize) !Pokemon {
+                    const base_pokemons = g.base_stats;
+                    const offset = blk: {
+                        const res = utils.slice.atOrNull(game.level_up_learnset_pointers, index) ?? return error.InvalidOffset;
+                        if (res.get() < 0x8000000) return error.InvalidOffset;
+                        break :blk res.get() - 0x8000000;
+                    };
+                    if (game.data.len < offset) return error.InvalidOffset;
+
+                    const end = blk: {
+                        var i : usize = offset;
+                        while (true) : (i += @sizeOf(LevelUpMove)) {
+                            if (game.data.len < i)     return error.InvalidOffset;
+                            if (game.data.len < i + 1) return error.InvalidOffset;
+                            if (game.data[i] == 0xFF and game.data[i+1] == 0xFF) break;
+                        }
+
+                        break :blk i;
+                    };
+
+                    return Pokemon {
+                        .base = &base_pokemons[index],
+                        .level_up_moves = ([]LevelUpMove)(g.data[offset..end]),
+                        .learnset = utils.slice.ptrAtOrNull(g.tm_hm_learnset, index) ?? return error.InvalidOffset,
+                        .tm_count = g.tms.len,
+                        .hm_count = g.hms.len,
+                    };
+                }
+
+                fn length(g: &const Game) usize {
+                    return g.base_stats.len;
+                }
+            },
+            Game,
+            game,
+        );
     }
 
-    pub fn trainers(game: &const Game) TrainerCollection {
-        return TrainerCollection.init(game.trainers);
-    }
+    pub const Pokemon = struct {
+        base: &BasePokemon,
+        level_up_moves: []LevelUpMove,
+        learnset: &little.Little(u64),
+        tm_count: usize,
+        hm_count: usize,
 
-    pub fn party(game: &const Game, trainer: &const Trainer) !PartyMemberCollection {
-        const offset = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
-
-        const data = switch (trainer.party_type) {
-            PartyType.Standard =>  try partyMemberData(gen3.PartyMember,          game.data, offset, trainer.party_size.get()),
-            PartyType.WithMoves => try partyMemberData(gen3.PartyMemberWithMoves, game.data, offset, trainer.party_size.get()),
-            PartyType.WithHeld =>  try partyMemberData(gen3.PartyMemberWithHeld,  game.data, offset, trainer.party_size.get()),
-            PartyType.WithBoth =>  try partyMemberData(gen3.PartyMemberWithBoth,  game.data, offset, trainer.party_size.get()),
-            else => return error.InvalidPartyType,
-        };
-
-        return PartyMemberCollection.init(PartyMemberContext { .data = data, .trainer = trainer });
-    }
-
-    pub fn moves(game: &const Game) MoveCollection {
-        return MoveCollection.init(game.moves);
-    }
-
-    pub fn levelUpMoves(game: &const Game, species: usize) !LevelUpMoveCollection {
-        const offset = blk: {
-            const res = utils.slice.atOrNull(game.level_up_learnset_pointers, species) ?? return error.InvalidSpecies;
-            if (res.get() < 0x8000000) return error.InvalidOffset;
-            break :blk res.get() - 0x8000000;
-        };
-        if (game.data.len < offset) return error.InvalidOffset;
-
-        const end = blk: {
-            var i : usize = offset;
-            while (true) : (i += @sizeOf(LevelUpMove)) {
-                if (game.data.len < i)     return error.InvalidOffset;
-                if (game.data.len < i + 1) return error.InvalidOffset;
-                if (game.data[i] == 0xFF and game.data[i+1] == 0xFF) break;
-            }
-
-            break :blk i;
-        };
-
-        return LevelUpMoveCollection.init(([]LevelUpMove)(game.data[offset..end]));
-    }
-
-    pub fn tms(game: &const Game) MachineCollection {
-        return MachineCollection.init(game.tms);
-    }
-
-    pub fn hms(game: &const Game) MachineCollection {
-        return MachineCollection.init(game.hms);
-    }
-
-    pub fn tmLearnset(game: &const Game, species: usize) !LearnsetCollection {
-        const learnset = utils.slice.atOrNull(game.tm_hm_learnset, species) ?? return error.OutOfBound;
-        return LearnsetCollection.init(LearnsetContext { .offset = 0, .count = game.tms.len, .learnset = learnset });
-    }
-
-    pub fn hmLearnset(game: &const Game, species: usize) !LearnsetCollection {
-        const learnset = utils.slice.atOrNull(game.tm_hm_learnset, species) ?? return error.OutOfBound;
-        return LearnsetCollection.init(LearnsetContext { .offset = game.tms.len, .count = game.hms.len, .learnset = learnset });
-    }
-
-    const BasePokemonCollection = SliceCollection([]BasePokemon);
-    const TrainerCollection = SliceCollection([]Trainer);
-    const PartyMemberCollection = Collection(
-        PartyMemberContext,
-        struct {
-            fn at(context: &const PartyMemberContext, index: usize) (error{}!&PartyMember) {
-                const trainer = context.trainer;
-                const data = context.data;
-
-                return switch (trainer.party_type) {
-                    PartyType.Standard =>  basePartyMember(gen3.PartyMember,          data, index),
-                    PartyType.WithMoves => basePartyMember(gen3.PartyMemberWithMoves, data, index),
-                    PartyType.WithHeld =>  basePartyMember(gen3.PartyMemberWithHeld,  data, index),
-                    PartyType.WithBoth =>  basePartyMember(gen3.PartyMemberWithBoth,  data, index),
-                    else => unreachable,
-                };
-            }
-
-            fn count(context: &const PartyMemberContext) usize {
-                return context.trainer.party_size.get();
-            }
+        pub const LevelUpMoves = Collection(&LevelUpMove, error{});
+        pub fn levelUpMoves(pokemon: &const Pokemon) LevelUpMoves {
+            return LevelUpMoves.initSlice(LevelUpMove, pokemon.level_up_moves);
         }
-    );
 
-    const PartyMemberContext = struct {
-        data: []u8,
-        trainer: &const Trainer,
+        pub const Learnset = Collection(bool, error{});
+        pub fn tmLearnset(pokemon: &const Pokemon) Learnset {
+            return Learnset.initExternFunctionsAndContext(
+                struct {
+                    fn at(p: &const Pokemon, index: usize) (error{}!bool) {
+                        debug.assert(p.tm_count <= index);
+                        return bits.get(u64, p.learnset.get(), u6(index));
+                    }
+
+                    fn length(p: &const Pokemon) usize {
+                        return p.tm_count;
+                    }
+                },
+                Pokemon,
+                pokemon
+            );
+        }
+
+        pub fn hmLearnset(pokemon: &const Pokemon) Learnset {
+            return Learnset.initExternFunctionsAndContext(
+                struct {
+                    fn at(p: &const Pokemon, index: usize) (error{}!bool) {
+                        debug.assert(p.hm_count <= index);
+                        return bits.get(u64, p.learnset.get(), u6(p.tm_count + index));
+                    }
+
+                    fn length(p: &const Pokemon) usize {
+                        return p.hm_count;
+                    }
+                },
+                Pokemon,
+                pokemon
+            );
+        }
     };
 
-    fn basePartyMember(comptime TMember: type, data: []u8, index: usize) &PartyMember {
-        const p = ([]TMember)(data);
-        return &p[index].base;
+    pub const Trainers = Collection(Trainer, error{InvalidOffset,InvalidPartyType});
+    pub fn trainers(game: &const Game) Trainers {
+        return Trainers.initExternFunctionsAndContext(
+            struct {
+                fn at(t: &const []BaseTrainer, index: usize) !Trainer {
+                    const trainer = &(*t)[index];
+                    const offset = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
+
+                    const data = switch (trainer.party_type) {
+                        PartyType.Standard =>  try partyMemberData(gen3.PartyMember,          game.data, offset, trainer.party_size.get()),
+                        PartyType.WithMoves => try partyMemberData(gen3.PartyMemberWithMoves, game.data, offset, trainer.party_size.get()),
+                        PartyType.WithHeld =>  try partyMemberData(gen3.PartyMemberWithHeld,  game.data, offset, trainer.party_size.get()),
+                        PartyType.WithBoth =>  try partyMemberData(gen3.PartyMemberWithBoth,  game.data, offset, trainer.party_size.get()),
+                        else => return error.InvalidPartyType,
+                    };
+
+                    return Trainer { .base = trainer, .party_data = data };
+                }
+
+                fn length(t: &const []BaseTrainer) usize {
+                    return t.len;
+                }
+
+                fn partyMemberData(comptime Member: type, data: []u8, offset: usize, size: usize) ![]u8 {
+                    const end = offset + size * @sizeOf(Member);
+                    if (data.len < end) return error.InvalidOffset;
+
+                    return data[offset..end];
+                }
+            },
+            []BaseTrainer,
+            game.trainers,
+        );
     }
 
-    fn partyMemberData(comptime Member: type, data: []u8, offset: usize, size: usize) ![]u8 {
-        const end = offset + size * @sizeOf(Member);
-        if (data.len < end) return error.InvalidOffset;
+    pub const Trainer = struct {
+        base: &BaseTrainer,
+        party_data: []u8,
 
-        return data[offset..end];
-    }
+        pub const PartyMembers = Collection(&PartyMember, error{});
+        pub fn party(trainer: &const Trainer) PartyMembers {
+            return PartyMembers.initExternFunctionsAndContext(
+                struct {
+                    fn at(t: &const Trainer, index: usize) (error{}!&PartyMember) {
 
-    const MoveCollection = SliceCollection([]Move);
-    const LevelUpMoveCollection = SliceCollection([]LevelUpMove);
-    const MachineCollection = SliceCollection([]little.Little(u16));
-    const LearnsetCollection = Collection(
-        LearnsetContext,
-        struct {
-            fn at(context: &const LearnsetContext, index: usize) (error{}!bool) {
-                debug.assert(context.count <= context.offset + index);
-                return bits.get(u64, context.learnset.get(), u6(context.offset + index));
-            }
+                        return switch (t.base.party_type) {
+                            PartyType.Standard =>  basePartyMember(gen3.PartyMember,          t.party_data, index),
+                            PartyType.WithMoves => basePartyMember(gen3.PartyMemberWithMoves, t.party_data, index),
+                            PartyType.WithHeld =>  basePartyMember(gen3.PartyMemberWithHeld,  t.party_data, index),
+                            PartyType.WithBoth =>  basePartyMember(gen3.PartyMemberWithBoth,  t.party_data, index),
+                            else => unreachable,
+                        };
+                    }
 
-            fn count(context: &const LearnsetContext) usize {
-                return context.count;
-            }
+                    fn length(t: &const Trainer) usize {
+                        return t.base.party_size.get();
+                    }
+
+                    fn basePartyMember(comptime TMember: type, data: []u8, index: usize) &PartyMember {
+                        const p = ([]TMember)(data);
+                        return &p[index].base;
+                    }
+                },
+                Trainer,
+                trainer,
+            );
         }
-    );
-
-    const LearnsetContext = struct {
-        offset: usize,
-        count: usize,
-        learnset: little.Little(u64),
     };
+
+    const Moves = Collection(&Move, error{});
+    pub fn moves(game: &const Game) Moves {
+        return Moves.initSlice(Move, game.moves);
+    }
+
+    const Machines = Collection(&little.Little(u16), error{});
+    pub fn tms(game: &const Game) Machines {
+        return Machines.initSlice(little.Little(u16), game.tms);
+    }
+
+    pub fn hms(game: &const Game) Machines {
+        return Machines.initSlice(little.Little(u16), game.hms);
+    }
 };
 
-pub fn Collection(
-    comptime Context: type,
-    comptime Functions: type) type
-{
-    return struct {
-        const Item = @typeOf(Functions.at).ReturnType.Payload;
-        const Errors = @typeOf(Functions.at).ReturnType.ErrorSet;
+pub fn Collection(comptime Item: type, comptime Errors: type) type {
+    const VTable = struct {
         const Self = this;
-        context: Context,
 
-        pub fn init(context: &const Context) Self {
-            return Self { .context = *context };
+        at: fn(&const u8, usize) Errors!Item,
+        length: fn(&const u8) usize,
+
+        fn init(comptime Functions: type, comptime Context: type) Self {
+            return Self {
+                .at = struct {
+                    fn at(d: &const u8, i: usize) Errors!Item {
+                        return Functions.at(cast(Context, d), i);
+                    }
+                }.at,
+
+                .length = struct {
+                    fn length(d: &const u8) usize {
+                        return Functions.length(cast(Context, d));
+                    }
+                }.length,
+            };
+        }
+
+        fn cast(comptime Context: type, ptr: &const u8) &const Context {
+            return @ptrCast(&const Context, @alignCast(@alignOf(Context), ptr));
+        }
+    };
+
+    return struct {
+        const Self = this;
+
+        data: &const u8,
+        vtable: &const VTable,
+
+        pub fn initContext(context: var) Self {
+            return initExternFunctionsAndContext(@TypeOf(*context), @TypeOf(*context), context);
+        }
+
+        pub fn initSlice(comptime T: type, slice: &const []T) Self {
+            return initExternFunctionsAndContext(
+                struct {
+                    fn at(s: &const []T, index: usize) (Errors!&T) { return &(*s)[index]; }
+                    fn length(s: &const []T) usize { return s.len; }
+                },
+                []T, slice);
+        }
+
+        pub fn initSliceConst(comptime T: type, slice: &const []const T) Self {
+            return initExternFunctionsAndContext(
+                struct {
+                    fn at(s: []const T, index: usize) (Errors!&const T) { return &s[index]; }
+                    fn length(s: []T) usize { return s.len; }
+                },
+                []const T, slice);
+        }
+
+        pub fn initExternFunctionsAndContext(comptime Functions: type, comptime Context: type, context: &const Context) Self {
+            return Self {
+                .data = @ptrCast(&const u8, context),
+                .vtable = &comptime VTable.init(Functions, Context),
+            };
         }
 
         pub fn at(coll: &const Self, index: usize) Errors!Item {
-            return Functions.at(coll.context, index);
+            return coll.vtable.at(coll.data, index);
         }
 
-        pub fn count(coll: &const Self) usize {
-            return Functions.count(coll.context);
+        pub fn length(coll: &const Self) usize {
+            return coll.vtable.length(coll.data);
         }
 
         pub fn iterator(coll: &const Self) Iterator {
             return Iterator {
-                .collection = *coll,
                 .current = 0,
+                .collection = coll,
             };
         }
 
         const Iterator = struct {
-            collection: Self,
             current: usize,
+            collection: &const Self,
 
-            pub fn next(it: &Iterator) Errors!?Item {
-                if (it.collection.count() <= it.current) {
-                    return null;
+            pub fn next(it: &Iterator) ?Item {
+                while (true) {
+                    const res = it.nextWithErrors() catch continue;
+                    return res;
                 }
+            }
+
+            pub fn nextWithErrors(it: &Iterator) Errors!?Item {
+                const l = it.collection.length();
+                if (l <= it.current) return null;
 
                 defer it.current += 1;
                 return try it.collection.at(it.current);
             }
-
-            pub fn nextNoError(it: &Iterator) ?Item {
-                while (it.next()) |res| {
-                    return res;
-                } else |_| { }
-            }
         };
     };
-}
-
-pub fn SliceCollection(comptime Slice: type) type {
-    const Item = Slice.Child;
-    comptime debug.assert(Slice == []Item or Slice == []const Item);
-
-    return Collection(
-        Slice,
-        struct {
-            fn at(s: &const Slice, index: usize) (error{}!&Item) { return &(*s)[index]; }
-            fn count(v: &const Slice) usize { return v.len; }
-        }
-    );
 }
