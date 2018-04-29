@@ -284,7 +284,7 @@ pub const Gen5 = struct {
                             return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
                         }
 
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm1_count + p.hm_count));
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.hm_count));
                     }
 
                     fn length(p: &const Pokemon) usize {

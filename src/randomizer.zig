@@ -258,7 +258,7 @@ pub fn Randomizer(comptime Gen: type) type {
 
                     const new_level = blk: {
                         // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
-                        var res = f64(toInt(@typeOf(trainer_pokemon.level), trainer_pokemon.level)) * options.level_modifier;
+                        var res = f64(toInt(trainer_pokemon.level)) * options.level_modifier;
                         res = math.min(res, f64(100));
                         res = math.max(res, f64(1));
                         break :blk u8(math.round(res));
@@ -336,11 +336,11 @@ pub fn Randomizer(comptime Gen: type) type {
                                 const level_up_move = item.value;
                                 for (moves) |*move| {
                                     // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
-                                    const move_level = toInt(@typeOf(level_up_move.level), level_up_move.level);
-                                    const trainer_pkm_level = u8(toInt(@typeOf(trainer_pokemon.base.level), trainer_pokemon.base.level));
+                                    const move_level = toInt(level_up_move.level);
+                                    const trainer_pkm_level = u8(toInt(trainer_pokemon.base.level));
                                     if (move.level < move_level and move_level < trainer_pkm_level) {
                                         move.level = u8(move_level);
-                                        move.move_id = u16(toInt(@typeOf(level_up_move.move_id), level_up_move.move_id));
+                                        move.move_id = u16(toInt(level_up_move.move_id));
                                         break;
                                     }
                                 }
@@ -456,7 +456,7 @@ pub fn Randomizer(comptime Gen: type) type {
             var lvl_it = levelup_learnset.iterator();
             while (lvl_it.next()) |item| {
                 // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
-                try res.append(toInt(@typeOf(item.value.move_id), item.value.move_id));
+                try res.append(toInt(item.value.move_id));
             }
 
             var tm_learnset_it = tm_learnset.iterator();
@@ -520,10 +520,19 @@ pub fn Randomizer(comptime Gen: type) type {
     };
 }
 
+fn Value(comptime T: type) type {
+    if (@typeId(T) == builtin.TypeId.Pointer) {
+        return T.Child;
+    } else {
+        return T;
+    }
+}
+
 const builtin = @import("builtin");
-fn toInt(comptime T: type, value: &const T) @IntType(false, @sizeOf(T) * 8) {
+fn toInt(value: var) @IntType(false, @sizeOf(Value(@typeOf(value))) * 8) {
+    const T = Value(@typeOf(value));
     if (@typeId(T) == builtin.TypeId.Int) {
-        return *value;
+        return value;
     } else if (Little(T.Base) == T) {
         return value.get();
     }
