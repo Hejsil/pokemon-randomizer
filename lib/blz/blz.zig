@@ -45,12 +45,7 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
     const inc_len = mem.readIntLE(u32, data[data.len - 4..]);
     const lengths = blk: {
         if (inc_len == 0) {
-            break :blk Lengths {
-                .enc = 0,
-                .dec = data.len,
-                .pak = 0,
-                .raw = data.len,
-            };
+            return error.BadHeaderLength;
         } else {
             const hdr_len = data[data.len - 5];
             if (hdr_len < 8 or hdr_len > 0xB) return error.BadHeaderLength;
