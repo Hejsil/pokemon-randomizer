@@ -187,9 +187,7 @@ pub const Game = struct {
             .base_stats       = getNarcFiles(rom.file_system, "a/0/1/6") ?? return error.Err,
             .level_up_moves   = getNarcFiles(rom.file_system, "a/0/1/8") ?? return error.Err,
             .moves            = getNarcFiles(rom.file_system, "a/0/2/1") ?? return error.Err,
-
-            // TODO: There seems to be a dummu trainer at 0. Figure out how to handle this the best.
-            .trainer_data     = (getNarcFiles(rom.file_system, "a/0/9/1") ?? return error.Err)[1..],
+            .trainer_data     = getNarcFiles(rom.file_system, "a/0/9/1") ?? return error.Err,
             .trainer_pokemons = getNarcFiles(rom.file_system, "a/0/9/2") ?? return error.Err,
             .tms1             = hm_tms[0..92],
             .hms              = hm_tms[92..98],
