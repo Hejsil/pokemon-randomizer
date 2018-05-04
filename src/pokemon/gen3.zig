@@ -277,6 +277,33 @@ pub const Game = struct {
         allocator.free(game.data);
     }
 
+    fn getOffsets(header: &const gba.Header) !&const Offsets {
+        if (mem.eql(u8, header.game_title, "POKEMON EMER")) return &emerald_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON RUBY")) return &ruby_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON SAPP")) return &sapphire_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON FIRE")) return &fire_us_offsets;
+        if (mem.eql(u8, header.game_title, "POKEMON LEAF")) return &leaf_us_offsets;
+
+        return error.InvalidGen3PokemonHeader;
+    }
+
+    const GameId = struct {
+        game_title: []const u8,
+        gamecode: []const u8,
+
+        fn hash(id: &const GameId) u32 {
+            const hash1 = mem.hash_slice_u8(id.game_title);
+            const hash2 = mem.hash_slice_u8(id.gamecode);
+
+            return (hash1 ^ hash2) *% 16777619;
+        }
+
+        fn equal(a: &const GameId, b: &const GameId) bool {
+            return mem.eql(u8, a.game_title, b.game_title) and
+                   mem.eql(u8, a.gamecode, b.gamecode);
+        }
+    };
+
     // TODO: When we are able to allocate at comptime, construct a HashMap
     //       that maps struct { game_title: []const u8, gamecode: []const u8, } -> Offsets
     // game_title: POKEMON EMER
@@ -293,7 +320,6 @@ pub const Game = struct {
         .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C, },
     };
 
-    // TODO: This table is invalid.
     // game_title: POKEMON RUBY
     // gamecode: AXVE
     const ruby_us_offsets = Offsets {
@@ -303,12 +329,11 @@ pub const Game = struct {
         .base_stats                 = Offset { .start = 0x01FEC30, .end = 0x0201940, },
         .evolution_table            = Offset { .start = 0x0203B80, .end = 0x0207BE0, },
         .level_up_learnset_pointers = Offset { .start = 0x0207BE0, .end = 0x0208250, },
-        .hms                        = Offset { .start = 0x0208332, .end = 0x0208344, },
-        .tms                        = Offset { .start = 0x037651C, .end = 0x0376590, },
+        .hms                        = Offset { .start = 0x0208332, .end = 0x0208342, },
+        .tms                        = Offset { .start = 0x037651C, .end = 0x0376580, },
         .items                      = Offset { .start = 0x03C5580, .end = 0x03C917C, },
     };
 
-    // TODO: This table is invalid.
     // game_title: POKEMON SAPP
     // gamecode: AXPE
     const sapphire_us_offsets = Offsets {
@@ -318,12 +343,11 @@ pub const Game = struct {
         .base_stats                 = Offset { .start = 0x01FEBC0, .end = 0x02018D0, },
         .evolution_table            = Offset { .start = 0x0203B10, .end = 0x0207B70, },
         .level_up_learnset_pointers = Offset { .start = 0x0207B70, .end = 0x02081E0, },
-        .hms                        = Offset { .start = 0x02082C2, .end = 0x02082D4, },
-        .tms                        = Offset { .start = 0x03764AC, .end = 0x0376520, },
+        .hms                        = Offset { .start = 0x02082C2, .end = 0x02082D2, },
+        .tms                        = Offset { .start = 0x03764AC, .end = 0x0376510, },
         .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
     };
 
-    // TODO: This table is invalid.
     // game_title: POKEMON FIRE
     // gamecode: BPRE
     const fire_us_offsets = Offsets {
@@ -333,12 +357,11 @@ pub const Game = struct {
         .base_stats                 = Offset { .start = 0x02547F4, .end = 0x0257504, },
         .evolution_table            = Offset { .start = 0x02597C4, .end = 0x025D824, },
         .level_up_learnset_pointers = Offset { .start = 0x025D824, .end = 0x025DE94, },
-        .hms                        = Offset { .start = 0x025E084, .end = 0x025E096, },
-        .tms                        = Offset { .start = 0x045A604, .end = 0x045A678, },
+        .hms                        = Offset { .start = 0x025E084, .end = 0x025E094, },
+        .tms                        = Offset { .start = 0x045A604, .end = 0x045A668, },
         .items                      = Offset { .start = 0x03DB098, .end = 0x03DF0E0, },
     };
 
-    // TODO: This table is invalid.
     // game_title: POKEMON LEAF
     // gamecode: BPGE
     const leaf_us_offsets = Offsets {
@@ -348,18 +371,8 @@ pub const Game = struct {
         .base_stats                 = Offset { .start = 0x02547D0, .end = 0x02574E0, },
         .evolution_table            = Offset { .start = 0x02597A4, .end = 0x025D804, },
         .level_up_learnset_pointers = Offset { .start = 0x025D804, .end = 0x025DE74, },
-        .hms                        = Offset { .start = 0x025E064, .end = 0x025E076, },
-        .tms                        = Offset { .start = 0x045A034, .end = 0x045A0A8, },
+        .hms                        = Offset { .start = 0x025E064, .end = 0x025E074, },
+        .tms                        = Offset { .start = 0x045A034, .end = 0x045A098, },
         .items                      = Offset { .start = 0x03DAED4, .end = 0x03DEF1C, },
     };
-
-    fn getOffsets(header: &const gba.Header) !&const Offsets {
-        if (mem.eql(u8, header.game_title, "POKEMON EMER")) return &emerald_us_offsets;
-        if (mem.eql(u8, header.game_title, "POKEMON RUBY")) return &ruby_us_offsets;
-        if (mem.eql(u8, header.game_title, "POKEMON SAPP")) return &sapphire_us_offsets;
-        if (mem.eql(u8, header.game_title, "POKEMON FIRE")) return &fire_us_offsets;
-        if (mem.eql(u8, header.game_title, "POKEMON LEAF")) return &leaf_us_offsets;
-
-        return error.InvalidGen3PokemonHeader;
-    }
 };
