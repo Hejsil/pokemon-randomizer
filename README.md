@@ -34,10 +34,10 @@ For games it doesn't claim to support, you might be lucky if it works.
 | Heart Gold  |                    |                    |
 | Soul Silver |                    |                    |
 |             |                    |                    |
-| Black       |                    |                    |
-| White       |                    |                    |
+| Black       | :heavy_check_mark: |                    |
+| White       | :heavy_check_mark: |                    |
 | Black 2     | :heavy_check_mark: |                    |
-| White 2     |                    |                    |
+| White 2     | :heavy_check_mark: |                    |
 
 ## Build
 

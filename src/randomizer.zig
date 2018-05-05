@@ -498,9 +498,10 @@ pub fn Randomizer(comptime Gen: type) type {
                 const pokemon = item.value;
                 const species = item.index;
 
+                // Asume that Pokémons with 0 hp are dummy Pokémon
+                if (pokemon.base.hp == 0) continue;
+
                 for (pokemon.base.types) |t| {
-                    // Asume that Pokémons with 0 hp are dummy Pokémon
-                    if (pokemon.base.hp == 0) continue;
                     const entry = species_by_type.get(t) ?? continue;
                     try entry.value.append(u16(species));
                 }

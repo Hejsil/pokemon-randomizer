@@ -1,8 +1,9 @@
-const std    = @import("std");
-const little = @import("../little.zig");
-const nds    = @import("../nds/index.zig");
-const utils  = @import("../utils/index.zig");
-const common = @import("common.zig");
+const std       = @import("std");
+const little    = @import("../little.zig");
+const nds       = @import("../nds/index.zig");
+const utils     = @import("../utils/index.zig");
+const common    = @import("common.zig");
+const constants = @import("gen5-constants.zig");
 
 const mem = std.mem;
 
@@ -55,11 +56,12 @@ pub const BasePokemon = packed struct {
     // TMS 01-92, HMS 01-06, TMS 93-95
     tm_hm_learnset: Little(u128),
 
-    special_tutors: Little(u32),
-    driftveil_tutor: Little(u32),
-    lentimas_tutor: Little(u32),
-    humilau_tutor: Little(u32),
-    nacrene_tutor: Little(u32),
+    // TODO: Tutor data only exists in BW2
+    //special_tutors: Little(u32),
+    //driftveil_tutor: Little(u32),
+    //lentimas_tutor: Little(u32),
+    //humilau_tutor: Little(u32),
+    //nacrene_tutor: Little(u32),
 };
 
 // https://projectpokemon.org/home/forums/topic/22629-b2w2-general-rom-info/?do=findComment&comment=153174
@@ -162,8 +164,6 @@ pub const Type = enum(u8) {
 };
 
 pub const Game = struct {
-    const PokemonType = Type;
-
     const legendaries = common.legendaries;
 
     base_stats: []const &nds.fs.Narc.File,
@@ -176,31 +176,38 @@ pub const Game = struct {
     tms2: []Little(u16),
 
     pub fn fromRom(rom: &nds.Rom) !Game {
-        const tm_count = 95;
-        const hm_count = 6;
-        const hm_tm_prefix = "\x87\x03\x88\x03";
-        const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
-        const hm_tm_index = hm_tm_prefix_index + hm_tm_prefix.len;
-        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(tm_count + hm_count) * @sizeOf(u16)]);
+        const file_names = try getFileNames(rom.header.gamecode);
+        const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
+        const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
+        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game {
-            .base_stats       = getNarcFiles(rom.file_system, "a/0/1/6") ?? return error.Err,
-            .level_up_moves   = getNarcFiles(rom.file_system, "a/0/1/8") ?? return error.Err,
-            .moves            = getNarcFiles(rom.file_system, "a/0/2/1") ?? return error.Err,
-            .trainer_data     = getNarcFiles(rom.file_system, "a/0/9/1") ?? return error.Err,
-            .trainer_pokemons = getNarcFiles(rom.file_system, "a/0/9/2") ?? return error.Err,
+            .base_stats       = try getNarcFiles(rom.file_system, file_names.base_stats),
+            .level_up_moves   = try getNarcFiles(rom.file_system, file_names.level_up_moves),
+            .moves            = try getNarcFiles(rom.file_system, file_names.moves),
+            .trainer_data     = try getNarcFiles(rom.file_system, file_names.trainer_data),
+            .trainer_pokemons = try getNarcFiles(rom.file_system, file_names.trainer_pokemons),
             .tms1             = hm_tms[0..92],
             .hms              = hm_tms[92..98],
             .tms2             = hm_tms[98..],
         };
     }
 
-    fn getNarcFiles(file_system: &const nds.fs.Nitro, path: []const u8) ?[]const &nds.fs.Narc.File {
-        const file = file_system.getFile(path) ?? return null;
+    fn getNarcFiles(file_system: &const nds.fs.Nitro, path: []const u8) ![]const &nds.fs.Narc.File {
+        const file = file_system.getFile(path) ?? return error.CouldntFindFile;
 
         switch (file.@"type") {
-            nds.fs.Nitro.File.Type.Binary => return null,
+            nds.fs.Nitro.File.Type.Binary => return error.InvalidFileType,
             nds.fs.Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
         }
+    }
+
+    fn getFileNames(gamecode: []const u8) !constants.Files {
+        if (mem.eql(u8, gamecode, "IREO")) return constants.black2_files;
+        if (mem.eql(u8, gamecode, "IRDO")) return constants.white2_files;
+        if (mem.eql(u8, gamecode, "IRBO")) return constants.black_files;
+        if (mem.eql(u8, gamecode, "IRAO")) return constants.white_files;
+
+        return error.InvalidGen5GameCode;
     }
 };
