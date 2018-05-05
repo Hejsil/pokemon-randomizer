@@ -7,8 +7,7 @@ programming language and its features.
 
 ## Supported games
 
-If the randomizer does not work for any of the games it claim to support, there is a bug.
-For games it doesn't claim to support, you might be lucky if it works.
+Each Pokémon game exists in multiple different languages. The reason this is important is that different languages have different data layouts. The Japanese version of Pokémon Emerald might not work with the randomizer even though a US version does. 
 
 | Version:    | International (O)  | English/USA (E)    |
 |-------------|--------------------|--------------------|
@@ -56,6 +55,8 @@ Here are the different build commands:
 * `zig build` builds everything and runs all tests.
 
 ## Resources
+
+Useful links with information on the structure of roms, or where data exists in different Pokémon games.
 
 ### Roms
 
