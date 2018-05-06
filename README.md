@@ -81,6 +81,7 @@ Here are the different build commands:
 ### Gen 5
 
 * [BW2 File System](https://projectpokemon.org/docs/gen-5/b2w2-file-system-r8/)
+* [BW Trainer data](https://projectpokemon.org/home/forums/topic/22629-b2w2-general-rom-info/?do=findComment&comment=153174)
 
 ### All Gens
 

@@ -465,20 +465,20 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
         return error.UnableToFindBaseStatsOffset;
     };
 
-    const unused_evo = gen3.Evolution {
-        .@"type" = gen3.EvolutionType.Unused,
+    const unused_evo = common.Evolution {
+        .method = common.Evolution.Method.Unused,
         .param = toLittle(u16(0)),
         .target = toLittle(u16(0)),
         .padding = undefined,
     };
-    const evolution_table = findOffsetOfStructArray(gen3.Evolution, [][]const u8 { "padding" }, data,
-        []gen3.Evolution {
+    const evolution_table = findOffsetOfStructArray(common.Evolution, [][]const u8 { "padding" }, data,
+        []common.Evolution {
             // Dummy
             unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
 
             // Bulbasaur
-            gen3.Evolution {
-                .@"type" = gen3.EvolutionType.LevelUp,
+            common.Evolution {
+                .method = common.Evolution.Method.LevelUp,
                 .param = toLittle(u16(16)),
                 .target = toLittle(u16(2)),
                 .padding = undefined,
@@ -486,18 +486,18 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
             unused_evo, unused_evo, unused_evo, unused_evo,
 
             // Ivysaur
-            gen3.Evolution {
-                .@"type" = gen3.EvolutionType.LevelUp,
+            common.Evolution {
+                .method = common.Evolution.Method.LevelUp,
                 .param = toLittle(u16(32)),
                 .target = toLittle(u16(3)),
                 .padding = undefined,
             },
             unused_evo, unused_evo, unused_evo, unused_evo,
         },
-        []gen3.Evolution {
+        []common.Evolution {
             // Beldum
-            gen3.Evolution {
-                .@"type" = gen3.EvolutionType.LevelUp,
+            common.Evolution {
+                .method = common.Evolution.Method.LevelUp,
                 .param = toLittle(u16(20)),
                 .target = toLittle(u16(399)),
                 .padding = undefined,
@@ -505,8 +505,8 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
             unused_evo, unused_evo, unused_evo, unused_evo,
 
             // Metang
-            gen3.Evolution {
-                .@"type" = gen3.EvolutionType.LevelUp,
+            common.Evolution {
+                .method = common.Evolution.Method.LevelUp,
                 .param = toLittle(u16(45)),
                 .target = toLittle(u16(400)),
                 .padding = undefined,

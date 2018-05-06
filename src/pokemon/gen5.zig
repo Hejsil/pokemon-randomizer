@@ -64,7 +64,6 @@ pub const BasePokemon = packed struct {
     //nacrene_tutor: Little(u32),
 };
 
-// https://projectpokemon.org/home/forums/topic/22629-b2w2-general-rom-info/?do=findComment&comment=153174
 pub const PartyMemberBase = packed struct {
     iv: u8,
     gender: u4,

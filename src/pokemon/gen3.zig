@@ -13,7 +13,6 @@ const os    = std.os;
 const slice = utils.slice;
 
 const assert = debug.assert;
-const u9     = @IntType(false, 9);
 
 const toLittle = little.toLittle;
 const Little   = little.Little;
@@ -53,32 +52,6 @@ pub const BasePokemon = packed struct {
     flip: bool,
 
     padding: [2]u8
-};
-
-pub const EvolutionType = enum(u16) {
-    Unused                 = toLittle(u16(0x00)).get(),
-    FriendShip             = toLittle(u16(0x01)).get(),
-    FriendShipDuringDay    = toLittle(u16(0x02)).get(),
-    FriendShipDuringNight  = toLittle(u16(0x03)).get(),
-    LevelUp                = toLittle(u16(0x04)).get(),
-    Trade                  = toLittle(u16(0x05)).get(),
-    TradeHoldingItem       = toLittle(u16(0x06)).get(),
-    UseItem                = toLittle(u16(0x07)).get(),
-    AttackGthDefense       = toLittle(u16(0x08)).get(),
-    AttackEqlDefense       = toLittle(u16(0x09)).get(),
-    AttackLthDefense       = toLittle(u16(0x0A)).get(),
-    PersonalityValue1      = toLittle(u16(0x0B)).get(),
-    PersonalityValue2      = toLittle(u16(0x0C)).get(),
-    LevelUpMaySpawnPokemon = toLittle(u16(0x0D)).get(),
-    LevelUpSpawnIfCond     = toLittle(u16(0x0E)).get(),
-    Beauty                 = toLittle(u16(0x0F)).get(),
-};
-
-pub const Evolution = packed struct {
-    @"type": EvolutionType,
-    param: Little(u16),
-    target: Little(u16),
-    padding: [2]u8,
 };
 
 pub const PartyType = enum(u8) {
@@ -141,11 +114,6 @@ pub const Move = packed struct {
     flags: Little(u32),
 };
 
-pub const LevelUpMove = packed struct {
-    move_id: u9,
-    level: u7,
-};
-
 pub const Item = packed struct {
     name: [14]u8,
     id: Little(u16),
@@ -195,7 +163,7 @@ pub const Game = struct {
     moves: []Move,
     tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
-    evolution_table: [][5]Evolution,
+    evolution_table: [][5]common.Evolution,
     level_up_learnset_pointers: []Little(u32),
     hms: []Little(u16),
     items: []Item,
@@ -222,7 +190,7 @@ pub const Game = struct {
             .moves                      = offsets.moves.getSlice(Move, rom),
             .tm_hm_learnset             = offsets.tm_hm_learnset.getSlice(Little(u64), rom),
             .base_stats                 = offsets.base_stats.getSlice(BasePokemon, rom),
-            .evolution_table            = offsets.evolution_table.getSlice([5]Evolution, rom),
+            .evolution_table            = offsets.evolution_table.getSlice([5]common.Evolution, rom),
             .level_up_learnset_pointers = offsets.level_up_learnset_pointers.getSlice(Little(u32), rom),
             .hms                        = offsets.hms.getSlice(Little(u16), rom),
             .items                      = offsets.items.getSlice(Item, rom),

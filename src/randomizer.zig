@@ -174,7 +174,8 @@ pub fn Randomizer(comptime Gen: type) type {
 
                 while (party_it.next()) |party_item| {
                     const trainer_pokemon = party_item.value;
-                    const curr_pokemon = try pokemons.at(trainer_pokemon.species.get());
+                    // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                    const curr_pokemon = try pokemons.at(toInt(trainer_pokemon.species));
                     switch (options.pokemon) {
                         Options.Trainer.Pokemon.Same => {},
                         Options.Trainer.Pokemon.Random => {
@@ -185,7 +186,8 @@ pub fn Randomizer(comptime Gen: type) type {
                             const pokemon_type = randomizer.randomType();
                             const pick_form = (??by_type.get(pokemon_type)).value.toSliceConst();
                             const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
-                            trainer_pokemon.species.set(new_pokemon);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.SameType => {
                             const pokemon_type = blk: {
@@ -195,16 +197,19 @@ pub fn Randomizer(comptime Gen: type) type {
 
                             const pick_form = (??by_type.get(pokemon_type)).value.toSliceConst();
                             const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
-                            trainer_pokemon.species.set(new_pokemon);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.TypeThemed => {
                             const pick_form = (??by_type.get(??trainer_theme)).value.toSliceConst();
                             const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
-                            trainer_pokemon.species.set(new_pokemon);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.Legendaries => {
                             const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, Game.legendaries);
-                            trainer_pokemon.species.set(new_pokemon);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         }
                     }
 
