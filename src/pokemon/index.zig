@@ -277,16 +277,12 @@ pub const Gen4 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index < p.tm1_count + p.tm2_count);
-                        if (index < p.tm1_count) {
-                            return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
-                        }
-
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.hm_count));
+                        debug.assert(index < p.tm_count);
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.tm1_count + p.tm2_count;
+                        return p.tm_count;
                     }
                 },
                 Pokemon,
@@ -299,7 +295,7 @@ pub const Gen4 = struct {
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
                         debug.assert(index < p.hm_count);
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm1_count));
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm_count));
                     }
 
                     fn length(p: &const Pokemon) usize {
@@ -402,15 +398,12 @@ pub const Gen4 = struct {
         return Machines.initExternFunctionsAndContext(
             struct {
                 fn at(g: &const Game, index: usize) (error{}!&little.Little(u16)) {
-                    debug.assert(index < g.tms1.len + g.tms2.len);
-                    if (index < g.tms1.len)
-                        return &g.tms1[index];
-
-                    return &g.tms2[index - g.tms1.len];
+                    debug.assert(index < g.tms.len);
+                    return &g.tms[index];
                 }
 
                 fn length(g: &const Game) usize {
-                    return g.tms1.len + g.tms2.len;
+                    return g.tms.len;
                 }
             },
             Game,

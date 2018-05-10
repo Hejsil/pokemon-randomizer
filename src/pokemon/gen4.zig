@@ -54,6 +54,7 @@ pub const MoveTutor = packed struct {
     tutor: u8,
 };
 
+// TODO: Apparently, Partymembers have 2 bytes of extra padding in HGSS/Plat... https://github.com/Dabomstew/universal-pokemon-randomizer/blob/c16ce0ad253c4cebbfc25ac0e566d4f13d81b283/src/com/dabomstew/pkrandom/romhandlers/Gen4RomHandler.java#L1318
 pub const PartyMemberBase = packed struct {
     iv: u8,
     gender: u4,
@@ -116,6 +117,30 @@ pub const Type = enum(u8) {
     Dark     = 0x11,
 };
 
+pub const Move = packed struct {
+    effect: Little(u16),
+    category: u8,
+    power: u8,
+    @"type": Type,
+    accuracy: u8,
+    pp: u8,
+    effect_chance: u8,
+    target: Little(u16),
+    priority: u8,
+    contact: u8,
+    protected: u8,
+    magic_bounced: u8,
+    snatchable: u8,
+    u8_5: u8,
+    u8_6: u8,
+    u8_7: u8,
+    u8_8: u8,
+    contest_effect: u8,
+    contest_type: u8,
+    pad_e: Little(u16),
+
+};
+
 pub const Game = struct {
     const legendaries = common.legendaries;
 
@@ -128,8 +153,6 @@ pub const Game = struct {
     hms: []Little(u16),
 
     pub fn fromRom(rom: &nds.Rom) !Game {
-        std.debug.warn("{}\n", rom.header.gamecode);
-
         const file_names = try getFileNames(rom.header.gamecode);
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, file_names.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + file_names.hm_tm_prefix.len;
@@ -156,11 +179,12 @@ pub const Game = struct {
     }
 
     fn getFileNames(gamecode: []const u8) !constants.Files {
-        //if (mem.eql(u8, gamecode, "IREO")) return constants.black2_files;
-        //if (mem.eql(u8, gamecode, "IRDO")) return constants.white2_files;
-        //if (mem.eql(u8, gamecode, "IRBO")) return constants.black_files;
-        //if (mem.eql(u8, gamecode, "IRAO")) return constants.white_files;
+        if (mem.eql(u8, gamecode, "IPGE")) return constants.ss_files;
+        if (mem.eql(u8, gamecode, "IPKE")) return constants.hg_files;
+        if (mem.eql(u8, gamecode, "ADAE")) return constants.diamond_files;
+        if (mem.eql(u8, gamecode, "APAE")) return constants.pearl_files;
+        if (mem.eql(u8, gamecode, "CPUE")) return constants.platinum_files;
 
-        return error.InvalidGen5GameCode;
+        return error.InvalidGen4GameCode;
     }
 };

@@ -110,7 +110,6 @@ pub const Trainer = packed struct {
     post_battle_item: Little(u16),
 };
 
-// https://projectpokemon.org/home/forums/topic/14212-bw-move-data/?do=findComment&comment=123606
 pub const Move = packed struct {
     @"type": Type,
     effect_category: u8,

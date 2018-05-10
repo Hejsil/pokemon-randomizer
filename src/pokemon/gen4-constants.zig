@@ -9,8 +9,8 @@ pub const Files = struct {
     evolutions: []const u8,
 };
 
-const ss_files = hg_files;
-const hg_files = Files {
+pub const ss_files = hg_files;
+pub const hg_files = Files {
     .hm_tm_prefix = "\x1E\x00\x32\x00",
 
     .base_stats = "/a/0/0/2",
@@ -21,7 +21,7 @@ const hg_files = Files {
     .evolutions = "/a/0/3/4",
 };
 
-const diamond_files = Files {
+pub const diamond_files = Files {
     .hm_tm_prefix = "\xD1\x00\xD2\x00\xD3\x00\xD4\x00",
 
     .base_stats = "/poketool/personal/personal.narc",
@@ -32,13 +32,13 @@ const diamond_files = Files {
     .evolutions = "/poketool/personal/evo.narc",
 };
 
-const pearl_files = comptime blk: {
+pub const pearl_files = comptime blk: {
     var res = diamond_files;
     res.base_stats = "/poketool/personal_pearl/personal.narc";
     break :blk res;
 };
 
-const platinum_files = pearl_files;
+pub const platinum_files = pearl_files;
 
 pub const tm_count = 92;
 pub const hm_count = 8;
