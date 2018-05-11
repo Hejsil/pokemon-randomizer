@@ -59,10 +59,9 @@ pub const Gen3 = struct {
 
                     return Pokemon {
                         .base = &base_pokemons[index],
+                        .game = g,
                         .level_up_moves = ([]LevelUpMove)(g.data[offset..end]),
                         .learnset = utils.slice.ptrAtOrNull(g.tm_hm_learnset, index) ?? return error.InvalidOffset,
-                        .tm_count = g.tms.len,
-                        .hm_count = g.hms.len,
                     };
                 }
 
@@ -77,10 +76,9 @@ pub const Gen3 = struct {
 
     pub const Pokemon = struct {
         base: &BasePokemon,
+        game: &const Game,
         level_up_moves: []LevelUpMove,
         learnset: &little.Little(u64),
-        tm_count: usize,
-        hm_count: usize,
 
         pub const LevelUpMoves = Collection(&LevelUpMove, error{});
         pub fn levelUpMoves(pokemon: &const Pokemon) LevelUpMoves {
@@ -92,12 +90,12 @@ pub const Gen3 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index < p.tm_count);
+                        debug.assert(index < length(p));
                         return bits.get(u64, p.learnset.get(), u6(index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.tm_count;
+                        return p.game.tms.len;
                     }
                 },
                 Pokemon,
@@ -109,12 +107,12 @@ pub const Gen3 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index <= p.hm_count);
-                        return bits.get(u64, p.learnset.get(), u6(p.tm_count + index));
+                        debug.assert(index <= length(p));
+                        return bits.get(u64, p.learnset.get(), u6(p.game.tms.len + index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.hm_count;
+                        return p.game.hms.len;
                     }
                 },
                 Pokemon,
@@ -246,9 +244,8 @@ pub const Gen4 = struct {
 
                     return Pokemon {
                         .base = base_pokemon,
+                        .game = g,
                         .level_up_moves = level_up_moves,
-                        .tm_count = g.tms.len,
-                        .hm_count = g.hms.len,
                     };
                 }
 
@@ -263,9 +260,8 @@ pub const Gen4 = struct {
 
     pub const Pokemon = struct {
         base: &BasePokemon,
+        game: &const Game,
         level_up_moves: []LevelUpMove,
-        tm_count: usize,
-        hm_count: usize,
 
         pub const LevelUpMoves = Collection(&LevelUpMove, error{});
         pub fn levelUpMoves(pokemon: &const Pokemon) LevelUpMoves {
@@ -277,12 +273,12 @@ pub const Gen4 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index < p.tm_count);
+                        debug.assert(index < length(p));
                         return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.tm_count;
+                        return p.game.tms.len;
                     }
                 },
                 Pokemon,
@@ -294,12 +290,12 @@ pub const Gen4 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index < p.hm_count);
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm_count));
+                        debug.assert(index < length(p));
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(p.game.tms.len + index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.hm_count;
+                        return p.game.hms.len;
                     }
                 },
                 Pokemon,
@@ -317,22 +313,34 @@ pub const Gen4 = struct {
                     const party = g.trainer_pokemons[index].data;
 
                     const data = switch (trainer.party_type) {
-                        PartyType.Standard  => try partyMemberData(gen5.PartyMemberBase,      party, trainer.party_size),
-                        PartyType.WithMoves => try partyMemberData(gen5.PartyMemberWithMoves, party, trainer.party_size),
-                        PartyType.WithHeld  => try partyMemberData(gen5.PartyMemberWithHeld,  party, trainer.party_size),
-                        PartyType.WithBoth  => try partyMemberData(gen5.PartyMemberWithBoth,  party, trainer.party_size),
+                        PartyType.Standard  => try partyMemberData(gen4.PartyMemberBase,      g.version, party, trainer.party_size),
+                        PartyType.WithMoves => try partyMemberData(gen4.PartyMemberWithMoves, g.version, party, trainer.party_size),
+                        PartyType.WithHeld  => try partyMemberData(gen4.PartyMemberWithHeld,  g.version, party, trainer.party_size),
+                        PartyType.WithBoth  => try partyMemberData(gen4.PartyMemberWithBoth,  g.version, party, trainer.party_size),
                         else => return error.InvalidPartyType,
                     };
 
-                    return Trainer { .base = trainer, .party_data = data };
+                    return Trainer {
+                        .base = trainer,
+                        .version = g.version,
+                        .party_data = data
+                    };
                 }
 
                 fn length(g: &const Game) usize {
                     return math.min(g.trainer_data.len, g.trainer_pokemons.len);
                 }
 
-                fn partyMemberData(comptime Member: type, data: []u8, size: usize) ![]u8 {
-                    const byte_size = size * @sizeOf(Member);
+                fn partyMemberData(comptime Member: type, version: common.Version, data: []u8, size: usize) ![]u8 {
+                    // In HGSS/Plat party members are padded with two extra bytes.
+                    const padding = switch (version) {
+                        common.Version.HeartGold, common.Version.SoulSilver,
+                        common.Version.Platinum => usize(2),
+                        common.Version.Diamond,
+                        common.Version.Pearl => usize(0),
+                        else => unreachable,
+                    };
+                    const byte_size = size * (@sizeOf(Member) + padding);
                     if (data.len < byte_size) return error.InvalidPartySize;
 
                     return data[0..byte_size];
@@ -345,6 +353,7 @@ pub const Gen4 = struct {
 
     pub const Trainer = struct {
         base: &BaseTrainer,
+        version: common.Version,
         party_data: []u8,
 
         pub const PartyMembers = Collection(&PartyMember, error{});
@@ -353,10 +362,10 @@ pub const Gen4 = struct {
                 struct {
                     fn at(t: &const Trainer, index: usize) (error{}!&PartyMember) {
                         return switch (t.base.party_type) {
-                            PartyType.Standard  => basePartyMember(gen4.PartyMemberBase,      t.party_data, index),
-                            PartyType.WithMoves => basePartyMember(gen4.PartyMemberWithMoves, t.party_data, index),
-                            PartyType.WithHeld  => basePartyMember(gen4.PartyMemberWithHeld,  t.party_data, index),
-                            PartyType.WithBoth  => basePartyMember(gen4.PartyMemberWithBoth,  t.party_data, index),
+                            PartyType.Standard  => basePartyMember(gen4.PartyMemberBase,      t, index),
+                            PartyType.WithMoves => basePartyMember(gen4.PartyMemberWithMoves, t, index),
+                            PartyType.WithHeld  => basePartyMember(gen4.PartyMemberWithHeld,  t, index),
+                            PartyType.WithBoth  => basePartyMember(gen4.PartyMemberWithBoth,  t, index),
                             else => unreachable,
                         };
                     }
@@ -365,9 +374,19 @@ pub const Gen4 = struct {
                         return t.base.party_size;
                     }
 
-                    fn basePartyMember(comptime TMember: type, data: []u8, index: usize) &PartyMember {
-                        const member = ??utils.slice.ptrAtOrNull(([]TMember)(data), index);
-                        return if (TMember == PartyMember) member else &member.base;
+                    fn basePartyMember(comptime TMember: type, t: &const Trainer, index: usize) &PartyMember {
+                        // In HGSS/Plat party members are padded with two extra bytes.
+                        const padding = switch (t.version) {
+                            common.Version.HeartGold, common.Version.SoulSilver,
+                            common.Version.Platinum => usize(2),
+                            common.Version.Diamond,
+                            common.Version.Pearl => usize(0),
+                            else => unreachable,
+                        };
+
+                        const data_index = (@sizeOf(TMember) + padding) * index;
+                        const member_data = t.party_data[data_index..][0..@sizeOf(PartyMember)];
+                        return &([]PartyMember)(member_data)[0];
                     }
                 },
                 Trainer,
@@ -462,10 +481,8 @@ pub const Gen5 = struct {
 
                     return Pokemon {
                         .base = base_pokemon,
+                        .game = g,
                         .level_up_moves = level_up_moves,
-                        .tm1_count = g.tms1.len,
-                        .tm2_count = g.tms2.len,
-                        .hm_count = g.hms.len,
                     };
                 }
 
@@ -480,10 +497,8 @@ pub const Gen5 = struct {
 
     pub const Pokemon = struct {
         base: &BasePokemon,
+        game: &const Game,
         level_up_moves: []LevelUpMove,
-        tm1_count: usize,
-        tm2_count: usize,
-        hm_count: usize,
 
         pub const LevelUpMoves = Collection(&LevelUpMove, error{});
         pub fn levelUpMoves(pokemon: &const Pokemon) LevelUpMoves {
@@ -495,16 +510,16 @@ pub const Gen5 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index < p.tm1_count + p.tm2_count);
-                        if (index < p.tm1_count) {
+                        debug.assert(index < length(p));
+                        if (index < p.game.tms1.len) {
                             return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
                         }
 
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.hm_count));
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(p.game.hms.len + index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.tm1_count + p.tm2_count;
+                        return p.game.tms1.len + p.game.tms2.len;
                     }
                 },
                 Pokemon,
@@ -516,12 +531,12 @@ pub const Gen5 = struct {
             return Learnset.initExternFunctionsAndContext(
                 struct {
                     fn at(p: &const Pokemon, index: usize) (error{}!bool) {
-                        debug.assert(index < p.hm_count);
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index + p.tm1_count));
+                        debug.assert(index < length(p));
+                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(p.game.tms1.len + index));
                     }
 
                     fn length(p: &const Pokemon) usize {
-                        return p.hm_count;
+                        return p.game.hms.len;
                     }
                 },
                 Pokemon,

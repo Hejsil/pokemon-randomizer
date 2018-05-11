@@ -164,6 +164,7 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
+    version: common.Version,
     base_stats: []const &nds.fs.Narc.File,
     moves: []const &nds.fs.Narc.File,
     level_up_moves: []const &nds.fs.Narc.File,
@@ -174,17 +175,18 @@ pub const Game = struct {
     tms2: []Little(u16),
 
     pub fn fromRom(rom: &nds.Rom) !Game {
-        const file_names = try getFileNames(rom.header.gamecode);
+        const info = try getInfo(rom.header.gamecode);
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game {
-            .base_stats       = try getNarcFiles(rom.file_system, file_names.base_stats),
-            .level_up_moves   = try getNarcFiles(rom.file_system, file_names.level_up_moves),
-            .moves            = try getNarcFiles(rom.file_system, file_names.moves),
-            .trainer_data     = try getNarcFiles(rom.file_system, file_names.trainer_data),
-            .trainer_pokemons = try getNarcFiles(rom.file_system, file_names.trainer_pokemons),
+            .version          = info.version,
+            .base_stats       = try getNarcFiles(rom.file_system, info.base_stats),
+            .level_up_moves   = try getNarcFiles(rom.file_system, info.level_up_moves),
+            .moves            = try getNarcFiles(rom.file_system, info.moves),
+            .trainer_data     = try getNarcFiles(rom.file_system, info.trainer_data),
+            .trainer_pokemons = try getNarcFiles(rom.file_system, info.trainer_pokemons),
             .tms1             = hm_tms[0..92],
             .hms              = hm_tms[92..98],
             .tms2             = hm_tms[98..],
@@ -200,11 +202,11 @@ pub const Game = struct {
         }
     }
 
-    fn getFileNames(gamecode: []const u8) !constants.Files {
-        if (mem.eql(u8, gamecode, "IREO")) return constants.black2_files;
-        if (mem.eql(u8, gamecode, "IRDO")) return constants.white2_files;
-        if (mem.eql(u8, gamecode, "IRBO")) return constants.black_files;
-        if (mem.eql(u8, gamecode, "IRAO")) return constants.white_files;
+    fn getInfo(gamecode: []const u8) !constants.Info {
+        if (mem.eql(u8, gamecode, "IREO")) return constants.black2_info;
+        if (mem.eql(u8, gamecode, "IRDO")) return constants.white2_info;
+        if (mem.eql(u8, gamecode, "IRBO")) return constants.black_info;
+        if (mem.eql(u8, gamecode, "IRAO")) return constants.white_info;
 
         return error.InvalidGen5GameCode;
     }

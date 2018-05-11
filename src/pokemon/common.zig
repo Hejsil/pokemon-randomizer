@@ -6,8 +6,8 @@ const Little   = little.Little;
 const u9 = @IntType(false, 9);
 
 pub const MoveCategory = enum(u8) {
-    Status   = 0x00,
-    Physical = 0x01,
+    Physical = 0x00,
+    Status   = 0x01,
     Special  = 0x02,
 };
 
