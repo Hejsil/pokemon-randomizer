@@ -7,7 +7,7 @@ programming language and its features.
 
 ## Supported games
 
-Each Pokémon game exists in multiple different languages. The reason this is important is that different languages have different data layouts. The Japanese version of Pokémon Emerald might not work with the randomizer even though a US version does. 
+Each Pokémon game exists in multiple different languages. The reason this is important is that different languages have different data layouts. The Japanese version of Pokémon Emerald might not work with the randomizer even though a US version does.
 
 | Version:    | International (O)  | English/USA (E)    |
 |-------------|--------------------|--------------------|
@@ -27,11 +27,11 @@ Each Pokémon game exists in multiple different languages. The reason this is im
 | Fire Red    |                    | :heavy_check_mark: |
 | Leaf Green  |                    | :heavy_check_mark: |
 |             |                    |                    |
-| Diamon      |                    |                    |
-| Pearl       |                    |                    |
-| Platinum    |                    |                    |
-| Heart Gold  |                    |                    |
-| Soul Silver |                    |                    |
+| Diamon      |                    | :heavy_check_mark: |
+| Pearl       |                    | :heavy_check_mark: |
+| Platinum    |                    | :heavy_check_mark: |
+| Heart Gold  |                    | :heavy_check_mark: |
+| Soul Silver |                    | :heavy_check_mark: |
 |             |                    |                    |
 | Black       | :heavy_check_mark: |                    |
 | White       | :heavy_check_mark: |                    |
