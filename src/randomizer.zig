@@ -9,6 +9,7 @@ const debug = std.debug;
 
 const common = @import("pokemon/index.zig").common;
 const gen3   = @import("pokemon/index.zig").gen3;
+const gen4   = @import("pokemon/index.zig").gen4;
 const gen5   = @import("pokemon/index.zig").gen5;
 
 const Little = little.Little;
@@ -164,17 +165,13 @@ pub fn Randomizer(comptime Gen: type) type {
             var trainer_it = trainers.iterator();
             while (trainer_it.next()) |trainer_item| {
                 const trainer = trainer_item.value;
-                const trainer_theme = switch (options.pokemon) {
-                    Options.Trainer.Pokemon.TypeThemed => randomizer.randomType(),
-                    else => null,
-                };
-
                 const party = trainer.party();
-                var party_it = party.iterator();
 
+                var party_it = party.iterator();
                 while (party_it.next()) |party_item| {
                     const trainer_pokemon = party_item.value;
-                    const curr_pokemon = try pokemons.at(trainer_pokemon.species.get());
+                    // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                    const curr_pokemon = try pokemons.at(toInt(trainer_pokemon.species));
                     switch (options.pokemon) {
                         Options.Trainer.Pokemon.Same => {},
                         Options.Trainer.Pokemon.Random => {
@@ -183,9 +180,10 @@ pub fn Randomizer(comptime Gen: type) type {
                             // TODO: If a Pokémon is dual type, it has a higher chance of
                             //       being chosen. I think?
                             const pokemon_type = randomizer.randomType();
-                            const pick_form = (??by_type.get(pokemon_type)).value.toSliceConst();
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
-                            trainer_pokemon.species.set(new_pokemon);
+                            const pick_from = (??by_type.get(pokemon_type)).value.toSliceConst();
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_from);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.SameType => {
                             const pokemon_type = blk: {
@@ -193,21 +191,26 @@ pub fn Randomizer(comptime Gen: type) type {
                                 break :blk if (roll < 0.80) curr_pokemon.base.types[0] else curr_pokemon.base.types[1];
                             };
 
-                            const pick_form = (??by_type.get(pokemon_type)).value.toSliceConst();
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
-                            trainer_pokemon.species.set(new_pokemon);
+                            const pick_from = (??by_type.get(pokemon_type)).value.toSliceConst();
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_from);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.TypeThemed => {
-                            const pick_form = (??by_type.get(??trainer_theme)).value.toSliceConst();
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
-                            trainer_pokemon.species.set(new_pokemon);
+                            const trainer_theme = randomizer.randomType();
+                            const pick_from = (??by_type.get(trainer_theme)).value.toSliceConst();
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_from);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.Legendaries => {
                             const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, Game.legendaries);
-                            trainer_pokemon.species.set(new_pokemon);
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         }
                     }
 
+                    // TODO: Each case is copypasted, but with different types. Make this generic
                     switch (Game) {
                         gen3.Game => {
                             switch (trainer.base.party_type) {
@@ -221,6 +224,24 @@ pub fn Randomizer(comptime Gen: type) type {
                                 },
                                 gen3.PartyType.WithBoth => {
                                     const member = @fieldParentPtr(gen3.PartyMemberWithBoth, "base", trainer_pokemon);
+                                    randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
+                                    try randomizer.randomizeTrainerPokemonMoves(member, options);
+                                },
+                                else => {}
+                            }
+                        },
+                        gen4.Game => {
+                            switch (trainer.base.party_type) {
+                                gen4.PartyType.WithHeld => {
+                                    const member = @fieldParentPtr(gen4.PartyMemberWithHeld, "base", trainer_pokemon);
+                                    randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
+                                },
+                                gen4.PartyType.WithMoves => {
+                                    const member = @fieldParentPtr(gen4.PartyMemberWithMoves, "base", trainer_pokemon);
+                                    try randomizer.randomizeTrainerPokemonMoves(member, options);
+                                },
+                                gen4.PartyType.WithBoth => {
+                                    const member = @fieldParentPtr(gen4.PartyMemberWithBoth, "base", trainer_pokemon);
                                     randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
                                     try randomizer.randomizeTrainerPokemonMoves(member, options);
                                 },
@@ -327,7 +348,8 @@ pub fn Randomizer(comptime Gen: type) type {
                     if (option.pokemon != Options.Trainer.Pokemon.Same) {
                         const MoveLevelPair = struct { level: u8, move_id: u16 };
                         const new_moves = blk: {
-                            const pokemon = try pokemons.at(trainer_pokemon.base.species.get());
+                            // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                            const pokemon = try pokemons.at(toInt(trainer_pokemon.base.species));
                             const level_up_moves = pokemon.levelUpMoves();
                             var it = level_up_moves.iterator();
                             var moves = []MoveLevelPair { MoveLevelPair { .level = 0, .move_id = 0, } } ** 4;
@@ -361,7 +383,8 @@ pub fn Randomizer(comptime Gen: type) type {
                     }
                 },
                 Options.Trainer.Moves.RandomWithinLearnset => {
-                    const learned_moves = try randomizer.movesLearned(trainer_pokemon.base.species.get());
+                    // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                    const learned_moves = try randomizer.movesLearned(toInt(trainer_pokemon.base.species));
                     defer randomizer.allocator.free(learned_moves);
 
                     for (trainer_pokemon.moves) |*move| {
@@ -371,8 +394,9 @@ pub fn Randomizer(comptime Gen: type) type {
                 },
                 Options.Trainer.Moves.Best => {
                     const moves = Gen.moves(randomizer.game);
-                    const pokemon = try pokemons.at(trainer_pokemon.base.species.get());
-                    const learned_moves = try randomizer.movesLearned(trainer_pokemon.base.species.get());
+                    // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
+                    const pokemon = try pokemons.at(toInt(trainer_pokemon.base.species));
+                    const learned_moves = try randomizer.movesLearned(toInt(trainer_pokemon.base.species));
                     defer randomizer.allocator.free(learned_moves);
 
                     for (trainer_pokemon.moves) |*move|

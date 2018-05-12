@@ -82,6 +82,8 @@ Useful links with information on the structure of roms, or where data exists in 
 ### Gen 5
 
 * [BW2 File System](https://projectpokemon.org/docs/gen-5/b2w2-file-system-r8/)
+* [BW Trainer data](https://projectpokemon.org/home/forums/topic/22629-b2w2-general-rom-info/?do=findComment&comment=153174)
+* [BW Move data](https://projectpokemon.org/home/forums/topic/14212-bw-move-data/?do=findComment&comment=123606)
 
 ### All Gens
 

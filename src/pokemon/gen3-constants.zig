@@ -1,3 +1,4 @@
+const common = @import("common.zig");
 const std = @import("std");
 const mem = std.mem;
 
@@ -27,7 +28,9 @@ pub const Offset = struct {
     }
 };
 
-pub const Offsets = struct {
+pub const Info = struct {
+    version: common.Version,
+
     trainers:                   Offset,
     moves:                      Offset,
     tm_hm_learnset:             Offset,
@@ -40,10 +43,12 @@ pub const Offsets = struct {
 };
 
 // TODO: When we are able to allocate at comptime, construct a HashMap
-//       that maps struct { game_title: []const u8, gamecode: []const u8, } -> Offsets
+//       that maps struct { game_title: []const u8, gamecode: []const u8, } -> Info
 // game_title: POKEMON EMER
 // gamecode: BPEE
-pub const emerald_us_offsets = Offsets {
+pub const emerald_us_info = Info {
+    .version = common.Version.Emerald,
+
     .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8, },
     .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C, },
     .tm_hm_learnset             = Offset { .start = 0x031E898, .end = 0x031F578, },
@@ -57,7 +62,9 @@ pub const emerald_us_offsets = Offsets {
 
 // game_title: POKEMON RUBY
 // gamecode: AXVE
-pub const ruby_us_offsets = Offsets {
+pub const ruby_us_info = Info {
+    .version = common.Version.Ruby,
+
     .trainers                   = Offset { .start = 0x01F0514, .end = 0x01F3A0C, },
     .moves                      = Offset { .start = 0x01FB144, .end = 0x01FC1E8, },
     .tm_hm_learnset             = Offset { .start = 0x01FD108, .end = 0x01FDDE8, },
@@ -71,7 +78,9 @@ pub const ruby_us_offsets = Offsets {
 
 // game_title: POKEMON SAPP
 // gamecode: AXPE
-pub const sapphire_us_offsets = Offsets {
+pub const sapphire_us_info = Info {
+    .version = common.Version.Sapphire,
+
     .trainers                   = Offset { .start = 0x01F04A4, .end = 0x01F399C, },
     .moves                      = Offset { .start = 0x01FB0D4, .end = 0x01FC178, },
     .tm_hm_learnset             = Offset { .start = 0x01FD098, .end = 0x01FDD78, },
@@ -85,7 +94,9 @@ pub const sapphire_us_offsets = Offsets {
 
 // game_title: POKEMON FIRE
 // gamecode: BPRE
-pub const fire_us_offsets = Offsets {
+pub const fire_us_info = Info {
+    .version = common.Version.FireRed,
+
     .trainers                   = Offset { .start = 0x023EB38, .end = 0x0242FD0, },
     .moves                      = Offset { .start = 0x0250C74, .end = 0x0251D18, },
     .tm_hm_learnset             = Offset { .start = 0x0252C38, .end = 0x0253918, },
@@ -99,7 +110,9 @@ pub const fire_us_offsets = Offsets {
 
 // game_title: POKEMON LEAF
 // gamecode: BPGE
-pub const leaf_us_offsets = Offsets {
+pub const leaf_us_info = Info {
+    .version = common.Version.LeafGreen,
+
     .trainers                   = Offset { .start = 0x023EB14, .end = 0x0242FAC, },
     .moves                      = Offset { .start = 0x0250C50, .end = 0x0251CF4, },
     .tm_hm_learnset             = Offset { .start = 0x0252C14, .end = 0x02538F4, },

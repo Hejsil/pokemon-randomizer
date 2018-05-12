@@ -1,4 +1,5 @@
 const std        = @import("std");
+const builtin    = @import("builtin");
 const gba        = @import("gba.zig");
 const nds        = @import("nds/index.zig");
 const utils      = @import("utils.zig");
@@ -6,6 +7,7 @@ const randomizer = @import("randomizer.zig");
 const clap       = @import("clap.zig");
 const pokemon    = @import("pokemon/index.zig");
 const gen3       = pokemon.gen3;
+const gen4       = pokemon.gen4;
 const gen5       = pokemon.gen5;
 
 const os    = std.os;
@@ -164,7 +166,11 @@ pub fn main() !void {
     };
     defer out_file.close();
 
-    var random = rand.DefaultPrng.init(0);
+    var random = rand.DefaultPrng.init(blk: {
+        var buf: [8]u8 = undefined;
+        try std.os.getRandomBytes(buf[0..]);
+        break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
+    });
 
     gba_blk: {
         var rom_file = try os.File.openRead(allocator, input_file);
@@ -191,11 +197,15 @@ pub fn main() !void {
         var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
         defer nds_rom.deinit();
 
-        var game = try gen5.Game.fromRom(&nds_rom);
-        var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator);
-        defer r.deinit();
-
-        try r.randomize(options);
+        if (gen4.Game.fromRom(&nds_rom)) |game| {
+            var r = Randomizer(pokemon.Gen4).init(game, &random.random, allocator); defer r.deinit();
+            try r.randomize(options);
+        } else |e1| if (gen5.Game.fromRom(&nds_rom)) |game| {
+            var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator); defer r.deinit();
+            try r.randomize(options);
+        } else |e2| {
+            break :nds_blk;
+        }
 
         nds_rom.writeToFile(&out_file, allocator) catch |err| {
             debug.warn("Unable to write nds to {}\n", output_file);

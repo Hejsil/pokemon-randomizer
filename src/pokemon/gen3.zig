@@ -13,7 +13,6 @@ const os    = std.os;
 const slice = utils.slice;
 
 const assert = debug.assert;
-const u9     = @IntType(false, 9);
 
 const toLittle = little.toLittle;
 const Little   = little.Little;
@@ -53,32 +52,6 @@ pub const BasePokemon = packed struct {
     flip: bool,
 
     padding: [2]u8
-};
-
-pub const EvolutionType = enum(u16) {
-    Unused                 = toLittle(u16(0x00)).get(),
-    FriendShip             = toLittle(u16(0x01)).get(),
-    FriendShipDuringDay    = toLittle(u16(0x02)).get(),
-    FriendShipDuringNight  = toLittle(u16(0x03)).get(),
-    LevelUp                = toLittle(u16(0x04)).get(),
-    Trade                  = toLittle(u16(0x05)).get(),
-    TradeHoldingItem       = toLittle(u16(0x06)).get(),
-    UseItem                = toLittle(u16(0x07)).get(),
-    AttackGthDefense       = toLittle(u16(0x08)).get(),
-    AttackEqlDefense       = toLittle(u16(0x09)).get(),
-    AttackLthDefense       = toLittle(u16(0x0A)).get(),
-    PersonalityValue1      = toLittle(u16(0x0B)).get(),
-    PersonalityValue2      = toLittle(u16(0x0C)).get(),
-    LevelUpMaySpawnPokemon = toLittle(u16(0x0D)).get(),
-    LevelUpSpawnIfCond     = toLittle(u16(0x0E)).get(),
-    Beauty                 = toLittle(u16(0x0F)).get(),
-};
-
-pub const Evolution = packed struct {
-    @"type": EvolutionType,
-    param: Little(u16),
-    target: Little(u16),
-    padding: [2]u8,
 };
 
 pub const PartyType = enum(u8) {
@@ -141,11 +114,6 @@ pub const Move = packed struct {
     flags: Little(u32),
 };
 
-pub const LevelUpMove = packed struct {
-    move_id: u9,
-    level: u7,
-};
-
 pub const Item = packed struct {
     name: [14]u8,
     id: Little(u16),
@@ -187,6 +155,7 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = constants.legendaries;
 
+    version: common.Version,
     data: []u8,
 
     // All these fields point into data
@@ -195,7 +164,7 @@ pub const Game = struct {
     moves: []Move,
     tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
-    evolution_table: [][5]Evolution,
+    evolution_table: [][5]common.Evolution,
     level_up_learnset_pointers: []Little(u32),
     hms: []Little(u16),
     items: []Item,
@@ -209,24 +178,25 @@ pub const Game = struct {
         try header.validate();
         try file.seekTo(0);
 
-        const offsets = try getOffsets(header.gamecode);
+        const info = try getInfo(header.gamecode);
         const rom = try in_stream.readAllAlloc(allocator, @maxValue(usize));
         errdefer allocator.free(rom);
 
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
         return Game {
+            .version                    = info.version,
             .data                       = rom,
             .header                     = @ptrCast(&gba.Header, &rom[0]),
-            .trainers                   = offsets.trainers.getSlice(Trainer, rom),
-            .moves                      = offsets.moves.getSlice(Move, rom),
-            .tm_hm_learnset             = offsets.tm_hm_learnset.getSlice(Little(u64), rom),
-            .base_stats                 = offsets.base_stats.getSlice(BasePokemon, rom),
-            .evolution_table            = offsets.evolution_table.getSlice([5]Evolution, rom),
-            .level_up_learnset_pointers = offsets.level_up_learnset_pointers.getSlice(Little(u32), rom),
-            .hms                        = offsets.hms.getSlice(Little(u16), rom),
-            .items                      = offsets.items.getSlice(Item, rom),
-            .tms                        = offsets.tms.getSlice(Little(u16), rom),
+            .trainers                   = info.trainers.getSlice(Trainer, rom),
+            .moves                      = info.moves.getSlice(Move, rom),
+            .tm_hm_learnset             = info.tm_hm_learnset.getSlice(Little(u64), rom),
+            .base_stats                 = info.base_stats.getSlice(BasePokemon, rom),
+            .evolution_table            = info.evolution_table.getSlice([5]common.Evolution, rom),
+            .level_up_learnset_pointers = info.level_up_learnset_pointers.getSlice(Little(u32), rom),
+            .hms                        = info.hms.getSlice(Little(u16), rom),
+            .items                      = info.items.getSlice(Item, rom),
+            .tms                        = info.tms.getSlice(Little(u16), rom),
         };
     }
 
@@ -239,12 +209,12 @@ pub const Game = struct {
         allocator.free(game.data);
     }
 
-    fn getOffsets(gamecode: []const u8) !constants.Offsets {
-        if (mem.eql(u8, gamecode, "BPEE")) return constants.emerald_us_offsets;
-        if (mem.eql(u8, gamecode, "AXVE")) return constants.ruby_us_offsets;
-        if (mem.eql(u8, gamecode, "AXPE")) return constants.sapphire_us_offsets;
-        if (mem.eql(u8, gamecode, "BPRE")) return constants.fire_us_offsets;
-        if (mem.eql(u8, gamecode, "BPGE")) return constants.leaf_us_offsets;
+    fn getInfo(gamecode: []const u8) !constants.Info {
+        if (mem.eql(u8, gamecode, "BPEE")) return constants.emerald_us_info;
+        if (mem.eql(u8, gamecode, "AXVE")) return constants.ruby_us_info;
+        if (mem.eql(u8, gamecode, "AXPE")) return constants.sapphire_us_info;
+        if (mem.eql(u8, gamecode, "BPRE")) return constants.fire_us_info;
+        if (mem.eql(u8, gamecode, "BPGE")) return constants.leaf_us_info;
 
         return error.InvalidGen3GameCode;
     }
