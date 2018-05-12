@@ -165,14 +165,9 @@ pub fn Randomizer(comptime Gen: type) type {
             var trainer_it = trainers.iterator();
             while (trainer_it.next()) |trainer_item| {
                 const trainer = trainer_item.value;
-                const trainer_theme = switch (options.pokemon) {
-                    Options.Trainer.Pokemon.TypeThemed => randomizer.randomType(),
-                    else => null,
-                };
-
                 const party = trainer.party();
-                var party_it = party.iterator();
 
+                var party_it = party.iterator();
                 while (party_it.next()) |party_item| {
                     const trainer_pokemon = party_item.value;
                     // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
@@ -185,8 +180,8 @@ pub fn Randomizer(comptime Gen: type) type {
                             // TODO: If a Pokémon is dual type, it has a higher chance of
                             //       being chosen. I think?
                             const pokemon_type = randomizer.randomType();
-                            const pick_form = (??by_type.get(pokemon_type)).value.toSliceConst();
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
+                            const pick_from = (??by_type.get(pokemon_type)).value.toSliceConst();
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_from);
                             // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
                             trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
@@ -196,14 +191,15 @@ pub fn Randomizer(comptime Gen: type) type {
                                 break :blk if (roll < 0.80) curr_pokemon.base.types[0] else curr_pokemon.base.types[1];
                             };
 
-                            const pick_form = (??by_type.get(pokemon_type)).value.toSliceConst();
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
+                            const pick_from = (??by_type.get(pokemon_type)).value.toSliceConst();
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_from);
                             // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
                             trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },
                         Options.Trainer.Pokemon.TypeThemed => {
-                            const pick_form = (??by_type.get(??trainer_theme)).value.toSliceConst();
-                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_form);
+                            const trainer_theme = randomizer.randomType();
+                            const pick_from = (??by_type.get(trainer_theme)).value.toSliceConst();
+                            const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, pick_from);
                             // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
                             trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
                         },

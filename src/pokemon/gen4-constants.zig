@@ -43,7 +43,7 @@ pub const diamond_info = Info {
     .evolutions = "/poketool/personal/evo.narc",
 };
 
-pub const pearl_info = comptime blk: {
+pub const pearl_info = blk: {
     var res = diamond_info;
     res.version = common.Version.Pearl;
     res.base_stats = "/poketool/personal_pearl/personal.narc";
@@ -51,9 +51,10 @@ pub const pearl_info = comptime blk: {
 };
 
 pub const platinum_info = blk: {
-    var res = pearl_info;
+    var res = diamond_info;
     res.version = common.Version.Platinum;
-
+    res.base_stats = "/poketool/personal/pl_personal.narc";
+    res.moves = "/poketool/waza/pl_waza_tbl.narc";
     break :blk res;
 };
 

@@ -1,4 +1,5 @@
 const std        = @import("std");
+const builtin    = @import("builtin");
 const gba        = @import("gba.zig");
 const nds        = @import("nds/index.zig");
 const utils      = @import("utils.zig");
@@ -165,7 +166,11 @@ pub fn main() !void {
     };
     defer out_file.close();
 
-    var random = rand.DefaultPrng.init(0);
+    var random = rand.DefaultPrng.init(blk: {
+        var buf: [8]u8 = undefined;
+        try std.os.getRandomBytes(buf[0..]);
+        break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
+    });
 
     gba_blk: {
         var rom_file = try os.File.openRead(allocator, input_file);
