@@ -30,13 +30,17 @@ pub fn readFiles(file: &os.File, allocator: &mem.Allocator, overlay_table: []Ove
         results.deinit();
     }
 
+    var file_stream = io.FileInStream.init(file);
+    var stream = &file_stream.stream;
+
     for (overlay_table) |overlay, i| {
         const id = overlay.file_id.get() & 0x0FFF;
 
         const start = fat[id].start.get();
         const size = fat[id].getSize();
 
-        const overay_file = try utils.file.seekToAllocRead(file, start, allocator, u8, size);
+        try file.seekTo(start);
+        const overay_file = try utils.stream.allocRead(stream, allocator, u8, size);
         try results.append(overay_file);
     }
 

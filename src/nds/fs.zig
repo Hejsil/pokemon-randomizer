@@ -239,15 +239,15 @@ fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt:
 }
 
 pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !&Nitro.File {
+    var file_in_stream = io.FileInStream.init(file);
+
     narc_read: {
         const names = formats.Chunk.names;
 
         try file.seekTo(fat_entry.start.get() + img_base);
         const file_start = try file.getPos();
 
-        var file_in_stream = io.FileInStream.init(file);
         var buffered_in_stream = io.BufferedInStream(io.FileInStream.Error).init(&file_in_stream.stream);
-
         const stream = &buffered_in_stream.stream;
 
         const header = utils.stream.read(stream, formats.Header) catch break :narc_read;
@@ -318,7 +318,8 @@ pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, 
         }
     }
 
-    const data = try utils.file.seekToAllocRead(file, fat_entry.start.get() + img_base, &fs.arena.allocator, u8, fat_entry.getSize());
+    try file.seekTo(fat_entry.start.get() + img_base);
+    const data = try utils.stream.allocRead(&file_in_stream.stream, &fs.arena.allocator, u8, fat_entry.getSize());
     return fs.createFile(
         Nitro.File {
             .name = name,
@@ -328,7 +329,11 @@ pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, 
 }
 
 pub fn readNarcFile(fs: &Narc, file: &os.File, tmp_allocator: &mem.Allocator, fat_entry: &const FatEntry, img_base: usize, name: []u8) !&Narc.File {
-    const data = try utils.file.seekToAllocRead(file, fat_entry.start.get() + img_base, &fs.arena.allocator, u8, fat_entry.getSize());
+    var file_in_stream = io.FileInStream.init(file);
+        const stream = &file_in_stream.stream;
+
+    try file.seekTo(fat_entry.start.get() + img_base);
+    const data = try utils.stream.allocRead(&file_in_stream.stream, &fs.arena.allocator, u8, fat_entry.getSize());
     return fs.createFile(
         Narc.File {
             .name = name,

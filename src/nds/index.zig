@@ -52,36 +52,45 @@ pub const Rom = struct {
     allocator: &mem.Allocator,
 
     pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Rom {
-        const header = try utils.file.read(file, Header);
+        var file_stream = io.FileInStream.init(file);
+        var stream = &file_stream.stream;
+
+        const header = try utils.stream.read(stream, Header);
         try header.validate();
 
         const arm9 = blk: {
-            const raw = try utils.file.seekToAllocRead(file, header.arm9_rom_offset.get(), allocator, u8, header.arm9_size.get());
+            try file.seekTo(header.arm9_rom_offset.get());
+            const raw = try utils.stream.allocRead(stream, allocator, u8, header.arm9_size.get());
             defer allocator.free(raw);
 
             // If blz.decode failes, we assume that the arm9 is not encoded and just use the raw data
             break :blk blz.decode(raw, allocator) catch raw;
         };
         errdefer allocator.free(arm9);
-        const nitro_footer = try utils.file.read(file, [3]Little(u32));
+        const nitro_footer = try utils.stream.read(stream, [3]Little(u32));
 
-        const arm7 = try utils.file.seekToAllocRead(file, header.arm7_rom_offset.get(), allocator, u8, header.arm7_size.get());
+        try file.seekTo(header.arm7_rom_offset.get());
+        const arm7 = try utils.stream.allocRead(stream, allocator, u8, header.arm7_size.get());
         errdefer allocator.free(arm7);
 
         // TODO: On dsi, this can be of different sizes
-        const banner = try utils.file.seekToRead(file, header.banner_offset.get(), Banner);
+        try file.seekTo(header.banner_offset.get());
+        const banner = try utils.stream.read(stream, Banner);
         try banner.validate();
         if (header.fat_size.get() % @sizeOf(fs.FatEntry) != 0) return error.InvalidFatSize;
 
-        const fnt = try utils.file.seekToAllocRead(file, header.fnt_offset.get(), allocator, u8, header.fnt_size.get());
-        const fat = try utils.file.seekToAllocRead(file, header.fat_offset.get(), allocator, fs.FatEntry, header.fat_size.get() / @sizeOf(fs.FatEntry));
+        try file.seekTo(header.fnt_offset.get());
+        const fnt = try utils.stream.allocRead(stream, allocator, u8, header.fnt_size.get());
+
+        try file.seekTo(header.fat_offset.get());
+        const fat = try utils.stream.allocRead(stream, allocator, fs.FatEntry, header.fat_size.get() / @sizeOf(fs.FatEntry));
 
         const file_system = try fs.readNitro(file, allocator, fnt, fat);
         errdefer file_system.deinit();
 
-        const arm9_overlay_table = try utils.file.seekToAllocRead(
-            file,
-            header.arm9_overlay_offset.get(),
+        try file.seekTo(header.arm9_overlay_offset.get());
+        const arm9_overlay_table = try utils.stream.allocRead(
+            stream,
             allocator,
             Overlay,
             header.arm9_overlay_size.get() / @sizeOf(Overlay));
@@ -89,9 +98,9 @@ pub const Rom = struct {
         const arm9_overlay_files = try overlay.readFiles(file, allocator, arm9_overlay_table, fat);
         errdefer overlay.freeFiles(arm9_overlay_files, allocator);
 
-        const arm7_overlay_table = try utils.file.seekToAllocRead(
-            file,
-            header.arm7_overlay_offset.get(),
+        try file.seekTo(header.arm7_overlay_offset.get());
+        const arm7_overlay_table = try utils.stream.allocRead(
+            stream,
             allocator,
             Overlay,
             header.arm7_overlay_size.get() / @sizeOf(Overlay));

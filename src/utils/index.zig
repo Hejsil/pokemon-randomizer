@@ -10,7 +10,6 @@ pub const Collection = @import("collection.zig").Collection;
 
 test "utils" {
     _ = @import("slice.zig");
-    _ = @import("file.zig");
 }
 
 /// Returns a mutable byte slice of ::value.
