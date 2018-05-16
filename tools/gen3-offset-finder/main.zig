@@ -66,21 +66,23 @@ pub fn main() !void {
         };
         defer file.close();
 
-        if (findOffsetsInFile(&file, allocator)) |offsets| {
+        if (findInfoInFile(&file, allocator)) |info| {
+            defer allocator.free(info.gamecode);
+
             // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
-            try stdout.print("gamecode: {}\n", offsets.gamecode);
-            try stdout.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.trainers.start,                   offsets.trainers.end);
-            try stdout.print(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.moves.start,                      offsets.moves.end);
-            try stdout.print(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.tm_hm_learnset.start,             offsets.tm_hm_learnset.end);
-            try stdout.print(".base_stats                 = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.base_stats.start,                 offsets.base_stats.end);
-            try stdout.print(".evolution_table            = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.evolution_table.start,            offsets.evolution_table.end);
-            try stdout.print(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.level_up_learnset_pointers.start, offsets.level_up_learnset_pointers.end);
-            try stdout.print(".hms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.hms.start,                        offsets.hms.end);
-            try stdout.print(".tms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.tms.start,                        offsets.tms.end);
-            try stdout.print(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.items.start,                      offsets.items.end);
+            try stdout.print("gamecode: {}\n", info.gamecode);
+            try stdout.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.trainers.start,                   info.trainers.end);
+            try stdout.print(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.moves.start,                      info.moves.end);
+            try stdout.print(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.end);
+            try stdout.print(".base_stats                 = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.base_stats.start,                 info.base_stats.end);
+            try stdout.print(".evolution_table            = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.evolution_table.start,            info.evolution_table.end);
+            try stdout.print(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.end);
+            try stdout.print(".hms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.hms.start,                        info.hms.end);
+            try stdout.print(".tms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.tms.start,                        info.tms.end);
+            try stdout.print(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.items.start,                      info.items.end);
         } else |err| {
             // TODO: This is the starting point for error messages. They should probably be better, but at least
-            //       all errors from "findOffsetsInFile" are handled in this switch.
+            //       all errors from "findInfoInFile" are handled in this switch.
             switch (err) {
                 error.UnknownPokemonVersion             => debug.warn("Unknown generation 3 game.\n"),
                 error.UnableToFindTrainerOffset         => debug.warn("Unable to find trainers offset.\n"),
@@ -107,9 +109,9 @@ pub fn main() !void {
     }
 }
 
-fn getVersion(file: &os.File) struct { gamecode: []const u8, }
+//fn getVersion(file: &os.File) struct { gamecode: []const u8, }
 
-fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Info {
+fn findInfoInFile(file: &os.File, allocator: &mem.Allocator) !Info {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
     var header : gba.Header = undefined;
@@ -858,8 +860,8 @@ fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Info {
         return error.UnableToFindItemsOffset;
     };
 
-    return Offsets {
-        .header                     = header,
+    return Info {
+        .gamecode                   = try mem.dupe(allocator, u8, header.gamecode),
         .trainers                   = trainers,
         .moves                      = moves,
         .tm_hm_learnset             = tm_hm_learnset,
