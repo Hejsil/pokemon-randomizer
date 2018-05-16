@@ -24,8 +24,8 @@ const Offset = struct {
     end: usize,
 };
 
-const Offsets = struct {
-    header:                     gba.Header,
+const Info = struct {
+    gamecode:                   []const u8,
     trainers:                   Offset,
     moves:                      Offset,
     tm_hm_learnset:             Offset,
@@ -68,8 +68,7 @@ pub fn main() !void {
 
         if (findOffsetsInFile(&file, allocator)) |offsets| {
             // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
-            try stdout.print("game_title: {}\n", offsets.header.game_title);
-            try stdout.print("gamecode: {}\n", offsets.header.gamecode);
+            try stdout.print("gamecode: {}\n", offsets.gamecode);
             try stdout.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.trainers.start,                   offsets.trainers.end);
             try stdout.print(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.moves.start,                      offsets.moves.end);
             try stdout.print(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", offsets.tm_hm_learnset.start,             offsets.tm_hm_learnset.end);
@@ -108,11 +107,13 @@ pub fn main() !void {
     }
 }
 
-fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Offsets {
+fn getVersion(file: &os.File) struct { gamecode: []const u8, }
+
+fn findOffsetsInFile(file: &os.File, allocator: &mem.Allocator) !Info {
     var file_stream = io.FileInStream.init(file);
     var stream = &file_stream.stream;
     var header : gba.Header = undefined;
-    try stream.readNoEof(([]u8)((&header)[0..1]));
+    try stream.readNoEof(utils.asBytes(gba.Header, &header));
     try file.seekTo(0);
 
     const version = if (mem.eql(u8, header.game_title, "POKEMON EMER")) blk: {
