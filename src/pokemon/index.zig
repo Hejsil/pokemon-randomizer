@@ -4,10 +4,13 @@ pub const gen4   = @import("gen4.zig");
 pub const gen5   = @import("gen5.zig");
 
 const std    = @import("std");
+const fun    = @import("fun");
 const nds    = @import("../nds/index.zig");
 const utils  = @import("../utils/index.zig");
 const little = @import("../little.zig");
 const bits   = @import("../bits.zig");
+
+const generic = fun.generic;
 
 const math = std.math;
 const debug = std.debug;
@@ -40,7 +43,7 @@ pub const Gen3 = struct {
                 fn at(g: &const Game, index: usize) !Pokemon {
                     const base_pokemons = g.base_stats;
                     const offset = blk: {
-                        const res = utils.slice.atOrNull(g.level_up_learnset_pointers, index) ?? return error.InvalidOffset;
+                        const res = generic.at(g.level_up_learnset_pointers, index) catch return error.InvalidOffset;
                         if (res.get() < 0x8000000) return error.InvalidOffset;
                         break :blk res.get() - 0x8000000;
                     };
@@ -61,7 +64,7 @@ pub const Gen3 = struct {
                         .base = &base_pokemons[index],
                         .game = g,
                         .level_up_moves = ([]LevelUpMove)(g.data[offset..end]),
-                        .learnset = utils.slice.ptrAtOrNull(g.tm_hm_learnset, index) ?? return error.InvalidOffset,
+                        .learnset = generic.at(g.tm_hm_learnset, index) catch return error.InvalidOffset,
                     };
                 }
 
@@ -433,12 +436,6 @@ pub const Gen4 = struct {
     pub fn hms(game: &const Game) Machines {
         return Machines.initSlice(little.Little(u16), game.hms);
     }
-
-    fn getFileAsType(comptime T: type, files: []const &nds.fs.Narc.File, index: usize) !&T {
-        const data = files[index].data;
-        const len = data.len - (data.len % @sizeOf(T));
-        return utils.slice.ptrAtOrNull(([]T)(data[0..len]), 0) ?? error.DataTooSmall;
-    }
 };
 
 
@@ -603,7 +600,7 @@ pub const Gen5 = struct {
                     }
 
                     fn basePartyMember(comptime TMember: type, data: []u8, index: usize) &PartyMember {
-                        const member = ??utils.slice.ptrAtOrNull(([]TMember)(data), index);
+                        const member = &([]TMember)(data)[index];
                         return if (TMember == PartyMember) member else &member.base;
                     }
                 },
@@ -654,10 +651,10 @@ pub const Gen5 = struct {
     pub fn hms(game: &const Game) Machines {
         return Machines.initSlice(little.Little(u16), game.hms);
     }
-
-    fn getFileAsType(comptime T: type, files: []const &nds.fs.Narc.File, index: usize) !&T {
-        const data = files[index].data;
-        const len = data.len - (data.len % @sizeOf(T));
-        return utils.slice.ptrAtOrNull(([]T)(data[0..len]), 0) ?? error.DataTooSmall;
-    }
 };
+
+
+fn getFileAsType(comptime T: type, files: []const &nds.fs.Narc.File, index: usize) !&T {
+    const data = generic.widenTrim(files[index].data, T);
+    return generic.at(data, 0) catch error.DataTooSmall;
+}

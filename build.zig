@@ -22,6 +22,7 @@ pub fn build(b: &Builder) void {
     const nds_util = b.addExecutable("nds-util", "tools/nds-util/main.zig");
     nds_util.setBuildMode(mode);
     nds_util.addPackagePath("crc", "lib/zig-crc/crc.zig");
+    nds_util.addPackagePath("fun", "lib/fun-with-zig/src/index.zig");
     nds_util.addPackagePath("blz", "lib/blz/blz.zig");
     nds_util.addPackagePath("utils", "src/utils/index.zig");
 

@@ -2,41 +2,6 @@ const std   = @import("std");
 const mem   = std.mem;
 const debug = std.debug;
 
-pub fn sliceOrNull(slice: var, start: usize, end: usize) ?@typeOf(slice[0..]) {
-    if (end < start)     return null;
-    if (slice.len < end) return null;
-
-    return slice[start..end];
-}
-
-test "utils.sliceOrNull" {
-    const slice = "abcde"[0..];
-    debug.assert(mem.eql(u8, "abcde", ??sliceOrNull(slice, 0, 5)));
-    debug.assert(mem.eql(u8, "cd",    ??sliceOrNull(slice, 2, 4)));
-    debug.assert(mem.eql(u8, "",      ??sliceOrNull(slice, 0, 0)));
-    debug.assert(mem.eql(u8, "",      ??sliceOrNull(slice, 5, 5)));
-    debug.assert(sliceOrNull(slice, 1, 0) == null);
-    debug.assert(sliceOrNull(slice, 0, 6) == null);
-    debug.assert(sliceOrNull(slice, 6, 6) == null);
-}
-
-pub fn atOrNull(slice: var, index: usize) ?@typeOf(slice[0]) {
-    const ptr = ptrAtOrNull(slice, index) ?? return null;
-    return *ptr;
-}
-
-pub fn ptrAtOrNull(slice: var, index: usize) ?@typeOf(&slice[0]) {
-    if (slice.len <= index) return null;
-    return &slice[index];
-}
-
-test "utils.atOrNull" {
-    const slice = "abcde"[0..];
-    debug.assert(??atOrNull(slice, 0) == 'a');
-    debug.assert(??atOrNull(slice, 4) == 'e');
-    debug.assert(atOrNull(slice, 5) == null);
-}
-
 pub fn all(slice: var, predicate: fn(&const @typeOf(slice[0])) bool) bool {
     for (slice) |v| {
         if (!predicate(v)) return false;

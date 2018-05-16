@@ -1,8 +1,11 @@
-const std    = @import("std");
-const common = @import("common.zig");
+const std     = @import("std");
+const fun     = @import("fun");
+const common  = @import("common.zig");
 const formats = @import("formats.zig");
-const little = @import("../little.zig");
-const utils  = @import("../utils/index.zig");
+const little  = @import("../little.zig");
+const utils   = @import("../utils/index.zig");
+
+const generic = fun.generic;
 
 const debug = std.debug;
 const mem   = std.mem;
@@ -146,11 +149,9 @@ pub fn readNarc(file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat:
 
 fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !&Fs {
     const fnt_main_table = blk: {
-        const new_len = fnt.len - (fnt.len % @sizeOf(FntMainEntry));
-        const tmp = ([]const FntMainEntry)(fnt[0..new_len]);
-
-        const first = utils.slice.atOrNull(tmp, 0) ?? return error.InvalidFnt;
-        const res = utils.slice.sliceOrNull(tmp, 0, first.parent_id.get()) ?? return error.InvalidFnt;
+        const fnt_mains = generic.widenTrim(fnt, FntMainEntry);
+        const first = generic.at(fnt_mains, 0) catch return error.InvalidFnt;
+        const res = generic.slice(fnt_mains, 0, first.parent_id.get()) catch return error.InvalidFnt;
         if (res.len > 4096) return error.InvalidFnt;
 
         break :blk res;
@@ -172,7 +173,7 @@ fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt:
     try stack.append(State {
         .folder = fs.root,
         .file_id = fnt_first.first_file_id_in_subtable.get(),
-        .fnt_sub_table = utils.slice.sliceOrNull(fnt, fnt_first.offset_to_subtable.get(), fnt.len) ?? return error.InvalidFnt,
+        .fnt_sub_table = generic.slice(fnt, fnt_first.offset_to_subtable.get(), fnt.len) catch return error.InvalidFnt,
     });
 
     while (stack.popOrNull()) |state| {
@@ -196,7 +197,7 @@ fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt:
         const name = try utils.stream.allocRead(stream, &fs.arena.allocator, u8, lenght);
         switch (kind) {
             Kind.File => {
-                const fat_entry = utils.slice.atOrNull(fat, file_id) ?? return error.InvalidFileId;
+                const fat_entry = generic.at(fat, file_id) catch return error.InvalidFileId;
                 try folder.files.append(
                     switch (Fs) {
                         Nitro => try readNitroFile(fs, file, allocator, fat_entry, img_base, name),
@@ -215,7 +216,7 @@ fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt:
                 const id = try utils.stream.read(stream, Little(u16));
                 if (id.get() < 0xF001 or id.get() > 0xFFFF) return error.InvalidSubDirectoryId;
 
-                const fnt_entry = utils.slice.atOrNull(fnt_main_table, id.get() & 0x0FFF) ?? return error.InvalidSubDirectoryId;
+                const fnt_entry = generic.at(fnt_main_table, id.get() & 0x0FFF) catch return error.InvalidSubDirectoryId;
                 const sub_folder = try fs.createFolder(name);
 
                 try folder.folders.append(sub_folder);
@@ -228,7 +229,7 @@ fn readHelper(comptime Fs: type, file: &os.File, allocator: &mem.Allocator, fnt:
                 try stack.append(State {
                     .folder = sub_folder,
                     .file_id = fnt_entry.first_file_id_in_subtable.get(),
-                    .fnt_sub_table = utils.slice.sliceOrNull(fnt, fnt_entry.offset_to_subtable.get(), fnt.len) ?? return error.InvalidFnt,
+                    .fnt_sub_table = generic.slice(fnt, fnt_entry.offset_to_subtable.get(), fnt.len) catch return error.InvalidFnt,
                 });
             }
         }
@@ -275,7 +276,8 @@ pub fn readNitroFile(fs: &Nitro, file: &os.File, tmp_allocator: &mem.Allocator, 
         const fnt = try utils.stream.allocRead(stream, tmp_allocator, u8, fnt_size);
         defer tmp_allocator.free(fnt);
 
-        const first_fnt = utils.slice.atOrNull(([]FntMainEntry)(fnt[0..fnt.len - (fnt.len % @sizeOf(FntMainEntry))]), 0) ?? return error.InvalidChunkSize;
+        const fnt_mains = generic.widenTrim(fnt, FntMainEntry);
+        const first_fnt = generic.at(fnt_mains, 0) catch return error.InvalidChunkSize;
 
         const file_data_header = try utils.stream.read(stream, formats.Chunk);
         if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
