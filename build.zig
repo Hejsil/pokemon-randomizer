@@ -6,6 +6,7 @@ pub fn build(b: &Builder) void {
     const randomizer = b.addExecutable("randomizer", "src/main.zig");
     randomizer.setBuildMode(mode);
     randomizer.addPackagePath("crc", "lib/zig-crc/crc.zig");
+    randomizer.addPackagePath("fun", "lib/fun-with-zig/src/index.zig");
     randomizer.addPackagePath("blz", "lib/blz/blz.zig");
 
     const randomizer_step = b.step("randomizer", "Build randomizer");
