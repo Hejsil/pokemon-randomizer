@@ -12,7 +12,7 @@ pub fn build(b: &Builder) void {
     const randomizer_step = b.step("randomizer", "Build randomizer");
     randomizer_step.dependOn(&randomizer.step);
 
-    const offset_finder = b.addExecutable("gen3-offset-finder", "tools/gen3-offset-finder/main.zig");
+    const offset_finder = b.addExecutable("offset-finder", "tools/offset-finder/main.zig");
     offset_finder.setBuildMode(mode);
     offset_finder.addPackagePath("gba", "src/gba.zig");
     offset_finder.addPackagePath("little", "src/little.zig");
