@@ -19,7 +19,6 @@ const Little = little.Little;
 const toLittle = little.toLittle;
 
 const Info = struct {
-    gamecode:                   []const u8,
     trainers:                   search.Offset,
     moves:                      search.Offset,
     tm_hm_learnset:             search.Offset,
@@ -31,30 +30,7 @@ const Info = struct {
     items:                      search.Offset,
 };
 
-pub fn findInfoInFile(file: &os.File, allocator: &mem.Allocator) !Info {
-    var file_stream = io.FileInStream.init(file);
-    var stream = &file_stream.stream;
-    var header : gba.Header = undefined;
-    try stream.readNoEof(utils.asBytes(gba.Header, &header));
-    try file.seekTo(0);
-
-    const version = if (mem.eql(u8, header.game_title, "POKEMON EMER")) blk: {
-        break :blk common.Version.Emerald;
-    } else if (mem.eql(u8, header.game_title, "POKEMON RUBY")) blk: {
-        break :blk common.Version.Ruby;
-    } else if (mem.eql(u8, header.game_title, "POKEMON SAPP")) blk: {
-        break :blk common.Version.Sapphire;
-    } else if (mem.eql(u8, header.game_title, "POKEMON FIRE")) blk: {
-        break :blk common.Version.FireRed;
-    } else if (mem.eql(u8, header.game_title, "POKEMON LEAF")) blk: {
-        break :blk common.Version.LeafGreen;
-    } else blk: {
-        return error.UnknownPokemonVersion;
-    };
-
-    const data = try stream.readAllAlloc(allocator, @maxValue(usize));
-    defer allocator.free(data);
-
+pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
     const ignored_trainer_fields = [][]const u8 { "party_offset", "name" };
     const trainers = switch (version) {
         common.Version.Emerald => search.findOffsetOfStructArray(gen3.Trainer, ignored_trainer_fields, data,
@@ -149,7 +125,6 @@ pub fn findInfoInFile(file: &os.File, allocator: &mem.Allocator) !Info {
     };
 
     return Info {
-        .gamecode                   = try mem.dupe(allocator, u8, header.gamecode),
         .trainers                   = trainers,
         .moves                      = moves,
         .tm_hm_learnset             = tm_hm_learnset,

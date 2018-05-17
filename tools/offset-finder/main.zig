@@ -1,9 +1,14 @@
 const std = @import("std");
+const pokemon   = @import("pokemon");
+const gba       = @import("gba");
 const gen3 = @import("gen3.zig");
 
 const io     = std.io;
 const os     = std.os;
+const mem    = std.mem;
 const debug  = std.debug;
+
+const common = pokemon.common;
 
 pub fn main() !void {
     var direct_allocator = std.heap.DirectAllocator.init();
@@ -34,11 +39,23 @@ pub fn main() !void {
         };
         defer file.close();
 
-        if (gen3.findInfoInFile(&file, allocator)) |info| {
-            defer allocator.free(info.gamecode);
+        var file_stream = io.FileInStream.init(&file);
+        var stream = &file_stream.stream;
+        const data = try stream.readAllAlloc(allocator, @maxValue(usize));
+        defer allocator.free(data);
 
+        const gamecode = getGamecode(data) catch |err| {
+            debug.warn("'{}' is not a valid gb or gba rom.\n", arg);
+            return err;
+        };
+        const version = getVersion(gamecode) catch |err| {
+            debug.warn("Gamecode '{}' does not correspond with any Pokémon game.\n", gamecode);
+            return err;
+        };
+
+        if (gen3.findInfoInFile(data, version)) |info| {
             // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
-            try stdout.print("gamecode: {}\n", info.gamecode);
+            try stdout.print("gamecode: {}\n", gamecode);
             try stdout.print(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.trainers.start,                   info.trainers.end);
             try stdout.print(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.moves.start,                      info.moves.end);
             try stdout.print(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.end);
@@ -52,7 +69,6 @@ pub fn main() !void {
             // TODO: This is the starting point for error messages. They should probably be better, but at least
             //       all errors from "findInfoInFile" are handled in this switch.
             switch (err) {
-                error.UnknownPokemonVersion             => debug.warn("Unknown generation 3 game.\n"),
                 error.UnableToFindTrainerOffset         => debug.warn("Unable to find trainers offset.\n"),
                 error.UnableToFindMoveOffset            => debug.warn("Unable to find moves offset.\n"),
                 error.UnableToFindTmHmLearnsetOffset    => debug.warn("Unable to find tm_hm_learnset offset.\n"),
@@ -62,12 +78,6 @@ pub fn main() !void {
                 error.UnableToFindHmOffset              => debug.warn("Unable to find hms offset.\n"),
                 error.UnableToFindTmOffset              => debug.warn("Unable to find tms offset.\n"),
                 error.UnableToFindItemsOffset           => debug.warn("Unable to find items offset.\n"),
-                error.OutOfMemory                       => debug.warn("Ran out of memory.\n"),
-                error.BadFd                             => debug.warn("BadFd.\n"),
-                error.Unexpected                        => debug.warn("An unexpected error occured.\n"),
-                error.StreamTooLong                     => debug.warn("StreamTooLong.\n"),
-                error.Overflow                          => debug.warn("Overflow.\n"),
-                error.EndOfStream                       => debug.warn("EndOfStream.\n"),
                 else => unreachable,
             }
 
@@ -77,4 +87,22 @@ pub fn main() !void {
     }
 }
 
-//fn getVersion(file: &os.File) struct { gamecode: []const u8, }
+fn getVersion(gamecode: []const u8) !common.Version {
+    if (mem.startsWith(u8, gamecode, "BPE"))
+        return common.Version.Emerald;
+    if (mem.startsWith(u8, gamecode, "BPR"))
+       return common.Version.FireRed;
+    if (mem.startsWith(u8, gamecode, "BPG"))
+        return common.Version.LeafGreen;
+    if (mem.startsWith(u8, gamecode, "AXV"))
+        return common.Version.Ruby;
+    if (mem.startsWith(u8, gamecode, "AXP"))
+        return common.Version.Sapphire;
+
+    return error.UnknownPokemonVersion;
+}
+
+fn getGamecode(data: []const u8) (error{}![]const u8) {
+    const header = &([]const gba.Header)(data[0..@sizeOf(gba.Header)])[0];
+    return header.gamecode;
+}
