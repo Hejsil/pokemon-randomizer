@@ -15,6 +15,7 @@ pub fn build(b: &Builder) void {
     const offset_finder = b.addExecutable("offset-finder", "tools/offset-finder/main.zig");
     offset_finder.setBuildMode(mode);
     offset_finder.addPackagePath("gba", "src/gba.zig");
+    offset_finder.addPackagePath("gb", "src/gb.zig");
     offset_finder.addPackagePath("little", "src/little.zig");
     offset_finder.addPackagePath("utils", "src/utils/index.zig");
     offset_finder.addPackagePath("pokemon", "src/pokemon/index.zig");
