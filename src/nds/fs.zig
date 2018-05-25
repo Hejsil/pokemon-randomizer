@@ -350,13 +350,15 @@ pub fn FntAndFiles(comptime FileType: type) type {
     };
 }
 
-pub fn getFntAndFiles(comptime FileType: type, fs: &FileSystem(FileType), allocator: &mem.Allocator) !FntAndFiles(FileType) {
-    var files = std.ArrayList(&FileType).init(allocator);
+pub fn getFntAndFiles(comptime Fs: type, fs: &const Fs, allocator: &mem.Allocator) !FntAndFiles(Fs.File) {
+    comptime assert(Fs == Nitro or Fs == Narc);
+
+    var files = std.ArrayList(&Fs.File).init(allocator);
     var main_fnt = std.ArrayList(FntMainEntry).init(allocator);
     var sub_fnt = try std.Buffer.initSize(allocator, 0);
 
     const State = struct {
-        folder: &FileSystem(FileType).Folder,
+        folder: &Fs.Folder,
         parent_id: u16,
     };
     var states = std.ArrayList(State).init(allocator);
@@ -404,7 +406,7 @@ pub fn getFntAndFiles(comptime FileType: type, fs: &FileSystem(FileType), alloca
         entry.offset_to_subtable = toLittle(u32(main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.get()));
     }
 
-    return FntAndFiles(FileType) {
+    return FntAndFiles(Fs.File) {
         .files = files.toOwnedSlice(),
         .main_fnt = main_fnt.toOwnedSlice(),
         .sub_fnt = sub_fnt.list.toOwnedSlice(),
@@ -417,7 +419,7 @@ pub fn writeNitroFile(file: &os.File, allocator: &mem.Allocator, fs_file: &const
             try file.write(data);
         },
         Nitro.File.Type.Narc => |narc_fs| {
-            const fntAndFiles = try getFntAndFiles(Narc.File, narc_fs, allocator);
+            const fntAndFiles = try getFntAndFiles(Narc, narc_fs, allocator);
             const files = fntAndFiles.files;
             const main_fnt = fntAndFiles.main_fnt;
             const sub_fnt = fntAndFiles.sub_fnt;

@@ -153,7 +153,7 @@ pub const Rom = struct {
         header.banner_offset  = toLittle(u32(banner_pos));
         header.banner_size    = toLittle(u32(@sizeOf(Banner)));
 
-        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro.File, rom.file_system, allocator);
+        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.file_system, allocator);
         const files = fntAndFiles.files;
         const main_fnt = fntAndFiles.main_fnt;
         const sub_fnt = fntAndFiles.sub_fnt;
