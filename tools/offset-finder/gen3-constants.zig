@@ -345,63 +345,72 @@ const unused_evo = common.Evolution {
     .target = toLittle(u16(0)),
     .padding = undefined,
 };
+const unused_evo5 = []common.Evolution{unused_evo} ** 5;
 
-pub const first_evolutions = []common.Evolution {
+pub const first_evolutions = [][5]common.Evolution {
     // Dummy
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+    unused_evo5,
 
     // Bulbasaur
-    common.Evolution {
-        .method = common.Evolution.Method.LevelUp,
-        .param = toLittle(u16(16)),
-        .target = toLittle(u16(2)),
-        .padding = undefined,
+    []common.Evolution {
+        common.Evolution {
+            .method = common.Evolution.Method.LevelUp,
+            .param = toLittle(u16(16)),
+            .target = toLittle(u16(2)),
+            .padding = undefined,
+        },
+        unused_evo, unused_evo, unused_evo, unused_evo,
     },
-    unused_evo, unused_evo, unused_evo, unused_evo,
 
     // Ivysaur
-    common.Evolution {
-        .method = common.Evolution.Method.LevelUp,
-        .param = toLittle(u16(32)),
-        .target = toLittle(u16(3)),
-        .padding = undefined,
+    []common.Evolution {
+        common.Evolution {
+            .method = common.Evolution.Method.LevelUp,
+            .param = toLittle(u16(32)),
+            .target = toLittle(u16(3)),
+            .padding = undefined,
+        },
+        unused_evo, unused_evo, unused_evo, unused_evo,
     },
-    unused_evo, unused_evo, unused_evo, unused_evo,
 };
 
-pub const last_evolutions = []common.Evolution {
+pub const last_evolutions = [][5]common.Evolution {
     // Beldum
-    common.Evolution {
-        .method = common.Evolution.Method.LevelUp,
-        .param = toLittle(u16(20)),
-        .target = toLittle(u16(399)),
-        .padding = undefined,
+    []common.Evolution {
+        common.Evolution {
+            .method = common.Evolution.Method.LevelUp,
+            .param = toLittle(u16(20)),
+            .target = toLittle(u16(399)),
+            .padding = undefined,
+        },
+        unused_evo, unused_evo, unused_evo, unused_evo,
     },
-    unused_evo, unused_evo, unused_evo, unused_evo,
 
     // Metang
-    common.Evolution {
-        .method = common.Evolution.Method.LevelUp,
-        .param = toLittle(u16(45)),
-        .target = toLittle(u16(400)),
-        .padding = undefined,
+    []common.Evolution {
+        common.Evolution {
+            .method = common.Evolution.Method.LevelUp,
+            .param = toLittle(u16(45)),
+            .target = toLittle(u16(400)),
+            .padding = undefined,
+        },
+        unused_evo, unused_evo, unused_evo, unused_evo,
     },
-    unused_evo, unused_evo, unused_evo, unused_evo,
 
     // Metagross, Regirock, Regice, Registeel, Kyogre, Groudon, Rayquaza
     // Latias, Latios, Jirachi, Deoxys, Chimecho
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
-    unused_evo, unused_evo, unused_evo, unused_evo, unused_evo,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
+    unused_evo5,
 };
 
 pub const first_levelup_learnsets = []?[]const u8 {

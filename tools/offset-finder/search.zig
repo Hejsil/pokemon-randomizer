@@ -1,23 +1,24 @@
 const std = @import("std");
+const builtin = @import("builtin");
+const fun = @import("fun");
 
 const mem = std.mem;
+const compare = fun.generic.compare;
 
 pub const Offset = struct {
     start: usize,
     end: usize,
 };
 
-pub fn findOffsetOfStructArray(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start: []const Struct, end: []const Struct) ?Offset {
-    const start_index = indexOfStructsInBytes(Struct, ignored_fields, data, 0, start) ?? return null;
-    const end_index = indexOfStructsInBytes(Struct, ignored_fields, data, start_index, end) ?? return null;
+pub fn findStructs(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start: []const Struct, end: []const Struct) ?[]const Struct {
+    const start_index = indexOfStructs(Struct, ignored_fields, data, 0, start) ?? return null;
+    const end_index = indexOfStructs(Struct, ignored_fields, data, start_index, end) ?? return null;
 
-    return Offset {
-        .start = start_index,
-        .end = end_index + end.len * @sizeOf(Struct),
-    };
+    // TODO: This can fail
+    return ([]const Struct)(data[start_index..end_index + end.len * @sizeOf(Struct)]);
 }
 
-fn indexOfStructsInBytes(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start_index: usize, structs: []const Struct) ?usize {
+fn indexOfStructs(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start_index: usize, structs: []const Struct) ?usize {
     const structs_len_in_bytes = structs.len * @sizeOf(Struct);
     if (data.len < structs_len_in_bytes) return null;
 
@@ -37,18 +38,28 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
     if (data.len != structs_len_in_bytes) return false;
 
     for (structs) |s, s_i| {
-        const data_bytes = data[s_i * @sizeOf(Struct)..];
-        const s_bytes = ([]const u8)((&s)[0..1]);
+        const data_bytes = data[s_i * @sizeOf(Struct)..][0..@sizeOf(Struct)];
+        const data_s = ([]const Struct)(data_bytes)[0];
 
-        comptime var i = 0;
-        comptime var byte_offset = 0;
-        inline while (i < @memberCount(Struct)) : (i += 1) {
-            const member_name = @memberName(Struct, i)[0..];
-            if (comptime contains([]const u8, ignored_fields, member_name, strEql)) continue;
+        switch (@typeInfo(Struct)) {
+            builtin.TypeId.Array => |arr| {
+                for (s) |child, i| {
+                    if (!structsMatchesBytes(arr.child, ignored_fields, data_bytes, s))
+                        return false;
+                }
+            },
+            builtin.TypeId.Struct => |str| {
+                inline for (str.fields) |field, i| {
+                    if (comptime contains([]const u8, ignored_fields, field.name, strEql))
+                        continue;
 
-            const member_start = @offsetOf(Struct, member_name);
-            const member_end = @sizeOf(@memberType(Struct, i)) + member_start;
-            if (!mem.eql(u8, data_bytes[member_start..member_end], s_bytes[member_start..member_end])) return false;
+                    const a = @field(s, field.name);
+                    const b = @field(data_s, field.name);
+                    if (!compare.equal(field.field_type)(a, b))
+                        return false;
+                }
+            },
+            else => comptime unreachable,
         }
     }
 
@@ -68,25 +79,19 @@ fn contains(comptime T: type, items: []const T, value: &const T, eql: fn(&const 
 }
 
 /// Finds the start and end index based on a start and end pattern.
-pub fn findOffsetUsingPattern(comptime T: type, data: []const T, start: []const ?T, end: []const ?T) ?Offset {
+pub fn findPattern(comptime T: type, data: []const T, start: []const ?T, end: []const ?T) ?[]const u8 {
     const start_index = indexOfPattern(T, data, 0, start) ?? return null;
     const end_index = indexOfPattern(T, data, start_index, end) ?? return null;
 
-    return Offset {
-        .start = start_index,
-        .end = end_index + end.len,
-    };
+    return data[start_index..end_index + end.len];
 }
 
 /// Finds the start and end index based on a start and end.
-pub fn findOffset(comptime T: type, data: []const T, start: []const T, end: []const T) ?Offset {
+pub fn findBytes(comptime T: type, data: []const T, start: []const T, end: []const T) ?[]const u8 {
     const start_index = mem.indexOf(T, data, start) ?? return null;
     const end_index = mem.indexOfPos(T, data, start_index, end) ?? return null;
 
-    return Offset {
-        .start = start_index,
-        .end = end_index + end.len,
-    };
+    return data[start_index..end_index + end.len];
 }
 
 fn indexOfPattern(comptime T: type, data: []const T, start_index: usize, pattern: []const ?T) ?usize {

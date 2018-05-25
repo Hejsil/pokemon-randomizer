@@ -120,15 +120,15 @@ fn gbTitle(data: []const u8) []const u8 {
 fn findGen3Offsets(gamecode: []const u8, data: []const u8, version: common.Version) !void {
     if (gen3.findInfoInFile(data, version)) |info| {
         // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
-        debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.trainers.start,                   info.trainers.end);
-        debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.moves.start,                      info.moves.end);
-        debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.end);
-        debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.base_stats.start,                 info.base_stats.end);
-        debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.evolution_table.start,            info.evolution_table.end);
-        debug.warn(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.end);
-        debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.hms.start,                        info.hms.end);
-        debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.tms.start,                        info.tms.end);
-        debug.warn(".items                      = Offset {{ .start = 0x{X7}, .end = 0x{X7}, }},\n", info.items.start,                      info.items.end);
+        debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.trainers.start,                   info.trainers.len);
+        debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.moves.start,                      info.moves.len);
+        debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.len);
+        debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.base_stats.start,                 info.base_stats.len);
+        debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.evolution_table.start,            info.evolution_table.len);
+        debug.warn(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.len);
+        debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.hms.start,                        info.hms.len);
+        debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.tms.start,                        info.tms.len);
+        debug.warn(".items                      = Offset {{ .start = 0x{X7}, .len = 0x{X7}, }},\n", info.items.start,                      info.items.len);
     } else |err| {
         // TODO: This is the starting point for error messages. They should probably be better, but at least
         //       all errors from "findInfoInFile" are handled in this switch.

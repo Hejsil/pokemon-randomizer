@@ -19,6 +19,7 @@ pub fn build(b: &Builder) void {
     offset_finder.addPackagePath("little", "src/little.zig");
     offset_finder.addPackagePath("utils", "src/utils/index.zig");
     offset_finder.addPackagePath("pokemon", "src/pokemon/index.zig");
+    offset_finder.addPackagePath("fun", "lib/fun-with-zig/src/index.zig");
 
     const nds_util = b.addExecutable("nds-util", "tools/nds-util/main.zig");
     nds_util.setBuildMode(mode);
