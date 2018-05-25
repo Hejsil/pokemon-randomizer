@@ -53,9 +53,7 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
                     if (comptime contains([]const u8, ignored_fields, field.name, strEql))
                         continue;
 
-                    const a = @field(s, field.name);
-                    const b = @field(data_s, field.name);
-                    if (!compare.equal(field.field_type)(a, b))
+                    if (!fieldsEql(field.name, Struct, s, data_s))
                         return false;
                 }
             },
@@ -64,6 +62,12 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
     }
 
     return true;
+}
+
+fn fieldsEql(comptime field: []const u8, comptime T: type, a: &const T, b: &const T) bool {
+    const af = @field(a, field);
+    const bf = @field(b, field);
+    return compare.equal(@typeOf(af))(af, bf);
 }
 
 fn strEql(a: &const []const u8, b: &const []const u8) bool {
