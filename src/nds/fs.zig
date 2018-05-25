@@ -492,3 +492,76 @@ pub fn writeNitroFile(file: &os.File, allocator: &mem.Allocator, fs_file: &const
         },
     }
 }
+
+fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: &const Fs, fs2: &const Fs) bool {
+    comptime assert(Fs == Nitro or Fs == Narc);
+
+    const FolderPair = struct {
+        f1: Fs.Folder,
+        f2: Fs.Folder,
+    };
+
+    var folders_to_compare = std.ArrayList(FolderPair).init(allocator);
+    defer folders_to_compare.deinit();
+    try folders_to_compare.append(FolderPair {
+        .f1 = fs1.root,
+        .f2 = fs2.root,
+    });
+
+    while (folders_to_compare.popOrNull()) |pair| {
+        for (pair.f1.folders) |f1| {
+            for (pair.f2.folders) |f2| {
+                if (mem.eql(u8, f1.name, f2.name)) {
+                    folders_to_compare.append(FolderPair {
+                        .f1 = f1,
+                        .f2 = f2,
+                    });
+                    break;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        for (pair.f1.files) |f1| {
+            for (pair.f2.files) |f2| {
+                if (mem.eql(u8, f1.name, f2.name)) {
+                    switch (Fs) {
+                        Nitro => {
+                            switch (f1.@"type") {
+                                Nitro.File.Binary => {
+                                    if (f2.@"type" != Nitro.File.Binary)
+                                        return false;
+                                    if (!mem.eql(u8, f1.@"type".Binary, f2.@"type".Binary))
+                                        return false;
+                                },
+                                Nitro.File.Narc => {
+                                    if (f2.@"type" != Nitro.File.Narc)
+                                        return false;
+                                    if (!fsEqual(allocator, Narc, f1.@"type".Narc, f2.@"type".Narc))
+                                        return false;
+                                }
+                            }
+                        },
+                        Narc => {
+                            if (!mem.eql(u8, f1.data, f2.data))
+                                return false;
+                        },
+                        else => comptime unreachable,
+                    }
+                    break;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+test "nds.fs: Nitro.File read/write" {
+    const fs = Nitro {
+        .folders = std.ArrayList(Nitro.Folder)
+    };
+}
