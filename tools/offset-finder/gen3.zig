@@ -65,7 +65,7 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
         return error.UnableToFindMoveOffset;
     };
 
-    const tm_hm_learnset = search.findBytes(u8, data,
+    const tm_hm_learnset = search.findStructs(Little(u64), [][]const u8 { }, data,
         constants.first_tm_hm_learnsets,
         constants.last_tm_hm_learnsets) ?? {
         return error.UnableToFindTmHmLearnsetOffset;
@@ -78,7 +78,6 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
         return error.UnableToFindBaseStatsOffset;
     };
 
-    @breakpoint();
     const evolution_table = search.findStructs([5]common.Evolution, [][]const u8 { "padding" }, data,
         constants.first_evolutions,
         constants.last_evolutions) ?? {
@@ -141,7 +140,7 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
     return Info {
         .trainers                   = Offset.fromSlice(start, gen3.Trainer, trainers),
         .moves                      = Offset.fromSlice(start, gen3.Move, moves),
-        .tm_hm_learnset             = Offset.fromSlice(start, u8, tm_hm_learnset),
+        .tm_hm_learnset             = Offset.fromSlice(start, Little(u64), tm_hm_learnset),
         .base_stats                 = Offset.fromSlice(start, gen3.BasePokemon, base_stats),
         .evolution_table            = Offset.fromSlice(start, [5]common.Evolution, evolution_table),
         .level_up_learnset_pointers = Offset.fromSlice(start, Little(u32), level_up_learnset_pointers),
