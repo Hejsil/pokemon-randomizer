@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const fun = @import("fun");
 
+const debug = std.debug;
 const mem = std.mem;
 const compare = fun.generic.compare;
 

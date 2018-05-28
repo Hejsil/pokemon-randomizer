@@ -1,7 +1,6 @@
 const pokemon   = @import("pokemon");
 const search    = @import("search.zig");
 const std       = @import("std");
-const gba       = @import("gba");
 const utils     = @import("utils");
 const little    = @import("little");
 const constants = @import("gen3-constants.zig");

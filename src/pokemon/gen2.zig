@@ -1,5 +1,10 @@
+const common = @import("common.zig");
+const little = @import("../little.zig");
 
-const BasePokemon = packed struct {
+const toLittle = little.toLittle;
+const Little   = little.Little;
+
+pub const BasePokemon = packed struct {
     pokedex_number: u8,
 
     hp:         u8,
@@ -29,9 +34,9 @@ const BasePokemon = packed struct {
     egg_group2: common.EggGroup,
 
     tm_hm_learnset: Little(u64),
-}
+};
 
-const Type = enum(u8) {
+pub const Type = enum(u8) {
     Normal = 0x00,
     Fighting = 0x01,
     Flying = 0x02,
@@ -52,4 +57,41 @@ const Type = enum(u8) {
     Ice = 0x19,
     Dragon = 0x1a,
     Dark = 0x1b,
+};
+
+pub const Trainer = packed struct {
+    items: [2]u8,
+    reward: u8,
+    ai: Little(u16),
+
+    // TODO: This seems to have something to do with when trainers should switch, or something
+    unknown: Little(u16),
+};
+
+pub const PartyType = enum(u8) {
+    Standard  = 0x00,
+    WithMoves = 0x01,
+    WithHeld  = 0x02,
+    WithBoth  = 0x03,
+};
+
+pub const PartyMember = packed struct {
+    level: u8,
+    species: u8,
+
+    pub const WithMoves = packed struct {
+        base: PartyMember,
+        moves: [4]u8,
+    };
+
+    pub const WithHeld = packed struct {
+        base: PartyMember,
+        item: u8,
+    };
+
+    pub const WithBoth = packed struct {
+        base: PartyMember,
+        item: u8,
+        moves: [4]u8,
+    };
 };

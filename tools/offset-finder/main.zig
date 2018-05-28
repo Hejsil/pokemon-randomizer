@@ -3,6 +3,7 @@ const pokemon = @import("pokemon");
 const gba     = @import("gba");
 const gb      = @import("gb");
 const gen3    = @import("gen3.zig");
+const gen2    = @import("gen2.zig");
 
 const io     = std.io;
 const os     = std.os;
@@ -68,8 +69,24 @@ pub fn main() !void {
 
         switch (version.generation()) {
             common.Generation.I => unreachable,
-            common.Generation.II => unreachable,
-            common.Generation.III => try findGen3Offsets(gamecode, data, version),
+            common.Generation.II => {
+                const info = try gen2.findInfoInFile(data, version);
+
+                debug.warn(".base_stats = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start, info.base_stats.len);
+            },
+            common.Generation.III => {
+                const info = try gen3.findInfoInFile(data, version);
+
+                debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start,                   info.trainers.len);
+                debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.moves.start,                      info.moves.len);
+                debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.len);
+                debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start,                 info.base_stats.len);
+                debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.evolution_table.start,            info.evolution_table.len);
+                debug.warn(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.len);
+                debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.hms.start,                        info.hms.len);
+                debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tms.start,                        info.tms.len);
+                debug.warn(".items                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.items.start,                      info.items.len);
+            },
             else => unreachable,
         }
     }
@@ -115,36 +132,4 @@ fn gbGamecode(data: []const u8) []const u8 {
 fn gbTitle(data: []const u8) []const u8 {
     const header = &([]const gb.Header)(data[0..@sizeOf(gb.Header)])[0];
     return header.title.full;
-}
-
-fn findGen3Offsets(gamecode: []const u8, data: []const u8, version: common.Version) !void {
-    if (gen3.findInfoInFile(data, version)) |info| {
-        // TODO: Write start offset and length in items insead of start and end. This is to avoid "slice widening size mismatch"
-        debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start,                   info.trainers.len);
-        debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.moves.start,                      info.moves.len);
-        debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.len);
-        debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start,                 info.base_stats.len);
-        debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.evolution_table.start,            info.evolution_table.len);
-        debug.warn(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.len);
-        debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.hms.start,                        info.hms.len);
-        debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tms.start,                        info.tms.len);
-        debug.warn(".items                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.items.start,                      info.items.len);
-    } else |err| {
-        // TODO: This is the starting point for error messages. They should probably be better, but at least
-        //       all errors from "findInfoInFile" are handled in this switch.
-        switch (err) {
-            error.UnableToFindTrainerOffset         => debug.warn("Unable to find trainers offset.\n"),
-            error.UnableToFindMoveOffset            => debug.warn("Unable to find moves offset.\n"),
-            error.UnableToFindTmHmLearnsetOffset    => debug.warn("Unable to find tm_hm_learnset offset.\n"),
-            error.UnableToFindBaseStatsOffset       => debug.warn("Unable to find base_stats offset.\n"),
-            error.UnableToFindEvolutionTableOffset  => debug.warn("Unable to find evolution_table offset.\n"),
-            error.UnableToFindLevelUpLearnsetOffset => debug.warn("Unable to find levelup learnset offset.\n"),
-            error.UnableToFindHmOffset              => debug.warn("Unable to find hms offset.\n"),
-            error.UnableToFindTmOffset              => debug.warn("Unable to find tms offset.\n"),
-            error.UnableToFindItemsOffset           => debug.warn("Unable to find items offset.\n"),
-            else => unreachable,
-        }
-
-        return err;
-    }
 }
