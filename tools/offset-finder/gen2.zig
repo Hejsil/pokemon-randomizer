@@ -30,9 +30,8 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
     var trainer_group_lenghts: []u8 = undefined;
     switch (version) {
         common.Version.Crystal => {
-            const first_group_pointer = indexOfTrainerGroups(data, 0, constants.first_trainer_groups) ?? return error.A;
-            const last_group_pointer = indexOfTrainerGroups(data, first_group_pointer, constants.last_trainer_groups) ?? return error.A;
-            debug.warn("{} {}\n", first_group_pointer, last_group_pointer);
+            const first_group_pointer = indexOfTrainerParties(data, 0, constants.first_trainer_parties) ?? return error.A;
+            const last_group_pointer = indexOfTrainerParties(data, first_group_pointer, constants.last_trainer_parties) ?? return error.A;
         },
         else => unreachable,
     }
@@ -50,12 +49,12 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
     };
 }
 
-fn indexOfTrainerGroups(data: []const u8, start_index: usize, trainer_groups: []const constants.TrainerGroup) ?usize {
+fn indexOfTrainerParties(data: []const u8, start_index: usize, trainer_parties: []const constants.TrainerParty) ?usize {
     const bytes = blk: {
         var res: usize = 0;
-        for (trainer_groups) |group| {
-            res += group.name.len + 1;
-            res += switch (group.party) {
+        for (trainer_parties) |trainer_party| {
+            res += trainer_party.name.len + 1;
+            res += switch (trainer_party.party) {
                 gen2.PartyType.Standard => |party| @sizeOf(@typeOf(party[0])) * party.len,
                 gen2.PartyType.WithMoves => |party| @sizeOf(@typeOf(party[0])) * party.len,
                 gen2.PartyType.WithHeld => |party| @sizeOf(@typeOf(party[0])) * party.len,
@@ -70,45 +69,65 @@ fn indexOfTrainerGroups(data: []const u8, start_index: usize, trainer_groups: []
 
     var i = start_index;
     var end = data.len - bytes;
+
+    search_loop:
     while (i <= end) : (i += 1) {
         var off = i;
-        for (trainer_groups) |group| {
-            if (!mem.eql(u8, group.name, data[off..][0..group.name.len]))
-                return null;
+        for (trainer_parties) |trainer_party, j| {
+            off += trainer_party.name.len;
+            if (!mem.eql(u8, trainer_party.name, data[i..off]))
+                continue :search_loop;
 
-            @breakpoint();
-            off += group.name.len;
-
-            if (data[off] != u8(gen2.PartyType(group.party)))
-                return null;
+            if (data[off] != u8(gen2.PartyType(trainer_party.party)))
+                continue :search_loop;
 
             off += 1;
-            const party_data = data[off..];
-            off += switch (group.party) {
-                gen2.PartyType.Standard => |party| skipIfMatch(@typeOf(party[0]), party, off, party_data),
-                gen2.PartyType.WithMoves => |party| skipIfMatch(@typeOf(party[0]), party, off, party_data),
-                gen2.PartyType.WithHeld => |party| skipIfMatch(@typeOf(party[0]), party, off, party_data),
-                gen2.PartyType.WithBoth => |party| skipIfMatch(@typeOf(party[0]), party, off, party_data),
-            } ?? return null;
 
-            // Parties are terminated with 0xFF
+            // TODO: Each case is a copy paste. The code is the same, but 'party' is of a different type
+            //       each time. Idk of a good way to creat a function right now with a proper name, so
+            //       i'll just leave this as is.
+            switch (trainer_party.party) {
+                gen2.PartyType.Standard => |party| {
+                    const party_bytes = ([]const u8)(party);
+                    const data_bytes = data[off..][0..party_bytes.len];
+                    if (!mem.eql(u8, party_bytes, data_bytes))
+                        continue :search_loop;
+
+                    off += party_bytes.len;
+                },
+                gen2.PartyType.WithMoves => |party| {
+                    const party_bytes = ([]const u8)(party);
+                    const data_bytes = data[off..][0..party_bytes.len];
+                    if (!mem.eql(u8, party_bytes, data_bytes))
+                        continue :search_loop;
+
+                    off += party_bytes.len;
+                },
+                gen2.PartyType.WithHeld => |party| {
+                    const party_bytes = ([]const u8)(party);
+                    const data_bytes = data[off..][0..party_bytes.len];
+                    if (!mem.eql(u8, party_bytes, data_bytes))
+                        continue :search_loop;
+
+                    off += party_bytes.len;
+                },
+                gen2.PartyType.WithBoth => |party| {
+                    const party_bytes = ([]const u8)(party);
+                    const data_bytes = data[off..][0..party_bytes.len];
+                    if (!mem.eql(u8, party_bytes, data_bytes))
+                        continue :search_loop;
+
+                    off += party_bytes.len;
+                },
+            }
+
             if (data[off] != 0xFF)
-                return null;
-
+                continue :search_loop;
             off += 1;
         }
+
+        return i;
     }
 
     return null;
-}
-
-fn skipIfMatch(comptime Member: type, party: []const Member, offset: usize, data: []const u8) ?usize {
-    for (party) |member, i| {
-        const member_bytes = utils.toBytes(Member, member);
-        const data_bytes = data[offset + i * @sizeOf(Member)..][0..@sizeOf(Member)];
-        if (!mem.eql(u8, member_bytes, data_bytes))
-            return null;
-    }
-
-    return offset + party.len * @sizeOf(Member);
 }

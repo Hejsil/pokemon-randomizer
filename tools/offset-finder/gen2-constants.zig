@@ -4,7 +4,7 @@ const math = std.math;
 const gen2 = pokemon.gen2;
 const common = pokemon.common;
 
-pub const TrainerGroup = struct {
+pub const TrainerParty = struct {
     name: []const u8,
     party: Party,
 };
@@ -16,9 +16,9 @@ pub const Party = union(gen2.PartyType) {
     WithBoth: []const gen2.PartyMember.WithBoth,
 };
 
-pub const first_trainer_groups = []TrainerGroup {
+pub const first_trainer_parties = []TrainerParty {
     // FalknerGroup
-    TrainerGroup{
+    TrainerParty{
         // "FALKNER@"
         .name = "\x85\x80\x8B\x8A\x8D\x84\x91\x50",
         .party = Party {
@@ -52,9 +52,9 @@ pub const first_trainer_groups = []TrainerGroup {
     }
 };
 
-pub const last_trainer_groups = []TrainerGroup {
+pub const last_trainer_parties = []TrainerParty {
     // MysticalmanGroup
-    TrainerGroup{
+    TrainerParty{
         // "EUSINE@"
         .name = "\x84\x94\x92\x88\x8D\x84\x50",
         .party = Party {
@@ -81,6 +81,18 @@ pub const last_trainer_groups = []TrainerGroup {
                         0x5F, // Hypnosis
                         0xD4, // Mean Look
                         0xAE, // Curse
+                    },
+                },
+                gen2.PartyMember.WithMoves{
+                    .base = gen2.PartyMember{
+                        .level = 25,
+                        .species = 0x65, // Electrode
+                    },
+                    .moves = [4]u8{
+                        0x67, // Screech
+                        0x31, // Sonicboom
+                        0x57, // Thunder
+                        0xCD, // Rollout
                     },
                 },
             }
