@@ -3,11 +3,15 @@ const pokemon = @import("pokemon");
 const utils = @import("utils");
 const constants = @import("gen2-constants.zig");
 const search = @import("search.zig");
+const little    = @import("little");
 
 const debug = std.debug;
 const mem = std.mem;
 const common = pokemon.common;
 const gen2 = pokemon.gen2;
+
+const Little   = little.Little;
+const toLittle = little.toLittle;
 
 const Offset = struct {
     start: usize,
@@ -23,15 +27,85 @@ const Offset = struct {
 
 const Info = struct {
     base_stats: Offset,
+    trainer_group_pointers: Offset,
+    trainer_group_lenghts: []u8,
 };
 
-pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
-    var trainer_group_pointers: Offset = undefined;
+pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: &mem.Allocator) !Info {
+    // In gen2, trainers are split into groups. Each group have attributes for their items, reward ai and so on.
+    // The game does not store the size of each group anywere oviuse, so we have to figure out the size of each
+    // group.
+    var trainer_group_pointers: []const Little(u16) = undefined;
     var trainer_group_lenghts: []u8 = undefined;
     switch (version) {
         common.Version.Crystal => {
-            const first_group_pointer = indexOfTrainerParties(data, 0, constants.first_trainer_parties) ?? return error.A;
-            const last_group_pointer = indexOfTrainerParties(data, first_group_pointer, constants.last_trainer_parties) ?? return error.A;
+            // First, we find the first and last group pointers
+            const first_group_pointer = indexOfTrainer(data, 0, constants.first_trainers) ?? return error.TrainerGroupsNotFound;
+            const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) ?? return error.TrainerGroupsNotFound;
+
+            // Then, we can find the group pointer table
+            const first_group_pointers = []Little(u16) { toLittle(u16(first_group_pointer)) };
+            const last_group_pointers = []Little(u16) { toLittle(u16(last_group_pointer)) };
+            trainer_group_pointers = search.findStructs(
+                Little(u16),
+                [][]const u8{},
+                data,
+                first_group_pointers,
+                last_group_pointers,
+            ) ?? return error.UnableToFindBaseStatsOffset;
+
+            // Ensure that the pointers are in ascending order.
+            for (trainer_group_pointers[1..]) |item, i| {
+                const prev = trainer_group_pointers[i - 1];
+                if (prev.get() > item.get())
+                    return error.TrainerGroupsNotFound;
+            }
+
+            trainer_group_lenghts = try allocator.alloc(u8, trainer_group_pointers.len);
+
+            // If the pointers are in ascending order, then we will assume that pointers[i]
+            // is terminated by pointers[i + 1], so we can just check for all parties between
+            // this range to find the group count for each group.
+            // For poiners[pointers.len - 1], we will look until we hit an invalid party.
+            for (trainer_group_pointers) |_, i| {
+                const is_last = i + 1 == trainer_group_pointers.len;
+                var curr = trainer_group_pointers[i].get();
+                const next = if (!is_last) trainer_group_pointers[i + 1].get() else @maxValue(u16);
+
+                group_loop:
+                while (curr < next) : (trainer_group_lenghts[i] += 1) {
+                    // Skip, until we find the string terminator for the trainer name
+                    while (data[curr] != '\x50')
+                        curr += 1;
+                    curr += 1; // Skip terminator
+
+                    const trainer_type = data[curr];
+                    const valid_type_bits: u8 = gen2.Party.has_moves | gen2.Party.has_item;
+                    if (trainer_type & ~(valid_type_bits) != 0)
+                        break :group_loop;
+
+                    curr += 1;
+
+                    // Validate trainers party
+                    while (data[curr] != 0xFF) {
+                        const level = data[curr];
+                        const species = data[curr + 1];
+
+                        if (level > 100)
+                            break :group_loop;
+
+                        curr += 2;
+                        if (trainer_type & gen2.Party.has_item != 0)
+                            curr += 1;
+                        if (trainer_type & gen2.Party.has_moves != 0)
+                            curr += 4;
+                    }
+                }
+            }
+
+            for (trainer_group_lenghts) |b| {
+                debug.warn("{}, ", b);
+            }
         },
         else => unreachable,
     }
@@ -45,21 +119,23 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
 
     const start = @ptrToInt(data.ptr);
     return Info{
-        .base_stats = Offset.fromSlice(start, gen2.BasePokemon, base_stats)
+        .base_stats = Offset.fromSlice(start, gen2.BasePokemon, base_stats),
+        .trainer_group_pointers = Offset.fromSlice(start, Little(u16), trainer_group_pointers),
+        .trainer_group_lenghts = trainer_group_lenghts,
     };
 }
 
-fn indexOfTrainerParties(data: []const u8, start_index: usize, trainer_parties: []const constants.TrainerParty) ?usize {
+fn indexOfTrainer(data: []const u8, start_index: usize, trainers: []const constants.Trainer) ?usize {
     const bytes = blk: {
         var res: usize = 0;
-        for (trainer_parties) |trainer_party| {
-            res += trainer_party.name.len + 1;
-            res += switch (trainer_party.party) {
-                gen2.PartyType.Standard => |party| @sizeOf(@typeOf(party[0])) * party.len,
-                gen2.PartyType.WithMoves => |party| @sizeOf(@typeOf(party[0])) * party.len,
-                gen2.PartyType.WithHeld => |party| @sizeOf(@typeOf(party[0])) * party.len,
-                gen2.PartyType.WithBoth => |party| @sizeOf(@typeOf(party[0])) * party.len,
-            };
+        for (trainers) |trainer| {
+            res += trainer.name.len;
+            res += 2 * trainer.party.len;  // level, species
+            if (trainer.kind & gen2.Party.has_item != 0)
+                res += 1 * trainer.party.len;
+            if (trainer.kind & gen2.Party.has_moves != 0)
+                res += 4 * trainer.party.len;
+            res += 1; // trainer terminator
         }
 
         break :blk res;
@@ -73,52 +149,32 @@ fn indexOfTrainerParties(data: []const u8, start_index: usize, trainer_parties: 
     search_loop:
     while (i <= end) : (i += 1) {
         var off = i;
-        for (trainer_parties) |trainer_party, j| {
-            off += trainer_party.name.len;
-            if (!mem.eql(u8, trainer_party.name, data[i..off]))
+        for (trainers) |trainer, j| {
+            off += trainer.name.len;
+            if (!mem.eql(u8, trainer.name, data[i..off]))
                 continue :search_loop;
 
-            if (data[off] != u8(gen2.PartyType(trainer_party.party)))
+            if (data[off] != trainer.kind)
                 continue :search_loop;
 
             off += 1;
+            for (trainer.party) |member| {
+                if (data[off] != member.base.level)
+                    continue :search_loop;
+                if (data[off + 1] != member.base.species)
+                    continue :search_loop;
 
-            // TODO: Each case is a copy paste. The code is the same, but 'party' is of a different type
-            //       each time. Idk of a good way to creat a function right now with a proper name, so
-            //       i'll just leave this as is.
-            switch (trainer_party.party) {
-                gen2.PartyType.Standard => |party| {
-                    const party_bytes = ([]const u8)(party);
-                    const data_bytes = data[off..][0..party_bytes.len];
-                    if (!mem.eql(u8, party_bytes, data_bytes))
+                off += 2;
+                if (trainer.kind & gen2.Party.has_item != 0) {
+                    if (data[off] != member.item)
                         continue :search_loop;
-
-                    off += party_bytes.len;
-                },
-                gen2.PartyType.WithMoves => |party| {
-                    const party_bytes = ([]const u8)(party);
-                    const data_bytes = data[off..][0..party_bytes.len];
-                    if (!mem.eql(u8, party_bytes, data_bytes))
+                    off += 1;
+                }
+                if (trainer.kind & gen2.Party.has_moves != 0) {
+                    if (!mem.eql(u8, data[off..][0..4], member.moves))
                         continue :search_loop;
-
-                    off += party_bytes.len;
-                },
-                gen2.PartyType.WithHeld => |party| {
-                    const party_bytes = ([]const u8)(party);
-                    const data_bytes = data[off..][0..party_bytes.len];
-                    if (!mem.eql(u8, party_bytes, data_bytes))
-                        continue :search_loop;
-
-                    off += party_bytes.len;
-                },
-                gen2.PartyType.WithBoth => |party| {
-                    const party_bytes = ([]const u8)(party);
-                    const data_bytes = data[off..][0..party_bytes.len];
-                    if (!mem.eql(u8, party_bytes, data_bytes))
-                        continue :search_loop;
-
-                    off += party_bytes.len;
-                },
+                    off += 4;
+                }
             }
 
             if (data[off] != 0xFF)

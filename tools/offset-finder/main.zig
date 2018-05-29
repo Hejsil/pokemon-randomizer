@@ -70,7 +70,7 @@ pub fn main() !void {
         switch (version.generation()) {
             common.Generation.I => unreachable,
             common.Generation.II => {
-                const info = try gen2.findInfoInFile(data, version);
+                const info = try gen2.findInfoInFile(data, version, allocator);
 
                 debug.warn(".base_stats = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start, info.base_stats.len);
             },

@@ -4,98 +4,95 @@ const math = std.math;
 const gen2 = pokemon.gen2;
 const common = pokemon.common;
 
-pub const TrainerParty = struct {
+pub const Trainer = struct {
     name: []const u8,
-    party: Party,
+    kind: u8,
+    party: []const gen2.Party.Member.WithBoth,
 };
 
-pub const Party = union(gen2.PartyType) {
-    Standard: []const gen2.PartyMember,
-    WithMoves: []const gen2.PartyMember.WithMoves,
-    WithHeld: []const gen2.PartyMember.WithHeld,
-    WithBoth: []const gen2.PartyMember.WithBoth,
-};
-
-pub const first_trainer_parties = []TrainerParty {
+pub const first_trainers = []Trainer {
     // FalknerGroup
-    TrainerParty{
+    Trainer{
         // "FALKNER@"
         .name = "\x85\x80\x8B\x8A\x8D\x84\x91\x50",
-        .party = Party {
-            .WithMoves = []gen2.PartyMember.WithMoves{
-                gen2.PartyMember.WithMoves{
-                    .base = gen2.PartyMember{
-                        .level = 7,
-                        .species = 0x10, // Pidgey
-                    },
-                    .moves = [4]u8{
-                        0x21, // Tackle
-                        0xBD, // Mud Slap
-                        0x00,
-                        0x00,
-                    },
+        .kind = gen2.Party.has_moves,
+        .party = []gen2.Party.Member.WithBoth{
+            gen2.Party.Member.WithBoth{
+                .base = gen2.Party.Member{
+                    .level = 7,
+                    .species = 0x10, // Pidgey
                 },
-                gen2.PartyMember.WithMoves{
-                    .base = gen2.PartyMember{
-                        .level = 9,
-                        .species = 0x11, // Pidgey
-                    },
-                    .moves = [4]u8{
-                        0x21, // Tackle
-                        0xBD, // Mud Slap
-                        0x10, // Gust
-                        0x00,
-                    },
+                .item = undefined,
+                .moves = [4]u8{
+                    0x21, // Tackle
+                    0xBD, // Mud Slap
+                    0x00,
+                    0x00,
                 },
-            }
+            },
+            gen2.Party.Member.WithBoth{
+                .base = gen2.Party.Member{
+                    .level = 9,
+                    .species = 0x11, // Pidgey
+                },
+                .item = undefined,
+                .moves = [4]u8{
+                    0x21, // Tackle
+                    0xBD, // Mud Slap
+                    0x10, // Gust
+                    0x00,
+                },
+            },
         }
     }
 };
 
-pub const last_trainer_parties = []TrainerParty {
+pub const last_trainers = []Trainer {
     // MysticalmanGroup
-    TrainerParty{
+    Trainer{
         // "EUSINE@"
         .name = "\x84\x94\x92\x88\x8D\x84\x50",
-        .party = Party {
-            .WithMoves = []gen2.PartyMember.WithMoves{
-                gen2.PartyMember.WithMoves{
-                    .base = gen2.PartyMember{
-                        .level = 23,
-                        .species = 0x60, // Drowzee
-                    },
-                    .moves = [4]u8{
-                        0x8A, // Dream Eater
-                        0x5F, // Hypnosis
-                        0x32, // Disable
-                        0x5D, // Confusion
-                    },
+        .kind = gen2.Party.has_moves,
+        .party = []gen2.Party.Member.WithBoth{
+            gen2.Party.Member.WithBoth{
+                .base = gen2.Party.Member{
+                    .level = 23,
+                    .species = 0x60, // Drowzee
                 },
-                gen2.PartyMember.WithMoves{
-                    .base = gen2.PartyMember{
-                        .level = 23,
-                        .species = 0x5D, // Haunter
-                    },
-                    .moves = [4]u8{
-                        0x7A, // Lick
-                        0x5F, // Hypnosis
-                        0xD4, // Mean Look
-                        0xAE, // Curse
-                    },
+                .item = undefined,
+                .moves = [4]u8{
+                    0x8A, // Dream Eater
+                    0x5F, // Hypnosis
+                    0x32, // Disable
+                    0x5D, // Confusion
                 },
-                gen2.PartyMember.WithMoves{
-                    .base = gen2.PartyMember{
-                        .level = 25,
-                        .species = 0x65, // Electrode
-                    },
-                    .moves = [4]u8{
-                        0x67, // Screech
-                        0x31, // Sonicboom
-                        0x57, // Thunder
-                        0xCD, // Rollout
-                    },
+            },
+            gen2.Party.Member.WithBoth{
+                .base = gen2.Party.Member{
+                    .level = 23,
+                    .species = 0x5D, // Haunter
                 },
-            }
+                .item = undefined,
+                .moves = [4]u8{
+                    0x7A, // Lick
+                    0x5F, // Hypnosis
+                    0xD4, // Mean Look
+                    0xAE, // Curse
+                },
+            },
+            gen2.Party.Member.WithBoth{
+                .base = gen2.Party.Member{
+                    .level = 25,
+                    .species = 0x65, // Electrode
+                },
+                .item = undefined,
+                .moves = [4]u8{
+                    0x67, // Screech
+                    0x31, // Sonicboom
+                    0x57, // Thunder
+                    0xCD, // Rollout
+                },
+            },
         }
     }
 };

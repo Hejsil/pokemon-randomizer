@@ -68,30 +68,28 @@ pub const Trainer = packed struct {
     unknown: Little(u16),
 };
 
-pub const PartyType = enum(u8) {
-    Standard  = 0x00,
-    WithMoves = 0x01,
-    WithHeld  = 0x02,
-    WithBoth  = 0x03,
-};
+pub const Party = struct {
+    const has_moves = 0b01;
+    const has_item = 0b10;
 
-pub const PartyMember = packed struct {
-    level: u8,
-    species: u8,
+    pub const Member = packed struct {
+        level: u8,
+        species: u8,
 
-    pub const WithMoves = packed struct {
-        base: PartyMember,
-        moves: [4]u8,
-    };
+        pub const WithMoves = packed struct {
+            base: Member,
+            moves: [4]u8,
+        };
 
-    pub const WithHeld = packed struct {
-        base: PartyMember,
-        item: u8,
-    };
+        pub const WithHeld = packed struct {
+            base: Member,
+            item: u8,
+        };
 
-    pub const WithBoth = packed struct {
-        base: PartyMember,
-        item: u8,
-        moves: [4]u8,
+        pub const WithBoth = packed struct {
+            base: Member,
+            item: u8,
+            moves: [4]u8,
+        };
     };
 };
