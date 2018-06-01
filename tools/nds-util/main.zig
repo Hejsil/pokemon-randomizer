@@ -1,15 +1,15 @@
-const std   = @import("std");
+const std = @import("std");
 const utils = @import("utils");
 // TODO: When https://github.com/zig-lang/zig/issues/855 is fixed. Make this into a package import instead of this HACK
-const nds   = @import("../../src/nds/index.zig");
+const nds = @import("../../src/nds/index.zig");
 
-const heap  = std.heap;
-const os    = std.os;
-const io    = std.io;
-const fmt   = std.fmt;
-const mem   = std.mem;
+const heap = std.heap;
+const os = std.os;
+const io = std.io;
+const fmt = std.fmt;
+const mem = std.mem;
 const debug = std.debug;
-const path  = os.path;
+const path = os.path;
 
 /// For now, this tool only extracts nds roms to a folder of the same name.
 /// Later on, we probably want to be able to create a nds file from a folder too.
@@ -44,15 +44,16 @@ pub fn main() !void {
     // TODO: No hardcoding in here!
     const out_folder = "rom";
 
-    const arm9_overlay_folder = try path.join(allocator, out_folder, "arm9_overlays"); defer allocator.free(arm9_overlay_folder);
-    const arm7_overlay_folder = try path.join(allocator, out_folder, "arm7_overlays"); defer allocator.free(arm7_overlay_folder);
-    const root_folder         = try path.join(allocator, out_folder, "root");          defer allocator.free(root_folder);
+    const arm9_overlay_folder = try path.join(allocator, out_folder, "arm9_overlays");
+    defer allocator.free(arm9_overlay_folder);
+    const arm7_overlay_folder = try path.join(allocator, out_folder, "arm7_overlays");
+    defer allocator.free(arm7_overlay_folder);
+    const root_folder = try path.join(allocator, out_folder, "root");
+    defer allocator.free(root_folder);
 
-    var path_buffer : [1024 * 6]u8 = undefined;
-    var path_allocator = heap.FixedBufferAllocator.init(path_buffer[0..]);
-    try os.makePath(&path_allocator.allocator, arm9_overlay_folder);
-    try os.makePath(&path_allocator.allocator, arm7_overlay_folder);
-    try os.makePath(&path_allocator.allocator, root_folder);
+    try os.makePath(allocator, arm9_overlay_folder);
+    try os.makePath(allocator, arm7_overlay_folder);
+    try os.makePath(allocator, root_folder);
 
     try writeToFileInFolder(out_folder, "arm9", rom.arm9, allocator);
     try writeToFileInFolder(out_folder, "arm7", rom.arm7, allocator);
@@ -67,16 +68,16 @@ pub fn main() !void {
     try writeFs(root_folder, rom.file_system, allocator);
 }
 
-fn writeFs(folder: []const u8, fs: &const nds.fs.Nitro, allocator: &mem.Allocator) !void {
+fn writeFs(folder: []const u8, fs: *const nds.fs.Nitro, allocator: *mem.Allocator) !void {
     const State = struct {
         path: []const u8,
-        folder: &nds.fs.Nitro.Folder,
+        folder: *nds.fs.Nitro.Folder,
     };
 
     var stack = std.ArrayList(State).init(allocator);
     defer stack.deinit();
 
-    try stack.append(State {
+    try stack.append(State{
         .path = try mem.dupe(allocator, u8, folder),
         .folder = fs.root,
     });
@@ -98,7 +99,7 @@ fn writeFs(folder: []const u8, fs: &const nds.fs.Nitro, allocator: &mem.Allocato
             const folder_path = try path.join(allocator, state.path, f.name);
 
             try os.makePath(allocator, folder_path);
-            try stack.append(State {
+            try stack.append(State{
                 .path = folder_path,
                 .folder = f,
             });
@@ -106,7 +107,7 @@ fn writeFs(folder: []const u8, fs: &const nds.fs.Nitro, allocator: &mem.Allocato
     }
 }
 
-fn writeOverlays(folder: []const u8, overlays: []const nds.Overlay, files: []const []const u8, allocator: &mem.Allocator) !void {
+fn writeOverlays(folder: []const u8, overlays: []const nds.Overlay, files: []const []const u8, allocator: *mem.Allocator) !void {
     const overlay_folder_path = try path.join(allocator, folder, "overlay");
     defer allocator.free(overlay_folder_path);
 
@@ -128,14 +129,14 @@ fn writeOverlays(folder: []const u8, overlays: []const nds.Overlay, files: []con
     }
 }
 
-fn writeToFileInFolder(folder_path: []const u8, file: []const u8, data: []const u8, allocator: &mem.Allocator) !void {
+fn writeToFileInFolder(folder_path: []const u8, file: []const u8, data: []const u8, allocator: *mem.Allocator) !void {
     const joined_path = try path.join(allocator, folder_path, file);
     defer allocator.free(joined_path);
 
     try writeToFile(joined_path, data, allocator);
 }
 
-fn writeToFile(file_path: []const u8, data: []const u8, allocator: &mem.Allocator) !void {
+fn writeToFile(file_path: []const u8, data: []const u8, allocator: *mem.Allocator) !void {
     var file = try os.File.openWrite(allocator, file_path);
     defer file.close();
 

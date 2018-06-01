@@ -12,7 +12,7 @@ pub const Info = struct {
     evolutions: []const u8,
 };
 
-pub const hg_info = Info {
+pub const hg_info = Info{
     .version = common.Version.HeartGold,
     .hm_tm_prefix = "\x1E\x00\x32\x00",
 
@@ -31,7 +31,7 @@ pub const ss_info = blk: {
     break :blk res;
 };
 
-pub const diamond_info = Info {
+pub const diamond_info = Info{
     .version = common.Version.Diamond,
     .hm_tm_prefix = "\xD1\x00\xD2\x00\xD3\x00\xD4\x00",
 

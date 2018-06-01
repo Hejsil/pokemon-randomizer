@@ -1,34 +1,40 @@
-const std        = @import("std");
-const builtin    = @import("builtin");
-const gba        = @import("gba.zig");
-const nds        = @import("nds/index.zig");
-const utils      = @import("utils.zig");
+const std = @import("std");
+const builtin = @import("builtin");
+const gba = @import("gba.zig");
+const nds = @import("nds/index.zig");
+const utils = @import("utils.zig");
 const randomizer = @import("randomizer.zig");
-const clap       = @import("clap.zig");
-const pokemon    = @import("pokemon/index.zig");
-const gen3       = pokemon.gen3;
-const gen4       = pokemon.gen4;
-const gen5       = pokemon.gen5;
+const clap = @import("clap.zig");
+const pokemon = @import("pokemon/index.zig");
+const gen3 = pokemon.gen3;
+const gen4 = pokemon.gen4;
+const gen5 = pokemon.gen5;
 
-const os    = std.os;
+const os = std.os;
 const debug = std.debug;
-const mem   = std.mem;
-const io    = std.io;
-const rand  = std.rand;
-const fmt   = std.fmt;
-const path  = os.path;
+const mem = std.mem;
+const io = std.io;
+const rand = std.rand;
+const fmt = std.fmt;
+const path = os.path;
 
 const Randomizer = randomizer.Randomizer;
 
 // TODO: put into struct. There is no reason this should be global.
 var help = false;
-var input_file  : []const u8 = "input";
-var output_file : []const u8 = "randomized";
+var input_file: []const u8 = "input";
+var output_file: []const u8 = "randomized";
 
-fn setHelp(op: &randomizer.Options, str: []const u8) error!void { help = true; }
-fn setInFile(op: &randomizer.Options, str: []const u8) error!void { input_file = str; }
-fn setOutFile(op: &randomizer.Options, str: []const u8) error!void { output_file = str; }
-fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) !void {
+fn setHelp(op: *randomizer.Options, str: []const u8) error!void {
+    help = true;
+}
+fn setInFile(op: *randomizer.Options, str: []const u8) error!void {
+    input_file = str;
+}
+fn setOutFile(op: *randomizer.Options, str: []const u8) error!void {
+    output_file = str;
+}
+fn setTrainerPokemon(op: *randomizer.Options, str: []const u8) !void {
     if (mem.eql(u8, str, "same")) {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -39,29 +45,31 @@ fn setTrainerPokemon(op: &randomizer.Options, str: []const u8) !void {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.TypeThemed;
     } else if (mem.eql(u8, str, "legendaries")) {
         op.trainer.pokemon = randomizer.Options.Trainer.Pokemon.Legendaries;
-    }  else {
-        return error.InvalidOptions;
-    }
-}
-
-fn setTrainerSameStrength(op: &randomizer.Options, str: []const u8) error!void { op.trainer.same_total_stats = true; }
-fn setTrainerHeldItems(op: &randomizer.Options, str: []const u8) !void {
-    if (mem.eql(u8, str, "none")) {
-        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
-    } else if (mem.eql(u8, str, "same")) {
-        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Same;
-    //} else if (mem.eql(u8, str, "random")) {
-    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Random;
-    //} else if (mem.eql(u8, str, "random-useful")) {
-    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomUseful;
-    //} else if (mem.eql(u8, str, "random-best")) {
-    //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomBest;
     } else {
         return error.InvalidOptions;
     }
 }
 
-fn setTrainerMoves(op: &randomizer.Options, str: []const u8) !void {
+fn setTrainerSameStrength(op: *randomizer.Options, str: []const u8) error!void {
+    op.trainer.same_total_stats = true;
+}
+fn setTrainerHeldItems(op: *randomizer.Options, str: []const u8) !void {
+    if (mem.eql(u8, str, "none")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.None;
+    } else if (mem.eql(u8, str, "same")) {
+        op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Same;
+        //} else if (mem.eql(u8, str, "random")) {
+        //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.Random;
+        //} else if (mem.eql(u8, str, "random-useful")) {
+        //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomUseful;
+        //} else if (mem.eql(u8, str, "random-best")) {
+        //    op.trainer.held_items = randomizer.Options.Trainer.HeldItems.RandomBest;
+    } else {
+        return error.InvalidOptions;
+    }
+}
+
+fn setTrainerMoves(op: *randomizer.Options, str: []const u8) !void {
     if (mem.eql(u8, str, "same")) {
         op.trainer.moves = randomizer.Options.Trainer.Moves.Same;
     } else if (mem.eql(u8, str, "random")) {
@@ -75,7 +83,9 @@ fn setTrainerMoves(op: &randomizer.Options, str: []const u8) !void {
     }
 }
 
-fn setTrainerIv(op: &randomizer.Options, str: []const u8) !void { op.trainer.iv = try parseGenericOption(str); }
+fn setTrainerIv(op: *randomizer.Options, str: []const u8) !void {
+    op.trainer.iv = try parseGenericOption(str);
+}
 
 fn parseGenericOption(str: []const u8) !randomizer.GenericOption {
     if (mem.eql(u8, str, "same")) {
@@ -89,49 +99,23 @@ fn parseGenericOption(str: []const u8) !randomizer.GenericOption {
     }
 }
 
-fn setLevelModifier(op: &randomizer.Options, str: []const u8) !void {
+fn setLevelModifier(op: *randomizer.Options, str: []const u8) !void {
     const precent = try fmt.parseInt(i16, str, 10);
     op.trainer.level_modifier = (f64(precent) / 100) + 1;
 }
 
 const Arg = clap.Arg(randomizer.Options);
-const program_arguments = comptime []Arg {
-    Arg.init(setHelp)
-        .help("Display this help and exit.")
-        .short('h')
-        .long("help")
-        .kind(Arg.Kind.IgnoresRequired),
-    Arg.init(setInFile)
-        .help("The rom to randomize.")
-        .kind(Arg.Kind.Required),
-    Arg.init(setOutFile)
-        .help("The place to output the randomized rom.")
-        .short('o')
-        .long("output")
-        .takesValue(true),
-    Arg.init(setTrainerPokemon)
-        .help("How trainer Pokémons should be randomized. Options: [same, random, same-type, type-themed, legendaries].")
-        .long("trainer-pokemon")
-        .takesValue(true),
-    Arg.init(setTrainerSameStrength)
-        .help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.")
-        .long("trainer-same-total-stats"),
-    Arg.init(setTrainerHeldItems)
-        .help("How trainer Pokémon held items should be randomized. Options: [none, same].")
-        .long("trainer-held-items")
-        .takesValue(true),
-    Arg.init(setTrainerMoves)
-        .help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].")
-        .long("trainer-moves")
-        .takesValue(true),
-    Arg.init(setTrainerIv)
-        .help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].")
-        .long("trainer-iv")
-        .takesValue(true),
-    Arg.init(setLevelModifier)
-        .help("A percent level modifier to trainers Pokémon.")
-        .long("trainer-level-modifier")
-        .takesValue(true),
+// TODO: Format is horrible. Fix
+const program_arguments = comptime []Arg{
+    Arg.init(setHelp).help("Display this help and exit.").short('h').long("help").kind(Arg.Kind.IgnoresRequired),
+    Arg.init(setInFile).help("The rom to randomize.").kind(Arg.Kind.Required),
+    Arg.init(setOutFile).help("The place to output the randomized rom.").short('o').long("output").takesValue(true),
+    Arg.init(setTrainerPokemon).help("How trainer Pokémons should be randomized. Options: [same, random, same-type, type-themed, legendaries].").long("trainer-pokemon").takesValue(true),
+    Arg.init(setTrainerSameStrength).help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.").long("trainer-same-total-stats"),
+    Arg.init(setTrainerHeldItems).help("How trainer Pokémon held items should be randomized. Options: [none, same].").long("trainer-held-items").takesValue(true),
+    Arg.init(setTrainerMoves).help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].").long("trainer-moves").takesValue(true),
+    Arg.init(setTrainerIv).help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].").long("trainer-iv").takesValue(true),
+    Arg.init(setLevelModifier).help("A percent level modifier to trainers Pokémon.").long("trainer-level-modifier").takesValue(true),
 };
 
 pub fn main() !void {
@@ -198,10 +182,12 @@ pub fn main() !void {
         defer nds_rom.deinit();
 
         if (gen4.Game.fromRom(&nds_rom)) |game| {
-            var r = Randomizer(pokemon.Gen4).init(game, &random.random, allocator); defer r.deinit();
+            var r = Randomizer(pokemon.Gen4).init(game, &random.random, allocator);
+            defer r.deinit();
             try r.randomize(options);
         } else |e1| if (gen5.Game.fromRom(&nds_rom)) |game| {
-            var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator); defer r.deinit();
+            var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator);
+            defer r.deinit();
             try r.randomize(options);
         } else |e2| {
             break :nds_blk;

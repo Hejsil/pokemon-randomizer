@@ -9,12 +9,12 @@ pub const Info = struct {
     trainer_pokemons: []const u8,
 };
 
-pub const black2_info = Info {
-    .version          = common.Version.Black2,
-    .base_stats       = "a/0/1/6",
-    .level_up_moves   = "a/0/1/8",
-    .moves            = "a/0/2/1",
-    .trainer_data     = "a/0/9/1",
+pub const black2_info = Info{
+    .version = common.Version.Black2,
+    .base_stats = "a/0/1/6",
+    .level_up_moves = "a/0/1/8",
+    .moves = "a/0/2/1",
+    .trainer_data = "a/0/9/1",
     .trainer_pokemons = "a/0/9/2",
 };
 

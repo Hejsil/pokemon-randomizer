@@ -2,28 +2,28 @@ const common = @import("common.zig");
 const little = @import("../little.zig");
 
 const toLittle = little.toLittle;
-const Little   = little.Little;
+const Little = little.Little;
 
 pub const BasePokemon = packed struct {
     pokedex_number: u8,
 
-    hp:         u8,
-    attack:     u8,
-    defense:    u8,
-    speed:      u8,
-    sp_attack:  u8,
+    hp: u8,
+    attack: u8,
+    defense: u8,
+    speed: u8,
+    sp_attack: u8,
     sp_defense: u8,
 
     types: [2]Type,
 
-    catch_rate:     u8,
+    catch_rate: u8,
     base_exp_yield: u8,
-    items:       [2]u8,
-    gender_ratio:   u8,
+    items: [2]u8,
+    gender_ratio: u8,
 
-    unknown1:   u8,
+    unknown1: u8,
     egg_cycles: u8,
-    unknown2:   u8,
+    unknown2: u8,
 
     dimension_of_front_sprite: u8,
 

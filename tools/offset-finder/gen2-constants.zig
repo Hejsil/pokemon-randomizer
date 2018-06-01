@@ -10,10 +10,10 @@ pub const Trainer = struct {
     party: []const gen2.Party.Member.WithBoth,
 };
 
-pub const first_trainers = []Trainer {
+pub const first_trainers = []Trainer{
     // FalknerGroup
     Trainer{
-        // "FALKNER@"
+    // "FALKNER@"
         .name = "\x85\x80\x8B\x8A\x8D\x84\x91\x50",
         .kind = gen2.Party.has_moves,
         .party = []gen2.Party.Member.WithBoth{
@@ -43,14 +43,14 @@ pub const first_trainers = []Trainer {
                     0x00,
                 },
             },
-        }
-    }
+        },
+    },
 };
 
-pub const last_trainers = []Trainer {
+pub const last_trainers = []Trainer{
     // MysticalmanGroup
     Trainer{
-        // "EUSINE@"
+    // "EUSINE@"
         .name = "\x84\x94\x92\x88\x8D\x84\x50",
         .kind = gen2.Party.has_moves,
         .party = []gen2.Party.Member.WithBoth{
@@ -93,13 +93,13 @@ pub const last_trainers = []Trainer {
                     0xCD, // Rollout
                 },
             },
-        }
-    }
+        },
+    },
 };
 
-pub const first_base_stats = []gen2.BasePokemon {
+pub const first_base_stats = []gen2.BasePokemon{
     // Bulbasaur
-    gen2.BasePokemon {
+    gen2.BasePokemon{
         .pokedex_number = 1,
 
         .hp = 45,
@@ -120,7 +120,7 @@ pub const first_base_stats = []gen2.BasePokemon {
         .egg_cycles = 20,
         .unknown2 = 5,
 
-        .dimension_of_front_sprite  = undefined,
+        .dimension_of_front_sprite = undefined,
 
         .blank = undefined,
 
@@ -132,9 +132,9 @@ pub const first_base_stats = []gen2.BasePokemon {
     },
 };
 
-pub const last_base_stats = []gen2.BasePokemon {
+pub const last_base_stats = []gen2.BasePokemon{
     // Celebi
-    gen2.BasePokemon {
+    gen2.BasePokemon{
         .pokedex_number = 251,
 
         .hp = 100,
@@ -155,7 +155,7 @@ pub const last_base_stats = []gen2.BasePokemon {
         .egg_cycles = 120,
         .unknown2 = 5,
 
-        .dimension_of_front_sprite  = undefined,
+        .dimension_of_front_sprite = undefined,
 
         .blank = undefined,
 

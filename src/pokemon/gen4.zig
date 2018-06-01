@@ -1,8 +1,8 @@
-const std       = @import("std");
-const little    = @import("../little.zig");
-const nds       = @import("../nds/index.zig");
-const utils     = @import("../utils/index.zig");
-const common    = @import("common.zig");
+const std = @import("std");
+const little = @import("../little.zig");
+const nds = @import("../nds/index.zig");
+const utils = @import("../utils/index.zig");
+const common = @import("common.zig");
 const constants = @import("gen4-constants.zig");
 
 const mem = std.mem;
@@ -12,16 +12,16 @@ const Little = little.Little;
 const u10 = @IntType(false, 10);
 
 pub const BasePokemon = packed struct {
-    hp:         u8,
-    attack:     u8,
-    defense:    u8,
-    speed:      u8,
-    sp_attack:  u8,
+    hp: u8,
+    attack: u8,
+    defense: u8,
+    speed: u8,
+    sp_attack: u8,
     sp_defense: u8,
 
     types: [2]Type,
 
-    catch_rate:     u8,
+    catch_rate: u8,
     base_exp_yield: u8,
 
     evs: common.EvYield,
@@ -80,10 +80,10 @@ pub const PartyMemberWithBoth = packed struct {
 };
 
 pub const PartyType = enum(u8) {
-    Standard  = 0x00,
+    Standard = 0x00,
     WithMoves = 0x01,
-    WithHeld  = 0x02,
-    WithBoth  = 0x03,
+    WithHeld = 0x02,
+    WithBoth = 0x03,
 };
 
 pub const Trainer = packed struct {
@@ -97,23 +97,23 @@ pub const Trainer = packed struct {
 };
 
 pub const Type = enum(u8) {
-    Normal   = 0x00,
+    Normal = 0x00,
     Fighting = 0x01,
-    Flying   = 0x02,
-    Poison   = 0x03,
-    Ground   = 0x04,
-    Rock     = 0x05,
-    Bug      = 0x06,
-    Ghost    = 0x07,
-    Steel    = 0x08,
-    Fire     = 0x0A,
-    Water    = 0x0B,
-    Grass    = 0x0C,
+    Flying = 0x02,
+    Poison = 0x03,
+    Ground = 0x04,
+    Rock = 0x05,
+    Bug = 0x06,
+    Ghost = 0x07,
+    Steel = 0x08,
+    Fire = 0x0A,
+    Water = 0x0B,
+    Grass = 0x0C,
     Electric = 0x0D,
-    Psychic  = 0x0E,
-    Ice      = 0x0F,
-    Dragon   = 0x10,
-    Dark     = 0x11,
+    Psychic = 0x0E,
+    Ice = 0x0F,
+    Dragon = 0x10,
+    Dark = 0x11,
 };
 
 // TODO: This is the first data structure I had to decode from scratch as I couldn't find a proper resource
@@ -141,33 +141,33 @@ pub const Game = struct {
     const legendaries = common.legendaries;
 
     version: common.Version,
-    base_stats: []const &nds.fs.Narc.File,
-    moves: []const &nds.fs.Narc.File,
-    level_up_moves: []const &nds.fs.Narc.File,
-    trainer_data: []const &nds.fs.Narc.File,
-    trainer_pokemons: []const &nds.fs.Narc.File,
+    base_stats: []const *nds.fs.Narc.File,
+    moves: []const *nds.fs.Narc.File,
+    level_up_moves: []const *nds.fs.Narc.File,
+    trainer_data: []const *nds.fs.Narc.File,
+    trainer_pokemons: []const *nds.fs.Narc.File,
     tms: []Little(u16),
     hms: []Little(u16),
 
-    pub fn fromRom(rom: &nds.Rom) !Game {
+    pub fn fromRom(rom: *nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, info.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + info.hm_tm_prefix.len;
-        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0..(constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
+        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
-        return Game {
-            .version          = info.version,
-            .base_stats       = try getNarcFiles(rom.file_system, info.base_stats),
-            .level_up_moves   = try getNarcFiles(rom.file_system, info.level_up_moves),
-            .moves            = try getNarcFiles(rom.file_system, info.moves),
-            .trainer_data     = try getNarcFiles(rom.file_system, info.trainer_data),
+        return Game{
+            .version = info.version,
+            .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
+            .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
+            .moves = try getNarcFiles(rom.file_system, info.moves),
+            .trainer_data = try getNarcFiles(rom.file_system, info.trainer_data),
             .trainer_pokemons = try getNarcFiles(rom.file_system, info.trainer_pokemons),
-            .tms              = hm_tms[0..92],
-            .hms              = hm_tms[92..],
+            .tms = hm_tms[0..92],
+            .hms = hm_tms[92..],
         };
     }
 
-    fn getNarcFiles(file_system: &const nds.fs.Nitro, path: []const u8) ![]const &nds.fs.Narc.File {
+    fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *nds.fs.Narc.File {
         const file = file_system.getFile(path) ?? return error.CouldntFindFile;
 
         switch (file.@"type") {

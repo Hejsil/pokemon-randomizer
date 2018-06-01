@@ -1,24 +1,24 @@
-const std     = @import("std");
-const blz     = @import("blz");
-const common  = @import("common.zig");
+const std = @import("std");
+const blz = @import("blz");
+const common = @import("common.zig");
 const overlay = @import("overlay.zig");
-const little  = @import("../little.zig");
-const utils   = @import("../utils/index.zig");
+const little = @import("../little.zig");
+const utils = @import("../utils/index.zig");
 
 const debug = std.debug;
-const mem   = std.mem;
-const io    = std.io;
-const os    = std.os;
+const mem = std.mem;
+const io = std.io;
+const os = std.os;
 
 const assert = debug.assert;
 
 const toLittle = little.toLittle;
-const Little   = little.Little;
+const Little = little.Little;
 
 pub const fs = @import("fs.zig");
 
-pub const Header  = @import("header.zig").Header;
-pub const Banner  = @import("banner.zig").Banner;
+pub const Header = @import("header.zig").Header;
+pub const Banner = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
 pub const Rom = struct {
@@ -47,11 +47,11 @@ pub const Rom = struct {
     arm7_overlay_files: [][]u8,
 
     banner: Banner,
-    file_system: &fs.Nitro,
+    file_system: *fs.Nitro,
 
-    allocator: &mem.Allocator,
+    allocator: *mem.Allocator,
 
-    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Rom {
+    pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Rom {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
@@ -93,7 +93,8 @@ pub const Rom = struct {
             stream,
             allocator,
             Overlay,
-            header.arm9_overlay_size.get() / @sizeOf(Overlay));
+            header.arm9_overlay_size.get() / @sizeOf(Overlay),
+        );
         errdefer allocator.free(arm9_overlay_table);
         const arm9_overlay_files = try overlay.readFiles(file, allocator, arm9_overlay_table, fat);
         errdefer overlay.freeFiles(arm9_overlay_files, allocator);
@@ -103,12 +104,13 @@ pub const Rom = struct {
             stream,
             allocator,
             Overlay,
-            header.arm7_overlay_size.get() / @sizeOf(Overlay));
+            header.arm7_overlay_size.get() / @sizeOf(Overlay),
+        );
         errdefer allocator.free(arm7_overlay_table);
         const arm7_overlay_files = try overlay.readFiles(file, allocator, arm7_overlay_table, fat);
         errdefer overlay.freeFiles(arm7_overlay_files, allocator);
 
-        return Rom {
+        return Rom{
             .header = header,
             .arm9 = arm9,
             .nitro_footer = nitro_footer,
@@ -123,7 +125,7 @@ pub const Rom = struct {
         };
     }
 
-    pub fn writeToFile(rom: &Rom, file: &os.File, allocator: &mem.Allocator) !void {
+    pub fn writeToFile(rom: *Rom, file: *os.File, allocator: *mem.Allocator) !void {
         const header = &rom.header;
 
         const arm9_pos = 0x4000;
@@ -139,19 +141,19 @@ pub const Rom = struct {
         }
 
         header.arm9_rom_offset = toLittle(u32(arm9_pos));
-        header.arm9_size       = toLittle(u32(rom.arm9.len));
+        header.arm9_size = toLittle(u32(rom.arm9.len));
 
         const arm7_pos = try file.getPos();
         try file.write(rom.arm7);
 
         header.arm7_rom_offset = toLittle(u32(arm7_pos));
-        header.arm7_size       = toLittle(u32(rom.arm7.len));
+        header.arm7_size = toLittle(u32(rom.arm7.len));
 
         const banner_pos = try file.getPos();
         try file.write(utils.toBytes(Banner, rom.banner));
 
-        header.banner_offset  = toLittle(u32(banner_pos));
-        header.banner_size    = toLittle(u32(@sizeOf(Banner)));
+        header.banner_offset = toLittle(u32(banner_pos));
+        header.banner_size = toLittle(u32(@sizeOf(Banner)));
 
         const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.file_system, allocator);
         const files = fntAndFiles.files;
@@ -168,7 +170,7 @@ pub const Rom = struct {
         try file.write(sub_fnt);
 
         header.fnt_offset = toLittle(u32(fnt_pos));
-        header.fnt_size   = toLittle(u32(main_fnt.len * @sizeOf(fs.FntMainEntry) + sub_fnt.len));
+        header.fnt_size = toLittle(u32(main_fnt.len * @sizeOf(fs.FntMainEntry) + sub_fnt.len));
 
         var fat = std.ArrayList(fs.FatEntry).init(allocator);
         try fat.ensureCapacity(files.len + rom.arm9_overlay_files.len + rom.arm7_overlay_files.len);
@@ -203,26 +205,26 @@ pub const Rom = struct {
         try file.write(([]const u8)(fat.toSliceConst()));
 
         header.fat_offset = toLittle(u32(fat_pos));
-        header.fat_size   = toLittle(u32((files.len + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
+        header.fat_size = toLittle(u32((files.len + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
         const arm9_overlay_pos = try file.getPos();
         try file.write(([]const u8)(rom.arm9_overlay_table));
 
         header.arm9_overlay_offset = toLittle(u32(arm9_overlay_pos));
-        header.arm9_overlay_size   = toLittle(u32(rom.arm9_overlay_table.len * @sizeOf(Overlay)));
+        header.arm9_overlay_size = toLittle(u32(rom.arm9_overlay_table.len * @sizeOf(Overlay)));
 
         const arm7_overlay_pos = try file.getPos();
         try file.write(([]const u8)(rom.arm7_overlay_table));
 
         header.arm7_overlay_offset = toLittle(u32(arm7_overlay_pos));
-        header.arm7_overlay_size   = toLittle(u32(rom.arm7_overlay_table.len * @sizeOf(Overlay)));
+        header.arm7_overlay_size = toLittle(u32(rom.arm7_overlay_table.len * @sizeOf(Overlay)));
 
         header.total_used_rom_size = toLittle(common.@"align"(u32(try file.getPos()), u32(4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
-            var device_cap : u6 = 0;
-            while (@shlExact(u64(128000), device_cap) < size) : (device_cap += 1) { }
+            var device_cap: u6 = 0;
+            while (@shlExact(u64(128000), device_cap) < size) : (device_cap += 1) {}
 
             break :blk device_cap;
         };
@@ -233,11 +235,11 @@ pub const Rom = struct {
         try file.write(utils.toBytes(Header, header));
     }
 
-    pub fn hasNitroFooter(rom: &const Rom) bool {
+    pub fn hasNitroFooter(rom: *const Rom) bool {
         return rom.nitro_footer[0].get() == 0xDEC00621;
     }
 
-    pub fn deinit(rom: &Rom) void {
+    pub fn deinit(rom: *Rom) void {
         rom.allocator.free(rom.arm9);
         rom.allocator.free(rom.arm7);
         rom.allocator.free(rom.arm9_overlay_table);

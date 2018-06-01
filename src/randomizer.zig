@@ -1,16 +1,16 @@
-const std     = @import("std");
-const bits    = @import("bits.zig");
+const std = @import("std");
+const bits = @import("bits.zig");
 const little = @import("little.zig");
 
-const math  = std.math;
-const mem   = std.mem;
-const rand  = std.rand;
+const math = std.math;
+const mem = std.mem;
+const rand = std.rand;
 const debug = std.debug;
 
 const common = @import("pokemon/index.zig").common;
-const gen3   = @import("pokemon/index.zig").gen3;
-const gen4   = @import("pokemon/index.zig").gen4;
-const gen5   = @import("pokemon/index.zig").gen5;
+const gen3 = @import("pokemon/index.zig").gen3;
+const gen4 = @import("pokemon/index.zig").gen4;
+const gen5 = @import("pokemon/index.zig").gen5;
 
 const Little = little.Little;
 
@@ -20,7 +20,7 @@ const assert = debug.assert;
 pub const GenericOption = enum {
     Same,
     Random,
-    Best
+    Best,
 };
 
 pub const Options = struct {
@@ -99,7 +99,7 @@ pub const Options = struct {
         level_modifier: f64,
 
         pub fn default() Trainer {
-            return Trainer {
+            return Trainer{
                 .pokemon = Pokemon.Same,
                 .same_total_stats = false,
                 .held_items = HeldItems.Same,
@@ -113,9 +113,7 @@ pub const Options = struct {
     trainer: Trainer,
 
     pub fn default() Options {
-        return Options {
-            .trainer = Trainer.default(),
-        };
+        return Options{ .trainer = Trainer.default() };
     }
 };
 
@@ -127,17 +125,21 @@ pub fn Randomizer(comptime Gen: type) type {
         const Type = Gen.Type;
         const PartyMember = Gen.PartyMember;
 
-        fn hash_type(t: Type) u32 { return @TagType(Type)(t); }
-        fn type_eql(t1: Type, t2: Type) bool { return t1 == t2; }
+        fn hash_type(t: Type) u32 {
+            return @TagType(Type)(t);
+        }
+        fn type_eql(t1: Type, t2: Type) bool {
+            return t1 == t2;
+        }
         const SpeciesByType = std.HashMap(Type, std.ArrayList(u16), hash_type, type_eql);
 
-        game: &const Game,
-        random: &rand.Random,
-        allocator: &mem.Allocator,
+        game: *const Game,
+        random: *rand.Random,
+        allocator: *mem.Allocator,
         species_by_type: ?SpeciesByType,
 
-        pub fn init(game: &const Game, random: &rand.Random, allocator: &mem.Allocator) Self {
-            return Self {
+        pub fn init(game: *const Game, random: *rand.Random, allocator: *mem.Allocator) Self {
+            return Self{
                 .game = game,
                 .allocator = allocator,
                 .random = random,
@@ -145,17 +147,17 @@ pub fn Randomizer(comptime Gen: type) type {
             };
         }
 
-        pub fn deinit(randomizer: &Self) void {
+        pub fn deinit(randomizer: *Self) void {
             if (randomizer.species_by_type) |*by_type| {
                 freeSpeciesByType(by_type);
             }
         }
 
-        pub fn randomize(randomizer: &Self, options: &const Options) !void {
+        pub fn randomize(randomizer: *Self, options: *const Options) !void {
             try randomizer.randomizeTrainers(options.trainer);
         }
 
-        pub fn randomizeTrainers(randomizer: &Self, options: &const Options.Trainer) !void {
+        pub fn randomizeTrainers(randomizer: *Self, options: *const Options.Trainer) !void {
             const game = randomizer.game;
             var by_type = try randomizer.speciesByType();
 
@@ -207,7 +209,7 @@ pub fn Randomizer(comptime Gen: type) type {
                             const new_pokemon = try randomizer.randomTrainerPokemon(curr_pokemon.base, options.same_total_stats, Game.legendaries);
                             // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
                             trainer_pokemon.species = toLittle(@typeOf(trainer_pokemon.species), new_pokemon);
-                        }
+                        },
                     }
 
                     // TODO: Each case is copypasted, but with different types. Make this generic
@@ -227,7 +229,7 @@ pub fn Randomizer(comptime Gen: type) type {
                                     randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
                                     try randomizer.randomizeTrainerPokemonMoves(member, options);
                                 },
-                                else => {}
+                                else => {},
                             }
                         },
                         gen4.Game => {
@@ -245,7 +247,7 @@ pub fn Randomizer(comptime Gen: type) type {
                                     randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
                                     try randomizer.randomizeTrainerPokemonMoves(member, options);
                                 },
-                                else => {}
+                                else => {},
                             }
                         },
                         gen5.Game => {
@@ -263,7 +265,7 @@ pub fn Randomizer(comptime Gen: type) type {
                                     randomizer.randomizeTrainerPokemonHeldItem(member, options.held_items);
                                     try randomizer.randomizeTrainerPokemonMoves(member, options);
                                 },
-                                else => {}
+                                else => {},
                             }
                         },
                         else => comptime unreachable,
@@ -289,7 +291,7 @@ pub fn Randomizer(comptime Gen: type) type {
             }
         }
 
-        fn randomTrainerPokemon(randomizer: &Self, curr_pokemom: &const BasePokemon, same_total_stats: bool, pick_from: []const u16) !u16 {
+        fn randomTrainerPokemon(randomizer: *Self, curr_pokemom: *const BasePokemon, same_total_stats: bool, pick_from: []const u16) !u16 {
             const game = randomizer.game;
             const pokemons = Gen.pokemons(game);
 
@@ -320,7 +322,7 @@ pub fn Randomizer(comptime Gen: type) type {
             }
         }
 
-        fn randomizeTrainerPokemonHeldItem(randomizer: &const Self, trainer_pokemon: var, option: Options.Trainer.HeldItems) void {
+        fn randomizeTrainerPokemonHeldItem(randomizer: *const Self, trainer_pokemon: var, option: Options.Trainer.HeldItems) void {
             const game = randomizer.game;
             switch (option) {
                 Options.Trainer.HeldItems.None => {
@@ -339,20 +341,26 @@ pub fn Randomizer(comptime Gen: type) type {
             }
         }
 
-        fn randomizeTrainerPokemonMoves(randomizer: &Self, trainer_pokemon: var, option: &const Options.Trainer) !void {
+        fn randomizeTrainerPokemonMoves(randomizer: *Self, trainer_pokemon: var, option: *const Options.Trainer) !void {
             const pokemons = Gen.pokemons(randomizer.game);
             switch (option.moves) {
                 Options.Trainer.Moves.Same => {
                     // If trainer Pokémons where randomized, then keeping the same moves
                     // makes no sense. We therefor reset them to something sensible.
                     if (option.pokemon != Options.Trainer.Pokemon.Same) {
-                        const MoveLevelPair = struct { level: u8, move_id: u16 };
+                        const MoveLevelPair = struct {
+                            level: u8,
+                            move_id: u16,
+                        };
                         const new_moves = blk: {
                             // HACK: TODO: Remove this when https://github.com/zig-lang/zig/issues/649 is a thing
                             const pokemon = try pokemons.at(toInt(trainer_pokemon.base.species));
                             const level_up_moves = pokemon.levelUpMoves();
                             var it = level_up_moves.iterator();
-                            var moves = []MoveLevelPair { MoveLevelPair { .level = 0, .move_id = 0, } } ** 4;
+                            var moves = []MoveLevelPair{MoveLevelPair{
+                                .level = 0,
+                                .move_id = 0,
+                            }} ** 4;
 
                             while (it.next()) |item| {
                                 const level_up_move = item.value;
@@ -405,14 +413,13 @@ pub fn Randomizer(comptime Gen: type) type {
                     for (learned_moves) |learned| {
                         const learned_move = try moves.at(learned);
 
-                        pokemon_moves_loop:
-                        for (trainer_pokemon.moves) |*move_id| {
+                        pokemon_moves_loop: for (trainer_pokemon.moves) |*move_id| {
                             const move = try moves.at(move_id.get());
 
                             // TODO: Rewrite to work with Pokémons that can have N types
-                            const move_stab    = if (move.@"type"         == pokemon.base.types[0] or move.@"type"         == pokemon.base.types[1]) f32(1.5) else f32(1.0);
+                            const move_stab = if (move.@"type" == pokemon.base.types[0] or move.@"type" == pokemon.base.types[1]) f32(1.5) else f32(1.0);
                             const learned_stab = if (learned_move.@"type" == pokemon.base.types[0] or learned_move.@"type" == pokemon.base.types[1]) f32(1.5) else f32(1.0);
-                            const move_power    = f32(move.power) * move_stab;
+                            const move_power = f32(move.power) * move_stab;
                             const learned_power = f32(learned_move.power) * learned_stab;
 
                             // TODO: We probably also want Pokémons to have varied types
@@ -429,17 +436,16 @@ pub fn Randomizer(comptime Gen: type) type {
             }
         }
 
-        fn totalStats(pokemon: &const BasePokemon) u16 {
-            return
-                u16(pokemon.hp)        +
-                u16(pokemon.attack)    +
-                u16(pokemon.defense)   +
-                u16(pokemon.speed)     +
+        fn totalStats(pokemon: *const BasePokemon) u16 {
+            return u16(pokemon.hp) +
+                u16(pokemon.attack) +
+                u16(pokemon.defense) +
+                u16(pokemon.speed) +
                 u16(pokemon.sp_attack) +
                 u16(pokemon.sp_defense);
         }
 
-        fn randomType(randomizer: &Self) Type {
+        fn randomType(randomizer: *Self) Type {
             const choice = randomizer.random.range(u8, 0, @memberCount(Type));
             comptime var i = 0;
             inline while (i < @memberCount(Type)) : (i += 1) {
@@ -449,7 +455,7 @@ pub fn Randomizer(comptime Gen: type) type {
             unreachable;
         }
 
-        fn randomMoveId(randomizer: &Self) u16 {
+        fn randomMoveId(randomizer: *Self) u16 {
             const moves = Gen.moves(randomizer.game);
             while (true) {
                 const move_id = randomizer.random.range(u16, 0, u16(moves.length()));
@@ -464,7 +470,7 @@ pub fn Randomizer(comptime Gen: type) type {
         }
 
         /// Caller owns memory returned
-        fn movesLearned(randomizer: &const Self, species: u16) ![]u16 {
+        fn movesLearned(randomizer: *const Self, species: u16) ![]u16 {
             const game = randomizer.game;
             const pokemons = Gen.pokemons(game);
             const pokemon = try pokemons.at(species);
@@ -502,7 +508,7 @@ pub fn Randomizer(comptime Gen: type) type {
             return res.toOwnedSlice();
         }
 
-        fn speciesByType(randomizer: &Self) !&SpeciesByType {
+        fn speciesByType(randomizer: *Self) !*SpeciesByType {
             if (randomizer.species_by_type) |*species_by_type| return species_by_type;
 
             var species_by_type = SpeciesByType.init(randomizer.allocator);
@@ -535,7 +541,7 @@ pub fn Randomizer(comptime Gen: type) type {
             return &??randomizer.species_by_type;
         }
 
-        fn freeSpeciesByType(by_type: &SpeciesByType) void {
+        fn freeSpeciesByType(by_type: *SpeciesByType) void {
             var it = by_type.iterator();
             while (it.next()) |entry|
                 entry.value.deinit();

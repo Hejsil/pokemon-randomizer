@@ -1,14 +1,14 @@
-const std     = @import("std");
+const std = @import("std");
 const pokemon = @import("pokemon");
-const gba     = @import("gba");
-const gb      = @import("gb");
-const gen3    = @import("gen3.zig");
-const gen2    = @import("gen2.zig");
+const gba = @import("gba");
+const gb = @import("gb");
+const gen3 = @import("gen3.zig");
+const gen2 = @import("gen2.zig");
 
-const io     = std.io;
-const os     = std.os;
-const mem    = std.mem;
-const debug  = std.debug;
+const io = std.io;
+const os = std.os;
+const mem = std.mem;
+const debug = std.debug;
 
 const common = pokemon.common;
 
@@ -77,15 +77,15 @@ pub fn main() !void {
             common.Generation.III => {
                 const info = try gen3.findInfoInFile(data, version);
 
-                debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start,                   info.trainers.len);
-                debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.moves.start,                      info.moves.len);
-                debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tm_hm_learnset.start,             info.tm_hm_learnset.len);
-                debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start,                 info.base_stats.len);
-                debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.evolution_table.start,            info.evolution_table.len);
+                debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start, info.trainers.len);
+                debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.moves.start, info.moves.len);
+                debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tm_hm_learnset.start, info.tm_hm_learnset.len);
+                debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start, info.base_stats.len);
+                debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.evolution_table.start, info.evolution_table.len);
                 debug.warn(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.len);
-                debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.hms.start,                        info.hms.len);
-                debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tms.start,                        info.tms.len);
-                debug.warn(".items                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.items.start,                      info.items.len);
+                debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.hms.start, info.hms.len);
+                debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tms.start, info.tms.len);
+                debug.warn(".items                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.items.start, info.items.len);
             },
             else => unreachable,
         }
@@ -96,7 +96,7 @@ fn getVersion(gamecode: []const u8) !common.Version {
     if (mem.startsWith(u8, gamecode, "BPE"))
         return common.Version.Emerald;
     if (mem.startsWith(u8, gamecode, "BPR"))
-       return common.Version.FireRed;
+        return common.Version.FireRed;
     if (mem.startsWith(u8, gamecode, "BPG"))
         return common.Version.LeafGreen;
     if (mem.startsWith(u8, gamecode, "AXV"))

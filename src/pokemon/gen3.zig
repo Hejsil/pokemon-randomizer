@@ -1,41 +1,41 @@
-const std       = @import("std");
-const gba       = @import("../gba.zig");
-const bits      = @import("../bits.zig");
-const little    = @import("../little.zig");
-const utils     = @import("../utils/index.zig");
-const common    = @import("common.zig");
+const std = @import("std");
+const gba = @import("../gba.zig");
+const bits = @import("../bits.zig");
+const little = @import("../little.zig");
+const utils = @import("../utils/index.zig");
+const common = @import("common.zig");
 const constants = @import("gen3-constants.zig");
 
-const mem   = std.mem;
+const mem = std.mem;
 const debug = std.debug;
-const io    = std.io;
-const os    = std.os;
+const io = std.io;
+const os = std.os;
 const slice = utils.slice;
 
 const assert = debug.assert;
 
 const toLittle = little.toLittle;
-const Little   = little.Little;
+const Little = little.Little;
 
 pub const BasePokemon = packed struct {
-    hp:         u8,
-    attack:     u8,
-    defense:    u8,
-    speed:      u8,
-    sp_attack:  u8,
+    hp: u8,
+    attack: u8,
+    defense: u8,
+    speed: u8,
+    sp_attack: u8,
     sp_defense: u8,
 
     types: [2]Type,
 
-    catch_rate:     u8,
+    catch_rate: u8,
     base_exp_yield: u8,
 
     ev_yield: common.EvYield,
 
     items: [2]Little(u16),
 
-    gender_ratio:    u8,
-    egg_cycles:      u8,
+    gender_ratio: u8,
+    egg_cycles: u8,
     base_friendship: u8,
 
     growth_rate: common.GrowthRate,
@@ -51,14 +51,14 @@ pub const BasePokemon = packed struct {
     color: common.Color,
     flip: bool,
 
-    padding: [2]u8
+    padding: [2]u8,
 };
 
 pub const PartyType = enum(u8) {
-    Standard  = 0x00,
+    Standard = 0x00,
     WithMoves = 0x01,
-    WithHeld  = 0x02,
-    WithBoth  = 0x03,
+    WithHeld = 0x02,
+    WithBoth = 0x03,
 };
 
 pub const Trainer = packed struct {
@@ -132,24 +132,24 @@ pub const Item = packed struct {
 };
 
 pub const Type = enum(u8) {
-    Normal   = 0x00,
+    Normal = 0x00,
     Fighting = 0x01,
-    Flying   = 0x02,
-    Poison   = 0x03,
-    Ground   = 0x04,
-    Rock     = 0x05,
-    Bug      = 0x06,
-    Ghost    = 0x07,
-    Steel    = 0x08,
+    Flying = 0x02,
+    Poison = 0x03,
+    Ground = 0x04,
+    Rock = 0x05,
+    Bug = 0x06,
+    Ghost = 0x07,
+    Steel = 0x08,
 
-    Fire     = 0x0A,
-    Water    = 0x0B,
-    Grass    = 0x0C,
+    Fire = 0x0A,
+    Water = 0x0B,
+    Grass = 0x0C,
     Electric = 0x0D,
-    Psychic  = 0x0E,
-    Ice      = 0x0F,
-    Dragon   = 0x10,
-    Dark     = 0x11,
+    Psychic = 0x0E,
+    Ice = 0x0F,
+    Dragon = 0x10,
+    Dark = 0x11,
 };
 
 pub const Game = struct {
@@ -159,7 +159,7 @@ pub const Game = struct {
     data: []u8,
 
     // All these fields point into data
-    header: &gba.Header,
+    header: *gba.Header,
     trainers: []Trainer,
     moves: []Move,
     tm_hm_learnset: []Little(u64),
@@ -170,7 +170,7 @@ pub const Game = struct {
     items: []Item,
     tms: []Little(u16),
 
-    pub fn fromFile(file: &os.File, allocator: &mem.Allocator) !Game {
+    pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
         var in_stream = &file_in_stream.stream;
 
@@ -184,28 +184,28 @@ pub const Game = struct {
 
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
-        return Game {
-            .version                    = info.version,
-            .data                       = rom,
-            .header                     = @ptrCast(&gba.Header, &rom[0]),
-            .trainers                   = info.trainers.getSlice(Trainer, rom),
-            .moves                      = info.moves.getSlice(Move, rom),
-            .tm_hm_learnset             = info.tm_hm_learnset.getSlice(Little(u64), rom),
-            .base_stats                 = info.base_stats.getSlice(BasePokemon, rom),
-            .evolution_table            = info.evolution_table.getSlice([5]common.Evolution, rom),
+        return Game{
+            .version = info.version,
+            .data = rom,
+            .header = @ptrCast(*gba.Header, &rom[0]),
+            .trainers = info.trainers.getSlice(Trainer, rom),
+            .moves = info.moves.getSlice(Move, rom),
+            .tm_hm_learnset = info.tm_hm_learnset.getSlice(Little(u64), rom),
+            .base_stats = info.base_stats.getSlice(BasePokemon, rom),
+            .evolution_table = info.evolution_table.getSlice([5]common.Evolution, rom),
             .level_up_learnset_pointers = info.level_up_learnset_pointers.getSlice(Little(u32), rom),
-            .hms                        = info.hms.getSlice(Little(u16), rom),
-            .items                      = info.items.getSlice(Item, rom),
-            .tms                        = info.tms.getSlice(Little(u16), rom),
+            .hms = info.hms.getSlice(Little(u16), rom),
+            .items = info.items.getSlice(Item, rom),
+            .tms = info.tms.getSlice(Little(u16), rom),
         };
     }
 
-    pub fn writeToStream(game: &const Game, in_stream: var) !void {
+    pub fn writeToStream(game: *const Game, in_stream: var) !void {
         try game.header.validate();
         try in_stream.write(game.data);
     }
 
-    pub fn destroy(game: &const Game, allocator: &mem.Allocator) void {
+    pub fn destroy(game: *const Game, allocator: *mem.Allocator) void {
         allocator.free(game.data);
     }
 
