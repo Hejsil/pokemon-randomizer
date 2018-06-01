@@ -12,12 +12,14 @@ pub fn build(b: &Builder) void {
     const randomizer_step = b.step("randomizer", "Build randomizer");
     randomizer_step.dependOn(&randomizer.step);
 
-    const offset_finder = b.addExecutable("gen3-offset-finder", "tools/gen3-offset-finder/main.zig");
+    const offset_finder = b.addExecutable("offset-finder", "tools/offset-finder/main.zig");
     offset_finder.setBuildMode(mode);
     offset_finder.addPackagePath("gba", "src/gba.zig");
+    offset_finder.addPackagePath("gb", "src/gb.zig");
     offset_finder.addPackagePath("little", "src/little.zig");
     offset_finder.addPackagePath("utils", "src/utils/index.zig");
     offset_finder.addPackagePath("pokemon", "src/pokemon/index.zig");
+    offset_finder.addPackagePath("fun", "lib/fun-with-zig/src/index.zig");
 
     const nds_util = b.addExecutable("nds-util", "tools/nds-util/main.zig");
     nds_util.setBuildMode(mode);

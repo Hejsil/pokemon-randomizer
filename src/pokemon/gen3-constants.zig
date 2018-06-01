@@ -1,30 +1,15 @@
 const common = @import("common.zig");
 const std = @import("std");
+const fun = @import("fun");
 const mem = std.mem;
-
-pub const GameId = struct {
-    game_title: []const u8,
-    gamecode: []const u8,
-
-    fn hash(id: &const GameId) u32 {
-        const hash1 = mem.hash_slice_u8(id.game_title);
-        const hash2 = mem.hash_slice_u8(id.gamecode);
-
-        return (hash1 ^ hash2) *% 16777619;
-    }
-
-    fn equal(a: &const GameId, b: &const GameId) bool {
-        return mem.eql(u8, a.game_title, b.game_title) and
-                mem.eql(u8, a.gamecode, b.gamecode);
-    }
-};
+const generic = fun.generic;
 
 pub const Offset = struct {
     start: usize,
-    end: usize,
+    len: usize,
 
-    fn getSlice(offset: &const Offset, comptime ElementType: type, data: []u8) []ElementType {
-        return ([]ElementType)(data[offset.start..offset.end]);
+    fn getSlice(offset: &const Offset, comptime Item: type, data: []u8) []Item {
+        return generic.widenTrim(data[offset.start..], Item)[0..offset.len];
     }
 };
 
@@ -49,15 +34,15 @@ pub const Info = struct {
 pub const emerald_us_info = Info {
     .version = common.Version.Emerald,
 
-    .trainers                   = Offset { .start = 0x0310030, .end = 0x03185C8, },
-    .moves                      = Offset { .start = 0x031C898, .end = 0x031D93C, },
-    .tm_hm_learnset             = Offset { .start = 0x031E898, .end = 0x031F578, },
-    .base_stats                 = Offset { .start = 0x03203CC, .end = 0x03230DC, },
-    .evolution_table            = Offset { .start = 0x032531C, .end = 0x032937C, },
-    .level_up_learnset_pointers = Offset { .start = 0x032937C, .end = 0x03299EC, },
-    .hms                        = Offset { .start = 0x0329EEA, .end = 0x0329EFA, },
-    .tms                        = Offset { .start = 0x0615B94, .end = 0x0615BF8, },
-    .items                      = Offset { .start = 0x05839A0, .end = 0x0587A6C, },
+    .trainers                   = Offset { .start = 0x0310030, .len = 855, },
+    .moves                      = Offset { .start = 0x031C898, .len = 355, },
+    .tm_hm_learnset             = Offset { .start = 0x031E898, .len = 412, },
+    .base_stats                 = Offset { .start = 0x03203CC, .len = 412, },
+    .evolution_table            = Offset { .start = 0x032531C, .len = 412, },
+    .level_up_learnset_pointers = Offset { .start = 0x032937C, .len = 412, },
+    .hms                        = Offset { .start = 0x0329EEA, .len = 008, },
+    .tms                        = Offset { .start = 0x0615B94, .len = 050, },
+    .items                      = Offset { .start = 0x05839A0, .len = 377, },
 };
 
 // game_title: POKEMON RUBY
@@ -65,15 +50,15 @@ pub const emerald_us_info = Info {
 pub const ruby_us_info = Info {
     .version = common.Version.Ruby,
 
-    .trainers                   = Offset { .start = 0x01F0514, .end = 0x01F3A0C, },
-    .moves                      = Offset { .start = 0x01FB144, .end = 0x01FC1E8, },
-    .tm_hm_learnset             = Offset { .start = 0x01FD108, .end = 0x01FDDE8, },
-    .base_stats                 = Offset { .start = 0x01FEC30, .end = 0x0201940, },
-    .evolution_table            = Offset { .start = 0x0203B80, .end = 0x0207BE0, },
-    .level_up_learnset_pointers = Offset { .start = 0x0207BE0, .end = 0x0208250, },
-    .hms                        = Offset { .start = 0x0208332, .end = 0x0208342, },
-    .tms                        = Offset { .start = 0x037651C, .end = 0x0376580, },
-    .items                      = Offset { .start = 0x03C5580, .end = 0x03C917C, },
+    .trainers                   = Offset { .start = 0x01F0514, .len = 339, },
+    .moves                      = Offset { .start = 0x01FB144, .len = 355, },
+    .tm_hm_learnset             = Offset { .start = 0x01FD108, .len = 412, },
+    .base_stats                 = Offset { .start = 0x01FEC30, .len = 412, },
+    .evolution_table            = Offset { .start = 0x0203B80, .len = 412, },
+    .level_up_learnset_pointers = Offset { .start = 0x0207BE0, .len = 412, },
+    .hms                        = Offset { .start = 0x0208332, .len = 008, },
+    .tms                        = Offset { .start = 0x037651C, .len = 050, },
+    .items                      = Offset { .start = 0x03C5580, .len = 349, },
 };
 
 // game_title: POKEMON SAPP
@@ -81,15 +66,15 @@ pub const ruby_us_info = Info {
 pub const sapphire_us_info = Info {
     .version = common.Version.Sapphire,
 
-    .trainers                   = Offset { .start = 0x01F04A4, .end = 0x01F399C, },
-    .moves                      = Offset { .start = 0x01FB0D4, .end = 0x01FC178, },
-    .tm_hm_learnset             = Offset { .start = 0x01FD098, .end = 0x01FDD78, },
-    .base_stats                 = Offset { .start = 0x01FEBC0, .end = 0x02018D0, },
-    .evolution_table            = Offset { .start = 0x0203B10, .end = 0x0207B70, },
-    .level_up_learnset_pointers = Offset { .start = 0x0207B70, .end = 0x02081E0, },
-    .hms                        = Offset { .start = 0x02082C2, .end = 0x02082D2, },
-    .tms                        = Offset { .start = 0x03764AC, .end = 0x0376510, },
-    .items                      = Offset { .start = 0x03C55DC, .end = 0x03C91D8, },
+    .trainers                   = Offset { .start = 0x01F04A4, .len = 339, },
+    .moves                      = Offset { .start = 0x01FB0D4, .len = 355, },
+    .tm_hm_learnset             = Offset { .start = 0x01FD098, .len = 412, },
+    .base_stats                 = Offset { .start = 0x01FEBC0, .len = 412, },
+    .evolution_table            = Offset { .start = 0x0203B10, .len = 412, },
+    .level_up_learnset_pointers = Offset { .start = 0x0207B70, .len = 412, },
+    .hms                        = Offset { .start = 0x02082C2, .len = 008, },
+    .tms                        = Offset { .start = 0x03764AC, .len = 050, },
+    .items                      = Offset { .start = 0x03C55DC, .len = 349, },
 };
 
 // game_title: POKEMON FIRE
@@ -97,15 +82,15 @@ pub const sapphire_us_info = Info {
 pub const fire_us_info = Info {
     .version = common.Version.FireRed,
 
-    .trainers                   = Offset { .start = 0x023EB38, .end = 0x0242FD0, },
-    .moves                      = Offset { .start = 0x0250C74, .end = 0x0251D18, },
-    .tm_hm_learnset             = Offset { .start = 0x0252C38, .end = 0x0253918, },
-    .base_stats                 = Offset { .start = 0x02547F4, .end = 0x0257504, },
-    .evolution_table            = Offset { .start = 0x02597C4, .end = 0x025D824, },
-    .level_up_learnset_pointers = Offset { .start = 0x025D824, .end = 0x025DE94, },
-    .hms                        = Offset { .start = 0x025E084, .end = 0x025E094, },
-    .tms                        = Offset { .start = 0x045A604, .end = 0x045A668, },
-    .items                      = Offset { .start = 0x03DB098, .end = 0x03DF0E0, },
+    .trainers                   = Offset { .start = 0x023EB38, .len = 439, },
+    .moves                      = Offset { .start = 0x0250C74, .len = 355, },
+    .tm_hm_learnset             = Offset { .start = 0x0252C38, .len = 412, },
+    .base_stats                 = Offset { .start = 0x02547F4, .len = 412, },
+    .evolution_table            = Offset { .start = 0x02597C4, .len = 412, },
+    .level_up_learnset_pointers = Offset { .start = 0x025D824, .len = 412, },
+    .hms                        = Offset { .start = 0x025E084, .len = 008, },
+    .tms                        = Offset { .start = 0x045A604, .len = 050, },
+    .items                      = Offset { .start = 0x03DB098, .len = 374, },
 };
 
 // game_title: POKEMON LEAF
@@ -113,15 +98,15 @@ pub const fire_us_info = Info {
 pub const leaf_us_info = Info {
     .version = common.Version.LeafGreen,
 
-    .trainers                   = Offset { .start = 0x023EB14, .end = 0x0242FAC, },
-    .moves                      = Offset { .start = 0x0250C50, .end = 0x0251CF4, },
-    .tm_hm_learnset             = Offset { .start = 0x0252C14, .end = 0x02538F4, },
-    .base_stats                 = Offset { .start = 0x02547D0, .end = 0x02574E0, },
-    .evolution_table            = Offset { .start = 0x02597A4, .end = 0x025D804, },
-    .level_up_learnset_pointers = Offset { .start = 0x025D804, .end = 0x025DE74, },
-    .hms                        = Offset { .start = 0x025E064, .end = 0x025E074, },
-    .tms                        = Offset { .start = 0x045A034, .end = 0x045A098, },
-    .items                      = Offset { .start = 0x03DAED4, .end = 0x03DEF1C, },
+    .trainers                   = Offset { .start = 0x023EB14, .len = 439, },
+    .moves                      = Offset { .start = 0x0250C50, .len = 355, },
+    .tm_hm_learnset             = Offset { .start = 0x0252C14, .len = 412, },
+    .base_stats                 = Offset { .start = 0x02547D0, .len = 412, },
+    .evolution_table            = Offset { .start = 0x02597A4, .len = 412, },
+    .level_up_learnset_pointers = Offset { .start = 0x025D804, .len = 412, },
+    .hms                        = Offset { .start = 0x025E064, .len = 008, },
+    .tms                        = Offset { .start = 0x045A034, .len = 050, },
+    .items                      = Offset { .start = 0x03DAED4, .len = 374, },
 };
 
 // TODO: We should look up species dex id, and use the dex ids here instead.
