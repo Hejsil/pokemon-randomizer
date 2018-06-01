@@ -1,4 +1,5 @@
 pub const common = @import("common.zig");
+pub const gen2   = @import("gen2.zig");
 pub const gen3   = @import("gen3.zig");
 pub const gen4   = @import("gen4.zig");
 pub const gen5   = @import("gen5.zig");
