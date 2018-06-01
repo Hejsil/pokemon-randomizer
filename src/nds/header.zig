@@ -296,6 +296,6 @@ pub const Header = packed struct {
     }
 
     fn isUpperAsciiOrZero(char: &const u8) bool {
-        return ascii.isUpperAscii(char) or *char == 0;
+        return ascii.isUpperAscii(char) or char.* == 0;
     }
 };

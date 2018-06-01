@@ -37,33 +37,33 @@ pub fn Arg(comptime T: type) type { return struct {
     }
 
     pub fn help(arg: &const Self, str: []const u8) Self {
-        var res = *arg; res.help_message = str;
+        var res = arg.*; res.help_message = str;
         return res;
     }
 
     pub fn short(arg: &const Self, char: u8) Self {
-        var res = *arg; res.short_arg = char;
+        var res = arg.*; res.short_arg = char;
         return res;
     }
 
     pub fn long(arg: &const Self, str: []const u8) Self {
-        var res = *arg; res.long_arg = str;
+        var res = arg.*; res.long_arg = str;
         return res;
     }
 
     pub fn takesValue(arg: &const Self, b: bool) Self {
-        var res = *arg; res.takes_value = b;
+        var res = arg.*; res.takes_value = b;
         return res;
     }
 
     pub fn kind(arg: &const Self, k: Kind) Self {
-        var res = *arg; res.arg_kind = k;
+        var res = arg.*; res.arg_kind = k;
         return res;
     }
 };}
 
 pub fn parse(comptime T: type, options: []const Arg(T), defaults: &const T, args: []const []const u8) !T {
-    var result = *defaults;
+    var result = defaults.*;
 
     const Kind    = enum { Long, Short, None };
     const ArgKind = struct { arg: []const u8, kind: Kind };

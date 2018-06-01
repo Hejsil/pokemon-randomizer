@@ -404,7 +404,7 @@ pub const Gen4 = struct {
         return Moves.initExternFunctionsAndContext(
             struct {
                 fn at(m: &const []const &nds.fs.Narc.File, index: usize) !&Move {
-                    return try getFileAsType(Move, *m, index);
+                    return try getFileAsType(Move, m.*, index);
                 }
 
                 fn length(m: &const []const &nds.fs.Narc.File) usize {
@@ -616,7 +616,7 @@ pub const Gen5 = struct {
         return Moves.initExternFunctionsAndContext(
             struct {
                 fn at(m: &const []const &nds.fs.Narc.File, index: usize) !&Move {
-                    return try getFileAsType(Move, *m, index);
+                    return try getFileAsType(Move, m.*, index);
                 }
 
                 fn length(m: &const []const &nds.fs.Narc.File) usize {

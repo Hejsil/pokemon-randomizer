@@ -46,7 +46,7 @@ fn FileSystem(comptime FileType: type) type {
 
         pub fn createFolder(fs: &Self, name: []u8) !&Folder {
             const node = try fs.arena.allocator.create(Folder);
-            *node = Folder {
+            node.* = Folder {
                 .name = name,
                 .files = std.ArrayList(&FileType).init(&fs.arena.allocator),
                 .folders = std.ArrayList(&Folder).init(&fs.arena.allocator),
@@ -57,7 +57,7 @@ fn FileSystem(comptime FileType: type) type {
 
         pub fn createFile(fs: &Self, init_value: &const FileType) !&FileType {
             const node = try fs.arena.allocator.create(FileType);
-            *node = *init_value;
+            node.* = init_value.*;
 
             return node;
         }

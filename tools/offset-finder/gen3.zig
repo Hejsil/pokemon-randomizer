@@ -90,7 +90,7 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
                 const p = mem.indexOf(u8, data, learnset) ?? return error.UnableToFindLevelUpLearnsetOffset;
                 const l = toLittle(u32(p) + 0x8000000);
                 for (first_pointers[i * 4..][0..4]) |*b, j| {
-                    *b = l.bytes[j];
+                    b.* = l.bytes[j];
                 }
             }
         }
@@ -101,7 +101,7 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
                 const p = mem.indexOf(u8, data, learnset) ?? return error.UnableToFindLevelUpLearnsetOffset;
                 const l = toLittle(u32(p) + 0x8000000);
                 for (last_pointers[i * 4..][0..4]) |*b, j| {
-                    *b = l.bytes[j];
+                    b.* = l.bytes[j];
                 }
             }
         }

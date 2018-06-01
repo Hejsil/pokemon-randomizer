@@ -33,13 +33,13 @@ pub fn Collection(comptime Item: type, comptime Errors: type) type {
         vtable: &const VTable,
 
         pub fn initContext(context: var) Self {
-            return initExternFunctionsAndContext(@TypeOf(*context), @TypeOf(*context), context);
+            return initExternFunctionsAndContext(@TypeOf(context.*), @TypeOf(context.*), context);
         }
 
         pub fn initSlice(comptime T: type, slice: &const []T) Self {
             return initExternFunctionsAndContext(
                 struct {
-                    fn at(s: &const []T, index: usize) (Errors!&T) { return &(*s)[index]; }
+                    fn at(s: &const []T, index: usize) (Errors!&T) { return &(s.*)[index]; }
                     fn length(s: &const []T) usize { return s.len; }
                 },
                 []T, slice);

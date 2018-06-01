@@ -72,7 +72,7 @@ fn fieldsEql(comptime field: []const u8, comptime T: type, a: &const T, b: &cons
 }
 
 fn strEql(a: &const []const u8, b: &const []const u8) bool {
-    return mem.eql(u8, *a, *b);
+    return mem.eql(u8, a.*, b.*);
 }
 
 fn contains(comptime T: type, items: []const T, value: &const T, eql: fn(&const T, &const T) bool) bool {

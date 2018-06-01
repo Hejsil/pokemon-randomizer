@@ -12,8 +12,8 @@ pub fn all(slice: var, predicate: fn(&const @typeOf(slice[0])) bool) bool {
 
 test "utils.all" {
     const slice = "aaa"[0..];
-    debug.assert( all(slice, struct { fn l(c: &const u8) bool { return *c == 'a'; } }.l));
-    debug.assert(!all(slice, struct { fn l(c: &const u8) bool { return *c != 'a'; } }.l));
+    debug.assert( all(slice, struct { fn l(c: &const u8) bool { return c.* == 'a'; } }.l));
+    debug.assert(!all(slice, struct { fn l(c: &const u8) bool { return c.* != 'a'; } }.l));
 }
 
 pub fn any(slice: var, predicate: fn(&const @typeOf(slice[0])) bool) bool {
@@ -26,12 +26,12 @@ pub fn any(slice: var, predicate: fn(&const @typeOf(slice[0])) bool) bool {
 
 test "utils.any" {
     const slice = "abc"[0..];
-    debug.assert( any(slice, struct { fn l(c: &const u8) bool { return *c == 'a'; } }.l));
-    debug.assert(!any(slice, struct { fn l(c: &const u8) bool { return *c == 'd'; } }.l));
+    debug.assert( any(slice, struct { fn l(c: &const u8) bool { return c.* == 'a'; } }.l));
+    debug.assert(!any(slice, struct { fn l(c: &const u8) bool { return c.* == 'd'; } }.l));
 }
 
 pub fn populate(slice: var, value: &const @typeOf(slice[0])) void {
-    for (slice) |*v| { *v = *value; }
+    for (slice) |*v| { v.* = value.*; }
 }
 
 test "utils.populate" {
@@ -41,13 +41,13 @@ test "utils.populate" {
 }
 
 pub fn transform(slice: var, transformer: fn(&const @typeOf(slice[0])) @typeOf(slice[0])) void {
-    for (slice) |*v| { *v = transformer(v); }
+    for (slice) |*v| { v.* = transformer(v); }
 }
 
 test "utils.transform" {
     var arr = "abcd";
     transform(arr[0..], struct { fn l(c: &const u8) u8 {
-        return if ('a' <= *c and *c <= 'z') *c - ('a' - 'A') else *c; }
+        return if ('a' <= c.* and c.* <= 'z') c.* - ('a' - 'A') else c.*; }
     }.l);
     debug.assert(mem.eql(u8, "ABCD", arr));
 }
