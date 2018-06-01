@@ -120,7 +120,7 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
     const tms = ([]const Little(u16))(data[tms_start..][0..constants.tms.len]);
 
     const ignored_item_fields = [][]const u8 { "name", "description_offset", "field_use_func", "battle_use_func" };
-    const items = switch (version) {
+    const maybe_items = switch (version) {
         common.Version.Emerald => search.findStructs(gen3.Item, ignored_item_fields, data,
             constants.em_first_items,
             constants.em_last_items),
@@ -131,9 +131,8 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
             constants.frlg_first_items,
             constants.frlg_last_items),
         else => null,
-    } ?? {
-        return error.UnableToFindItemsOffset;
     };
+    const items = maybe_items ?? return error.UnableToFindItemsOffset;
 
     const start = @ptrToInt(data.ptr);
     return Info {

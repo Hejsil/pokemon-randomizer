@@ -53,13 +53,13 @@ pub const Options = struct {
             Same,
 
             // TODO: Figure out how to implement these:
-            /// Trainer Pokémons will have random held items.
+            // Trainer Pokémons will have random held items.
             //Random,
 
-            /// Trainer Pokémons will have random, but useful, held items.
+            // Trainer Pokémons will have random, but useful, held items.
             //RandomUseful,
 
-            /// Trainer Pokémons will hold the best held items in the game.
+            // Trainer Pokémons will hold the best held items in the game.
             //RandomBest,
         };
 
