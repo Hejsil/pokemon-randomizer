@@ -43,7 +43,7 @@ const Info = struct {
 
 pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
     const ignored_trainer_fields = [][]const u8 { "party_offset", "name" };
-    const trainers = switch (version) {
+    const maybe_trainers = switch (version) {
         common.Version.Emerald => search.findStructs(gen3.Trainer, ignored_trainer_fields, data,
             constants.em_first_trainers,
             constants.em_last_trainers),
@@ -54,9 +54,8 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
             constants.frls_first_trainers,
             constants.frls_last_trainers),
         else => null,
-    } ?? {
-        return error.UnableToFindTrainerOffset;
     };
+    const trainers = maybe_trainers ?? return error.UnableToFindTrainerOffset;
 
     const moves = search.findStructs(gen3.Move, [][]const u8 { }, data,
         constants.first_moves,
