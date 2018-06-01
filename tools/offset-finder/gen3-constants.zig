@@ -37,20 +37,18 @@ pub const em_first_trainers = []gen3.Trainer{
     },
 };
 
-pub const em_last_trainers = []gen3.Trainer{
-    gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
-        .class = 0x41,
-        .encounter_music = 0x80,
-        .trainer_picture = 0x5c,
-        .name = undefined,
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(0)),
-        .party_size = toLittle(u32(1)),
-        .party_offset = undefined,
-    },
-};
+pub const em_last_trainers = []gen3.Trainer{gen3.Trainer{
+    .party_type = gen3.PartyType.Standard,
+    .class = 0x41,
+    .encounter_music = 0x80,
+    .trainer_picture = 0x5c,
+    .name = undefined,
+    .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+    .is_double = toLittle(u32(0)),
+    .ai = toLittle(u32(0)),
+    .party_size = toLittle(u32(1)),
+    .party_offset = undefined,
+}};
 
 pub const rs_first_trainers = []gen3.Trainer{
     gen3.Trainer{
@@ -79,20 +77,18 @@ pub const rs_first_trainers = []gen3.Trainer{
     },
 };
 
-pub const rs_last_trainers = []gen3.Trainer{
-    gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
-        .class = 0x21,
-        .encounter_music = 0x0B,
-        .trainer_picture = 0x06,
-        .name = undefined,
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(1)),
-        .party_size = toLittle(u32(4)),
-        .party_offset = undefined,
-    },
-};
+pub const rs_last_trainers = []gen3.Trainer{gen3.Trainer{
+    .party_type = gen3.PartyType.Standard,
+    .class = 0x21,
+    .encounter_music = 0x0B,
+    .trainer_picture = 0x06,
+    .name = undefined,
+    .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
+    .is_double = toLittle(u32(0)),
+    .ai = toLittle(u32(1)),
+    .party_size = toLittle(u32(4)),
+    .party_offset = undefined,
+}};
 
 pub const frls_first_trainers = []gen3.Trainer{
     gen3.Trainer{
@@ -131,25 +127,23 @@ pub const frls_first_trainers = []gen3.Trainer{
     },
 };
 
-pub const frls_last_trainers = []gen3.Trainer{
-    gen3.Trainer{
-        .party_type = gen3.PartyType.WithBoth,
-        .class = 90,
-        .encounter_music = 0,
-        .trainer_picture = 125,
-        .name = undefined,
-        .items = []Little(u16){
-            toLittle(u16(19)),
-            toLittle(u16(19)),
-            toLittle(u16(19)),
-            toLittle(u16(19)),
-        },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(7)),
-        .party_size = toLittle(u32(6)),
-        .party_offset = undefined,
+pub const frls_last_trainers = []gen3.Trainer{gen3.Trainer{
+    .party_type = gen3.PartyType.WithBoth,
+    .class = 90,
+    .encounter_music = 0,
+    .trainer_picture = 125,
+    .name = undefined,
+    .items = []Little(u16){
+        toLittle(u16(19)),
+        toLittle(u16(19)),
+        toLittle(u16(19)),
+        toLittle(u16(19)),
     },
-};
+    .is_double = toLittle(u32(0)),
+    .ai = toLittle(u32(7)),
+    .party_size = toLittle(u32(6)),
+    .party_offset = undefined,
+}};
 
 pub const first_moves = []gen3.Move{
     // Dummy
@@ -179,19 +173,18 @@ pub const first_moves = []gen3.Move{
 };
 
 pub const last_moves = []gen3.Move{
-    // Psycho Boost
-    gen3.Move{
-        .effect = 204,
-        .power = 140,
-        .@"type" = gen3.Type.Psychic,
-        .accuracy = 90,
-        .pp = 5,
-        .side_effect_chance = 100,
-        .target = 0,
-        .priority = 0,
-        .flags = toLittle(u32(0x32)),
-    },
-};
+// Psycho Boost
+gen3.Move{
+    .effect = 204,
+    .power = 140,
+    .@"type" = gen3.Type.Psychic,
+    .accuracy = 90,
+    .pp = 5,
+    .side_effect_chance = 100,
+    .target = 0,
+    .priority = 0,
+    .flags = toLittle(u32(0x32)),
+}};
 
 // TODO: Fix format
 pub const first_tm_hm_learnsets = []Little(u64){
@@ -374,52 +367,51 @@ pub const first_base_stats = []gen3.BasePokemon{
 };
 
 pub const last_base_stats = []gen3.BasePokemon{
-    // Chimecho
-    gen3.BasePokemon{
-        .hp = 65,
-        .attack = 50,
-        .defense = 70,
-        .speed = 65,
-        .sp_attack = 95,
-        .sp_defense = 80,
+// Chimecho
+gen3.BasePokemon{
+    .hp = 65,
+    .attack = 50,
+    .defense = 70,
+    .speed = 65,
+    .sp_attack = 95,
+    .sp_defense = 80,
 
-        .types = []gen3.Type{ gen3.Type.Psychic, gen3.Type.Psychic },
+    .types = []gen3.Type{ gen3.Type.Psychic, gen3.Type.Psychic },
 
-        .catch_rate = 45,
-        .base_exp_yield = 147,
+    .catch_rate = 45,
+    .base_exp_yield = 147,
 
-        .ev_yield = common.EvYield{
-            .hp = 0,
-            .attack = 0,
-            .defense = 0,
-            .speed = 0,
-            .sp_attack = 1,
-            .sp_defense = 1,
-            .padding = 0,
-        },
-
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)) },
-
-        .gender_ratio = comptime percentFemale(50),
-        .egg_cycles = 25,
-        .base_friendship = 70,
-
-        .growth_rate = common.GrowthRate.Fast,
-
-        .egg_group1 = common.EggGroup.Amorphous,
-        .egg_group1_pad = undefined,
-        .egg_group2 = common.EggGroup.Amorphous,
-        .egg_group2_pad = undefined,
-
-        .abilities = []u8{ 26, 0 },
-        .safari_zone_rate = 0,
-
-        .color = common.Color.Blue,
-        .flip = false,
-
-        .padding = undefined,
+    .ev_yield = common.EvYield{
+        .hp = 0,
+        .attack = 0,
+        .defense = 0,
+        .speed = 0,
+        .sp_attack = 1,
+        .sp_defense = 1,
+        .padding = 0,
     },
-};
+
+    .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)) },
+
+    .gender_ratio = comptime percentFemale(50),
+    .egg_cycles = 25,
+    .base_friendship = 70,
+
+    .growth_rate = common.GrowthRate.Fast,
+
+    .egg_group1 = common.EggGroup.Amorphous,
+    .egg_group1_pad = undefined,
+    .egg_group2 = common.EggGroup.Amorphous,
+    .egg_group2_pad = undefined,
+
+    .abilities = []u8{ 26, 0 },
+    .safari_zone_rate = 0,
+
+    .color = common.Color.Blue,
+    .flip = false,
+
+    .padding = undefined,
+}};
 
 fn percentFemale(percent: f64) u8 {
     return u8(math.min(f64(254), (percent * 255) / 100));

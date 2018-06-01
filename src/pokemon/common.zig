@@ -148,19 +148,15 @@ pub const Version = enum(u8) {
 
     pub fn generation(version: Version) Generation {
         const V = Version;
+        // TODO: Fix format
         return switch (version) {
             V.Red, V.Blue, V.Yellow => Generation.I,
             V.Gold, V.Silver, V.Crystal => Generation.II,
-            V.Ruby, V.Sapphire, V.Emerald,
-            V.FireRed, V.LeafGreen => Generation.III,
-            V.Diamond, V.Pearl, V.Platinum,
-            V.HeartGold, V.SoulSilver => Generation.IV,
-            V.Black, V.White,
-            V.Black2, V.White2 => Generation.V,
-            V.X, V.Y,
-            V.OmegaRuby, V.AlphaSapphire => Generation.VI,
-            V.Sun, V.Moon,
-            V.UltraSun, V.UltraMoon => Generation.VII,
+            V.Ruby, V.Sapphire, V.Emerald, V.FireRed, V.LeafGreen => Generation.III,
+            V.Diamond, V.Pearl, V.Platinum, V.HeartGold, V.SoulSilver => Generation.IV,
+            V.Black, V.White, V.Black2, V.White2 => Generation.V,
+            V.X, V.Y, V.OmegaRuby, V.AlphaSapphire => Generation.VI,
+            V.Sun, V.Moon, V.UltraSun, V.UltraMoon => Generation.VII,
         };
     }
 };
