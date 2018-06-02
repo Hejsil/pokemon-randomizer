@@ -18,9 +18,9 @@
 
 const std = @import("std");
 
-const mem   = std.mem;
+const mem = std.mem;
 const debug = std.debug;
-const math  = std.math;
+const math = std.math;
 
 const threshold = 2;
 const default_mask = 0x80;
@@ -32,7 +32,7 @@ const default_mask = 0x80;
 //       actually did help make a little piece of this code clearer.
 
 // TODO: Figure out if it's possible to make these encode and decode functions use streams.
-pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
+pub fn decode(data: []const u8, allocator: *mem.Allocator) ![]u8 {
     const Lengths = struct {
         enc: usize,
         dec: usize,
@@ -42,23 +42,23 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     if (data.len < 8) return error.BadHeader;
 
-    const inc_len = mem.readIntLE(u32, data[data.len - 4..]);
+    const inc_len = mem.readIntLE(u32, data[data.len - 4 ..]);
     const lengths = blk: {
         if (inc_len == 0) {
             return error.BadHeaderLength;
         } else {
             const hdr_len = data[data.len - 5];
             if (hdr_len < 8 or hdr_len > 0xB) return error.BadHeaderLength;
-            if (data.len <= hdr_len)          return error.BadLength;
+            if (data.len <= hdr_len) return error.BadLength;
 
-            const enc_len = mem.readIntLE(usize, data[data.len - 8..]) & 0x00FFFFFF;
+            const enc_len = mem.readIntLE(usize, data[data.len - 8 ..]) & 0x00FFFFFF;
             const dec_len = try math.sub(usize, data.len, enc_len);
             const pak_len = try math.sub(usize, enc_len, hdr_len);
             const raw_len = dec_len + enc_len + inc_len;
 
             if (raw_len > 0x00FFFFFF) return error.BadLength;
 
-            break :blk Lengths {
+            break :blk Lengths{
                 .enc = enc_len,
                 .dec = dec_len,
                 .pak = pak_len,
@@ -67,7 +67,6 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
         }
     };
 
-
     const result = try allocator.alloc(u8, lengths.raw);
     errdefer allocator.free(result);
     const pak_buffer = try allocator.alloc(u8, data.len + 3);
@@ -75,7 +74,7 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
     mem.copy(u8, result, data[0..lengths.dec]);
     mem.copy(u8, pak_buffer, data);
-    invert(pak_buffer[lengths.dec..lengths.dec + lengths.pak]);
+    invert(pak_buffer[lengths.dec .. lengths.dec + lengths.pak]);
 
     const pak_end = lengths.dec + lengths.pak;
     var pak = lengths.dec;
@@ -115,7 +114,6 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
                 raw += 1;
             }
         }
-
     }
 
     if (raw != lengths.raw) return error.UnexpectedEnd;
@@ -126,10 +124,10 @@ pub fn decode(data: []const u8, allocator: &mem.Allocator) ![]u8 {
 
 pub const Mode = enum {
     Normal,
-    Best
+    Best,
 };
 
-pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocator) ![]u8 {
+pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: *mem.Allocator) ![]u8 {
     var pak_tmp = usize(0);
     var raw_tmp = data.len;
     var pak_len = data.len + ((data.len + 7) / 8) + 11;
@@ -236,7 +234,7 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
         const new_result = try allocator.alloc(u8, raw_tmp + pak_tmp + 11);
 
         mem.copy(u8, new_result[0..raw_tmp], raw_buffer[0..raw_tmp]);
-        mem.copy(u8, new_result[raw_tmp..][0..pak_tmp], result[pak_len - pak_tmp..][0..pak_tmp]);
+        mem.copy(u8, new_result[raw_tmp..][0..pak_tmp], result[pak_len - pak_tmp ..][0..pak_tmp]);
 
         pak = raw_tmp + pak_tmp;
 
@@ -244,7 +242,10 @@ pub fn encode(data: []const u8, mode: Mode, arm9: bool, allocator: &mem.Allocato
         const inc_len = data.len - pak_tmp - raw_tmp;
         var hdr_len = usize(8);
 
-        while ((pak & 3) != 0) : ({ pak += 1; hdr_len += 1; }) {
+        while ((pak & 3) != 0) : ({
+            pak += 1;
+            hdr_len += 1;
+        }) {
             new_result[pak] = 0xFF;
         }
 
@@ -289,7 +290,7 @@ fn searchMatch(data: []const u8, match: []const u8) []const u8 {
 fn search(data: []const u8, raw: usize) []const u8 {
     const max = math.min(raw, usize(0x1002));
     const pattern = data[raw..math.min(usize(0x12) + raw, data.len)];
-    const d = data[raw - max..raw];
+    const d = data[raw - max .. raw];
 
     return searchMatch(d, pattern);
 }
@@ -297,7 +298,10 @@ fn search(data: []const u8, raw: usize) []const u8 {
 fn invert(data: []u8) void {
     var bottom = data.len - 1;
     var i = usize(0);
-    while (i < bottom) : ({ i += 1; bottom -= 1; }) {
+    while (i < bottom) : ({
+        i += 1;
+        bottom -= 1;
+    }) {
         const tmp = data[i];
         data[i] = data[bottom];
         data[bottom] = tmp;

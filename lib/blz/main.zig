@@ -1,12 +1,12 @@
-const std  = @import("std");
+const std = @import("std");
 const zblz = @import("blz.zig");
 const cblz = @cImport(@cInclude("blz.h"));
 
-const heap  = std.heap;
+const heap = std.heap;
 const debug = std.debug;
-const mem   = std.mem;
-const io    = std.io;
-const os    = std.os;
+const mem = std.mem;
+const io = std.io;
+const os = std.os;
 
 pub fn main() !void {
     var direct_allocator = heap.DirectAllocator.init();
@@ -45,7 +45,7 @@ pub fn main() !void {
 
         const zdecoded = try @noInlineCall(zblz.decode, bytes2, allocator);
         const cdecoded = blk: {
-            var out_len : c_uint = undefined;
+            var out_len: c_uint = undefined;
             const res = ??cblz.BLZ_Decode(&bytes[0], c_uint(bytes.len), &out_len);
             break :blk res[0..out_len];
         };
@@ -54,7 +54,7 @@ pub fn main() !void {
 
         const zencoded_best = try @noInlineCall(zblz.encode, cdecoded, zblz.Mode.Best, false, allocator);
         const cencoded_best = blk: {
-            var out_len : c_uint = undefined;
+            var out_len: c_uint = undefined;
             const res = ??cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_BEST);
             break :blk res[0..out_len];
         };
@@ -63,7 +63,7 @@ pub fn main() !void {
 
         const zencoded_normal = try @noInlineCall(zblz.encode, cdecoded, zblz.Mode.Normal, false, allocator);
         const cencoded_normal = blk: {
-            var out_len : c_uint = undefined;
+            var out_len: c_uint = undefined;
             const res = ??cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_NORMAL);
             break :blk res[0..out_len];
         };

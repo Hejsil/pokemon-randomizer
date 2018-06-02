@@ -1,4 +1,3 @@
-
 pub const Header = packed struct {
     prefix: [0x100]u8,
     entry_point: [4]u8,

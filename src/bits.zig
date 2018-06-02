@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const math  = std.math;
+const math = std.math;
 const debug = std.debug;
 
 const assert = debug.assert;
@@ -13,8 +13,8 @@ pub fn set(comptime Int: type, num: Int, bit: math.Log2Int(Int), value: bool) In
 
 test "bits.set" {
     const v = u8(0b10);
-    assert(set(u8, v, 0, true ) == 0b11);
-    assert(set(u8, v, 1, true ) == 0b10);
+    assert(set(u8, v, 0, true) == 0b11);
+    assert(set(u8, v, 1, true) == 0b10);
     assert(set(u8, v, 0, false) == 0b10);
     assert(set(u8, v, 1, false) == 0b00);
 }
@@ -41,7 +41,7 @@ test "bits.toggle" {
 
 pub fn count(comptime Int: type, num: Int) usize {
     var tmp = num;
-    var res : usize = 0;
+    var res: usize = 0;
     while (tmp != 0) : (res += 1)
         tmp &= tmp - 1;
 
@@ -49,8 +49,8 @@ pub fn count(comptime Int: type, num: Int) usize {
 }
 
 test "bits.count" {
-    assert(count(u8, 0b0)     == 0);
-    assert(count(u8, 0b1)     == 1);
-    assert(count(u8, 0b101)   == 2);
+    assert(count(u8, 0b0) == 0);
+    assert(count(u8, 0b1) == 1);
+    assert(count(u8, 0b101) == 2);
     assert(count(u8, 0b11011) == 4);
 }

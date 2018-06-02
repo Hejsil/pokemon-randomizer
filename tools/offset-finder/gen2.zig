@@ -3,14 +3,14 @@ const pokemon = @import("pokemon");
 const utils = @import("utils");
 const constants = @import("gen2-constants.zig");
 const search = @import("search.zig");
-const little    = @import("little");
+const little = @import("little");
 
 const debug = std.debug;
 const mem = std.mem;
 const common = pokemon.common;
 const gen2 = pokemon.gen2;
 
-const Little   = little.Little;
+const Little = little.Little;
 const toLittle = little.toLittle;
 
 const Offset = struct {
@@ -18,7 +18,7 @@ const Offset = struct {
     len: usize,
 
     fn fromSlice(start: usize, comptime T: type, slice: []const T) Offset {
-        return Offset {
+        return Offset{
             .start = @ptrToInt(slice.ptr) - start,
             .len = slice.len,
         };
@@ -31,7 +31,7 @@ const Info = struct {
     trainer_group_lenghts: []u8,
 };
 
-pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: &mem.Allocator) !Info {
+pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: *mem.Allocator) !Info {
     // In gen2, trainers are split into groups. Each group have attributes for their items, reward ai and so on.
     // The game does not store the size of each group anywere oviuse, so we have to figure out the size of each
     // group.
@@ -44,8 +44,8 @@ pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: &mem
             const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) ?? return error.TrainerGroupsNotFound;
 
             // Then, we can find the group pointer table
-            const first_group_pointers = []Little(u16) { toLittle(u16(first_group_pointer)) };
-            const last_group_pointers = []Little(u16) { toLittle(u16(last_group_pointer)) };
+            const first_group_pointers = []Little(u16){toLittle(u16(first_group_pointer))};
+            const last_group_pointers = []Little(u16){toLittle(u16(last_group_pointer))};
             trainer_group_pointers = search.findStructs(
                 Little(u16),
                 [][]const u8{},
@@ -72,8 +72,7 @@ pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: &mem
                 var curr = trainer_group_pointers[i].get();
                 const next = if (!is_last) trainer_group_pointers[i + 1].get() else @maxValue(u16);
 
-                group_loop:
-                while (curr < next) : (trainer_group_lenghts[i] += 1) {
+                group_loop: while (curr < next) : (trainer_group_lenghts[i] += 1) {
                     // Skip, until we find the string terminator for the trainer name
                     while (data[curr] != '\x50')
                         curr += 1;
@@ -110,10 +109,14 @@ pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: &mem
         else => unreachable,
     }
 
-    const ignored_base_stat_fields = [][]const u8 { "dimension_of_front_sprite", "blank", "tm_hm_learnset", "gender_ratio", "egg_group1_pad", "egg_group2_pad" };
-    const base_stats = search.findStructs(gen2.BasePokemon, ignored_base_stat_fields, data,
+    const ignored_base_stat_fields = [][]const u8{ "dimension_of_front_sprite", "blank", "tm_hm_learnset", "gender_ratio", "egg_group1_pad", "egg_group2_pad" };
+    const base_stats = search.findStructs(
+        gen2.BasePokemon,
+        ignored_base_stat_fields,
+        data,
         constants.first_base_stats,
-        constants.last_base_stats) ?? {
+        constants.last_base_stats,
+    ) ?? {
         return error.UnableToFindBaseStatsOffset;
     };
 
@@ -130,7 +133,7 @@ fn indexOfTrainer(data: []const u8, start_index: usize, trainers: []const consta
         var res: usize = 0;
         for (trainers) |trainer| {
             res += trainer.name.len;
-            res += 2 * trainer.party.len;  // level, species
+            res += 2 * trainer.party.len; // level, species
             if (trainer.kind & gen2.Party.has_item != 0)
                 res += 1 * trainer.party.len;
             if (trainer.kind & gen2.Party.has_moves != 0)
@@ -146,8 +149,7 @@ fn indexOfTrainer(data: []const u8, start_index: usize, trainers: []const consta
     var i = start_index;
     var end = data.len - bytes;
 
-    search_loop:
-    while (i <= end) : (i += 1) {
+    search_loop: while (i <= end) : (i += 1) {
         var off = i;
         for (trainers) |trainer, j| {
             off += trainer.name.len;

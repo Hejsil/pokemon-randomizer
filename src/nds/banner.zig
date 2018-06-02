@@ -1,14 +1,14 @@
-const ascii  = @import("../ascii.zig");
+const ascii = @import("../ascii.zig");
 const little = @import("../little.zig");
-const utils  = @import("../utils/index.zig");
+const utils = @import("../utils/index.zig");
 
 const toLittle = little.toLittle;
-const Little   = little.Little;
+const Little = little.Little;
 
 pub const Banner = packed struct {
     pub const Version = enum(u2) {
-        Original                  = 0x01,
-        WithChineseTitle          = 0x02,
+        Original = 0x01,
+        WithChineseTitle = 0x02,
         WithChineseAndKoreanTitle = 0x03,
     };
 
@@ -29,11 +29,11 @@ pub const Banner = packed struct {
     icon_palette: [0x20]u8,
 
     title_japanese: [0x100]u8,
-    title_english:  [0x100]u8,
-    title_french:   [0x100]u8,
-    title_german:   [0x100]u8,
-    title_italian:  [0x100]u8,
-    title_spanish:  [0x100]u8,
+    title_english: [0x100]u8,
+    title_french: [0x100]u8,
+    title_german: [0x100]u8,
+    title_italian: [0x100]u8,
+    title_spanish: [0x100]u8,
     //title_chinese:  [0x100]u8,
     //title_korean:   [0x100]u8,
 
@@ -47,7 +47,7 @@ pub const Banner = packed struct {
     //icon_animation_palette: [0x100]u8,
     //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
 
-    pub fn validate(banner: &const Banner) !void {
+    pub fn validate(banner: *const Banner) !void {
         if (u2(banner.version) == 0)
             return error.InvalidVersion;
         if (banner.version_padding != 0)
@@ -71,5 +71,7 @@ pub const Banner = packed struct {
         //}
     }
 
-    fn is0xFF(char: u8) bool { return char == 0xFF; }
+    fn is0xFF(char: u8) bool {
+        return char == 0xFF;
+    }
 };

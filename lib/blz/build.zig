@@ -1,7 +1,7 @@
 const Builder = @import("std").build.Builder;
 const builtin = @import("builtin");
 
-pub fn build(b: &Builder) void {
+pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
 
     const cblz = b.addCObject("cblz", "blz.c");
