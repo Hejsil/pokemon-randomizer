@@ -13,7 +13,7 @@ const Little = little.Little;
 const Narc = nds.fs.Narc;
 const Nitro = nds.fs.Nitro;
 
-pub const PokemonStats = packed struct {
+pub const BasePokemon = packed struct {
     hp: u8,
     attack: u8,
     defense: u8,
@@ -68,7 +68,15 @@ pub const PokemonStats = packed struct {
     //nacrene_tutor: Little(u32),
 };
 
-pub const PartyMemberBase = packed struct {
+/// All party members have this as the base.
+/// * If trainer.party_type & 0b10 then there is an additional u16 after the base, which is the held
+///   item.
+/// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
+///   the party members moveset.
+pub const BasePartyMember = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     iv: u8,
     gender: u4,
     ability: u4,
@@ -78,31 +86,8 @@ pub const PartyMemberBase = packed struct {
     form: Little(u16),
 };
 
-pub const PartyMemberWithMoves = packed struct {
-    base: PartyMemberBase,
-    moves: [4]Little(u16),
-};
-
-pub const PartyMemberWithHeld = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-};
-
-pub const PartyMemberWithBoth = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-    moves: [4]Little(u16),
-};
-
-pub const PartyType = enum(u8) {
-    Standard = 0x00,
-    WithMoves = 0x01,
-    WithHeld = 0x02,
-    WithBoth = 0x03,
-};
-
-pub const Trainer = packed struct {
-    party_type: PartyType,
+pub const BaseTrainer = packed struct {
+    party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
     party_size: u8,
@@ -168,33 +153,33 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
-    base: pokemon.Game,
+    base: pokemon.BaseGame,
     base_stats: []const *Narc.File,
     moves: []const *Narc.File,
     level_up_moves: []const *Narc.File,
-    trainer_data: []const *Narc.File,
-    trainer_pokemons: []const *Narc.File,
+    BaseTrainer_data: []const *Narc.File,
+    BaseTrainer_pokemons: []const *Narc.File,
     tms1: []Little(u16),
-    hms: []Little(u16),
+    hms1: []Little(u16),
     tms2: []Little(u16),
 
-    pub fn fromRom(rom: *nds.Rom) !Game {
+    pub fn fromRom(rom: *const nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game{
-            .base = pokemon.Game{
+            .base = pokemon.BaseGame{
                 .version = info.version,
             },
             .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
             .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
             .moves = try getNarcFiles(rom.file_system, info.moves),
-            .trainer_data = try getNarcFiles(rom.file_system, info.trainer_data),
-            .trainer_pokemons = try getNarcFiles(rom.file_system, info.trainer_pokemons),
+            .BaseTrainer_data = try getNarcFiles(rom.file_system, info.BaseTrainer_data),
+            .BaseTrainer_pokemons = try getNarcFiles(rom.file_system, info.BaseTrainer_pokemons),
             .tms1 = hm_tms[0..92],
-            .hms = hm_tms[92..98],
+            .hms1 = hm_tms[92..98],
             .tms2 = hm_tms[98..],
         };
     }
@@ -215,57 +200,5 @@ pub const Game = struct {
         if (mem.eql(u8, gamecode, "IRAO")) return constants.white_info;
 
         return error.InvalidGen5GameCode;
-    }
-
-    const FileAsTypeError = error{FileToSmall};
-
-    fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) FileAsTypeError!*T {
-        const data = generic.widenTrim(files[index].data, T);
-        return generic.at(data, 0) catch error.FileToSmall;
-    }
-
-    pub const BaseStats = ISlice(*PokemonStats, FileAsTypeError);
-    pub fn baseStats(game: *const Game) BaseStats {
-        return BaseStats.initFunctions(
-            []const *nds.fs.Narc.File,
-            game.base_stats,
-            struct {
-                fn at(g: *const Game, index: usize) !Pokemon {
-                    return try getFileAsType(PokemonStats, g.base_stats, index);
-                }
-
-                fn length(g: *const Game) usize {
-                    return g.base_stats.len;
-                }
-            }
-        );
-    }
-
-    pub const LevelUpMoves = ISlice([]LevelUpMove, error{});
-    pub fn levelUpMoves(game: *const Game) LevelUpMoves {
-        return BaseStats.initFunctions(
-            []const *nds.fs.Narc.File,
-            game.level_up_moves,
-            struct {
-                fn at(g: *const Game, index: usize) ![]LevelUpMove {
-                    const res = generic.widenTrim(g.level_up_moves[index].data, LevelUpMove);
-
-                    // Even though each level up move have it's own file, level up moves still
-                    // end with 0xFFFF 0xFFFF.
-                    for (res) |level_up_move, i| {
-                        if (level_up_move.move_id.get() == 0xFFFF and level_up_move.level.get() == 0xFFFF)
-                            return res[0..i];
-                    }
-
-                    // In the case where we don't find the end 0xFFFF 0xFFFF, we just
-                    // return the level up moves, and assume things are correct.
-                    return res;
-                }
-
-                fn length(g: *const Game) usize {
-                    return g.level_up_moves.len;
-                }
-            }
-        );
     }
 };

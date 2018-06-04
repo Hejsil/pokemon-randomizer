@@ -75,32 +75,18 @@ pub const Trainer = packed struct {
     party_offset: Little(u32),
 };
 
-pub const PartyMemberBase = packed struct {
+/// All party members have this as the base.
+/// * If trainer.party_type & 0b10 then there is an additional u16 after the base, which is the held
+///   item. If this is not true, the the party member is padded with u16
+/// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
+///   the party members moveset.
+pub const BasePartyMember = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     iv: Little(u16),
     level: Little(u16),
     species: Little(u16),
-};
-
-pub const PartyMember = packed struct {
-    base: PartyMemberBase,
-    padding: Little(u16),
-};
-
-pub const PartyMemberWithMoves = packed struct {
-    base: PartyMemberBase,
-    moves: [4]Little(u16),
-    padding: Little(u16),
-};
-
-pub const PartyMemberWithHeld = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-};
-
-pub const PartyMemberWithBoth = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-    moves: [4]Little(u16),
 };
 
 pub const Move = packed struct {
@@ -156,20 +142,21 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = constants.legendaries;
 
-    base: pokemon.Game,
+    base: pokemon.BaseGame,
+    allocator: *mem.Allocator,
     data: []u8,
 
     // All these fields point into data
     header: *gba.Header,
     trainers: []Trainer,
-    moves: []Move,
+    moves1: []Move,
     tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
     evolution_table: [][5]common.Evolution,
     level_up_learnset_pointers: []Little(u32),
-    hms: []Little(u16),
     items: []Item,
-    tms: []Little(u16),
+    hms1: []Little(u16),
+    tms1: []Little(u16),
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
@@ -186,20 +173,21 @@ pub const Game = struct {
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
         return Game{
-            .base = pokemon.Game{
-                .version = info.version
+            .base = pokemon.BaseGame{
+                .version = info.version,
             },
+            .allocator = allocator,
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),
             .trainers = info.trainers.getSlice(Trainer, rom),
-            .moves = info.moves.getSlice(Move, rom),
+            .moves1 = info.moves.getSlice(Move, rom),
             .tm_hm_learnset = info.tm_hm_learnset.getSlice(Little(u64), rom),
             .base_stats = info.base_stats.getSlice(BasePokemon, rom),
             .evolution_table = info.evolution_table.getSlice([5]common.Evolution, rom),
             .level_up_learnset_pointers = info.level_up_learnset_pointers.getSlice(Little(u32), rom),
-            .hms = info.hms.getSlice(Little(u16), rom),
             .items = info.items.getSlice(Item, rom),
-            .tms = info.tms.getSlice(Little(u16), rom),
+            .hms1 = info.hms.getSlice(Little(u16), rom),
+            .tms1 = info.tms.getSlice(Little(u16), rom),
         };
     }
 
@@ -208,8 +196,9 @@ pub const Game = struct {
         try in_stream.write(game.data);
     }
 
-    pub fn destroy(game: *const Game, allocator: *mem.Allocator) void {
-        allocator.free(game.data);
+    pub fn deinit(game: *Game) void {
+        game.allocator.free(game.data);
+        game.* = undefined;
     }
 
     fn getInfo(gamecode: []const u8) !constants.Info {

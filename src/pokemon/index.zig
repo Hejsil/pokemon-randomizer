@@ -15,8 +15,7 @@ const generic = fun.generic;
 
 const math = std.math;
 const debug = std.debug;
-
-const Collection = utils.Collection;
+const os = std.os;
 
 test "pokemon" {
     _ = common;
@@ -90,9 +89,93 @@ pub const Version = extern enum {
     }
 };
 
-const Species = u16;
-const Trainer = u16;
+const Hidden = @OpagueType();
 
-pub const Game = struct {
+pub const Pokemon = extern struct {
+    game: *const Game,
+
+    base: *Hidden,
+    learnset: *Hidden,
+    level_up_moves: [*]Hidden,
+    level_up_moves_count: usize,
+};
+
+pub const BaseGame = extern struct {
     version: Version,
+};
+
+pub const Game = extern struct {
+    base: *BaseGame,
+    allocator: *Hidden,
+    other: ?*Hidden,
+
+    pub fn load(file: *os.File, allocator: *mem.Allocator) !Game {
+        const start = try file.getPos();
+        gba_blk: {
+            try file.seekTo(start);
+            const game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
+
+            return Game{
+                .base = &(try allocator.construct(game)).base,
+                .allocator = @ptrCast(*Hidden, allocator),
+                .other = null,
+            };
+        }
+
+        nds_blk: {
+            try file.seekTo(start);
+            var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
+
+            if (gen4.Game.fromRom(&nds_rom)) |game| {
+                return Game{
+                    .base = &(try allocator.construct(game)).base,
+                    .allocator = @ptrCast(*Hidden, allocator),
+                    .other = @ptrCast(*Hidden, try allocator.construct(nds_rom)),
+                };
+            } else |e1| if (gen5.Game.fromRom(&nds_rom)) |game| {
+                return Game{
+                    .base = &(try allocator.construct(game)).base,
+                    .allocator = @ptrCast(*Hidden, allocator),
+                    .other = @ptrCast(*Hidden, try allocator.construct(nds_rom)),
+                };
+            } else |e2| {
+                break :nds_blk;
+            }
+        }
+
+        return error.InvalidGame;
+    }
+
+    pub fn save(game: *const Game, file: *os.File) !void {
+
+    }
+
+    pub fn deinit(game: *Game) void {
+        const allocator = @ptrCast(*mem.Allocator, game.allocator);
+        defer game.* = undefined;
+
+        switch (game.base.version.gen()) {
+            Gen.I => @panic("TODO: Gen1"),
+            Gen.II => @panic("TODO: Gen2"),
+            Gen.III => {
+                const g = @fieldParentPtr(gen3.Game, "base", game.base);
+                defer allocator.free(g);
+
+                g.deinit();
+            },
+            Gen.IV => {
+                const g = @fieldParentPtr(gen4.Game, "base", game.base);
+                defer allocator.free(g);
+
+            },
+            Gen.V => {
+                const g = @fieldParentPtr(gen5.Game, "base", game.base);
+                defer allocator.free(g);
+
+            },
+            Gen.VI => @panic("TODO: Gen6"),
+            Gen.VII => @panic("TODO: Gen7"),
+        }
+
+    }
 };
