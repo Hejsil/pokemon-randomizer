@@ -3,13 +3,11 @@ const mem = std.mem;
 const debug = std.debug;
 
 pub const slice = @import("slice.zig");
-pub const file = @import("file.zig");
 pub const stream = @import("stream.zig");
 
-pub const Collection = @import("collection.zig").Collection;
-
 test "utils" {
-    _ = @import("slice.zig");
+    _ = slice;
+    _ = stream;
 }
 
 /// Returns a mutable byte slice of ::value.

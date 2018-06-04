@@ -1,4 +1,4 @@
-const common = @import("common.zig");
+const pokemon = @import("index.zig");
 const std = @import("std");
 const fun = @import("fun");
 const mem = std.mem;
@@ -14,7 +14,7 @@ pub const Offset = struct {
 };
 
 pub const Info = struct {
-    version: common.Version,
+    version: pokemon.Version,
 
     trainers: Offset,
     moves: Offset,
@@ -32,7 +32,7 @@ pub const Info = struct {
 // game_title: POKEMON EMER
 // gamecode: BPEE
 pub const emerald_us_info = Info{
-    .version = common.Version.Emerald,
+    .version = pokemon.Version.Emerald,
 
     .trainers = Offset{
         .start = 0x0310030,
@@ -75,7 +75,7 @@ pub const emerald_us_info = Info{
 // game_title: POKEMON RUBY
 // gamecode: AXVE
 pub const ruby_us_info = Info{
-    .version = common.Version.Ruby,
+    .version = pokemon.Version.Ruby,
 
     .trainers = Offset{
         .start = 0x01F0514,
@@ -118,7 +118,7 @@ pub const ruby_us_info = Info{
 // game_title: POKEMON SAPP
 // gamecode: AXPE
 pub const sapphire_us_info = Info{
-    .version = common.Version.Sapphire,
+    .version = pokemon.Version.Sapphire,
 
     .trainers = Offset{
         .start = 0x01F04A4,
@@ -161,7 +161,7 @@ pub const sapphire_us_info = Info{
 // game_title: POKEMON FIRE
 // gamecode: BPRE
 pub const fire_us_info = Info{
-    .version = common.Version.FireRed,
+    .version = pokemon.Version.FireRed,
 
     .trainers = Offset{
         .start = 0x023EB38,
@@ -204,7 +204,7 @@ pub const fire_us_info = Info{
 // game_title: POKEMON LEAF
 // gamecode: BPGE
 pub const leaf_us_info = Info{
-    .version = common.Version.LeafGreen,
+    .version = pokemon.Version.LeafGreen,
 
     .trainers = Offset{
         .start = 0x023EB14,

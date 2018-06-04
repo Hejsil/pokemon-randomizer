@@ -1,4 +1,5 @@
 const std = @import("std");
+const pokemon = @import("index.zig");
 const little = @import("../little.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
@@ -140,7 +141,7 @@ pub const Move = packed struct {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
-    version: common.Version,
+    base: pokemon.Game,
     base_stats: []const *nds.fs.Narc.File,
     moves: []const *nds.fs.Narc.File,
     level_up_moves: []const *nds.fs.Narc.File,
@@ -156,7 +157,9 @@ pub const Game = struct {
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game{
-            .version = info.version,
+            .base = pokemon.Game{
+                .version = info.version,
+            },
             .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
             .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
             .moves = try getNarcFiles(rom.file_system, info.moves),

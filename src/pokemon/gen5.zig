@@ -1,4 +1,5 @@
 const std = @import("std");
+const pokemon = @import("index.zig");
 const little = @import("../little.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
@@ -7,9 +8,12 @@ const constants = @import("gen5-constants.zig");
 
 const mem = std.mem;
 
+const ISlice = utils.slice.ISlice;
 const Little = little.Little;
+const Narc = nds.fs.Narc;
+const Nitro = nds.fs.Nitro;
 
-pub const BasePokemon = packed struct {
+pub const PokemonStats = packed struct {
     hp: u8,
     attack: u8,
     defense: u8,
@@ -164,12 +168,12 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
-    version: common.Version,
-    base_stats: []const *nds.fs.Narc.File,
-    moves: []const *nds.fs.Narc.File,
-    level_up_moves: []const *nds.fs.Narc.File,
-    trainer_data: []const *nds.fs.Narc.File,
-    trainer_pokemons: []const *nds.fs.Narc.File,
+    base: pokemon.Game,
+    base_stats: []const *Narc.File,
+    moves: []const *Narc.File,
+    level_up_moves: []const *Narc.File,
+    trainer_data: []const *Narc.File,
+    trainer_pokemons: []const *Narc.File,
     tms1: []Little(u16),
     hms: []Little(u16),
     tms2: []Little(u16),
@@ -181,7 +185,9 @@ pub const Game = struct {
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game{
-            .version = info.version,
+            .base = pokemon.Game{
+                .version = info.version,
+            },
             .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
             .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
             .moves = try getNarcFiles(rom.file_system, info.moves),
@@ -193,12 +199,12 @@ pub const Game = struct {
         };
     }
 
-    fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *nds.fs.Narc.File {
+    fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *Narc.File {
         const file = file_system.getFile(path) ?? return error.CouldntFindFile;
 
         switch (file.@"type") {
-            nds.fs.Nitro.File.Type.Binary => return error.InvalidFileType,
-            nds.fs.Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
+            Nitro.File.Type.Binary => return error.InvalidFileType,
+            Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
         }
     }
 
@@ -209,5 +215,57 @@ pub const Game = struct {
         if (mem.eql(u8, gamecode, "IRAO")) return constants.white_info;
 
         return error.InvalidGen5GameCode;
+    }
+
+    const FileAsTypeError = error{FileToSmall};
+
+    fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) FileAsTypeError!*T {
+        const data = generic.widenTrim(files[index].data, T);
+        return generic.at(data, 0) catch error.FileToSmall;
+    }
+
+    pub const BaseStats = ISlice(*PokemonStats, FileAsTypeError);
+    pub fn baseStats(game: *const Game) BaseStats {
+        return BaseStats.initFunctions(
+            []const *nds.fs.Narc.File,
+            game.base_stats,
+            struct {
+                fn at(g: *const Game, index: usize) !Pokemon {
+                    return try getFileAsType(PokemonStats, g.base_stats, index);
+                }
+
+                fn length(g: *const Game) usize {
+                    return g.base_stats.len;
+                }
+            }
+        );
+    }
+
+    pub const LevelUpMoves = ISlice([]LevelUpMove, error{});
+    pub fn levelUpMoves(game: *const Game) LevelUpMoves {
+        return BaseStats.initFunctions(
+            []const *nds.fs.Narc.File,
+            game.level_up_moves,
+            struct {
+                fn at(g: *const Game, index: usize) ![]LevelUpMove {
+                    const res = generic.widenTrim(g.level_up_moves[index].data, LevelUpMove);
+
+                    // Even though each level up move have it's own file, level up moves still
+                    // end with 0xFFFF 0xFFFF.
+                    for (res) |level_up_move, i| {
+                        if (level_up_move.move_id.get() == 0xFFFF and level_up_move.level.get() == 0xFFFF)
+                            return res[0..i];
+                    }
+
+                    // In the case where we don't find the end 0xFFFF 0xFFFF, we just
+                    // return the level up moves, and assume things are correct.
+                    return res;
+                }
+
+                fn length(g: *const Game) usize {
+                    return g.level_up_moves.len;
+                }
+            }
+        );
     }
 };

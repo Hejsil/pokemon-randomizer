@@ -1,7 +1,7 @@
-const common = @import("common.zig");
+const pokemon = @import("index.zig");
 
 pub const Info = struct {
-    version: common.Version,
+    version: pokemon.Version,
     base_stats: []const u8,
     level_up_moves: []const u8,
     moves: []const u8,
@@ -10,7 +10,7 @@ pub const Info = struct {
 };
 
 pub const black2_info = Info{
-    .version = common.Version.Black2,
+    .version = pokemon.Version.Black2,
     .base_stats = "a/0/1/6",
     .level_up_moves = "a/0/1/8",
     .moves = "a/0/2/1",
@@ -20,7 +20,7 @@ pub const black2_info = Info{
 
 pub const white2_info = blk: {
     var res = black2_info;
-    res.version = common.Version.White2;
+    res.version = pokemon.Version.White2;
 
     break :blk res;
 };

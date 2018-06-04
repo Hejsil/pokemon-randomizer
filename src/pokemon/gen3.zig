@@ -1,4 +1,5 @@
 const std = @import("std");
+const pokemon = @import("index.zig");
 const gba = @import("../gba.zig");
 const bits = @import("../bits.zig");
 const little = @import("../little.zig");
@@ -155,7 +156,7 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = constants.legendaries;
 
-    version: common.Version,
+    base: pokemon.Game,
     data: []u8,
 
     // All these fields point into data
@@ -185,7 +186,9 @@ pub const Game = struct {
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
         return Game{
-            .version = info.version,
+            .base = pokemon.Game{
+                .version = info.version
+            },
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),
             .trainers = info.trainers.getSlice(Trainer, rom),

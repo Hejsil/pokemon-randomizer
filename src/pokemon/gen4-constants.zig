@@ -1,7 +1,7 @@
-const common = @import("common.zig");
+const pokemon = @import("index.zig");
 
 pub const Info = struct {
-    version: common.Version,
+    version: pokemon.Version,
     hm_tm_prefix: []const u8,
 
     base_stats: []const u8,
@@ -13,7 +13,7 @@ pub const Info = struct {
 };
 
 pub const hg_info = Info{
-    .version = common.Version.HeartGold,
+    .version = pokemon.Version.HeartGold,
     .hm_tm_prefix = "\x1E\x00\x32\x00",
 
     .base_stats = "/a/0/0/2",
@@ -26,13 +26,13 @@ pub const hg_info = Info{
 
 pub const ss_info = blk: {
     var res = hg_info;
-    res.version = common.Version.SoulSilver;
+    res.version = pokemon.Version.SoulSilver;
 
     break :blk res;
 };
 
 pub const diamond_info = Info{
-    .version = common.Version.Diamond,
+    .version = pokemon.Version.Diamond,
     .hm_tm_prefix = "\xD1\x00\xD2\x00\xD3\x00\xD4\x00",
 
     .base_stats = "/poketool/personal/personal.narc",
@@ -45,14 +45,14 @@ pub const diamond_info = Info{
 
 pub const pearl_info = blk: {
     var res = diamond_info;
-    res.version = common.Version.Pearl;
+    res.version = pokemon.Version.Pearl;
     res.base_stats = "/poketool/personal_pearl/personal.narc";
     break :blk res;
 };
 
 pub const platinum_info = blk: {
     var res = diamond_info;
-    res.version = common.Version.Platinum;
+    res.version = pokemon.Version.Platinum;
     res.base_stats = "/poketool/personal/pl_personal.narc";
     res.moves = "/poketool/waza/pl_waza_tbl.narc";
     break :blk res;
