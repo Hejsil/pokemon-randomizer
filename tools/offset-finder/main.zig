@@ -65,16 +65,16 @@ pub fn main() !void {
 
         debug.warn("Gamecode: {}\n", gamecode);
         debug.warn("Game: {}\n", @tagName(version));
-        debug.warn("Generation: {}\n", @tagName(version.generation()));
+        debug.warn("Generation: {}\n", @tagName(version.gen()));
 
-        switch (version.generation()) {
-            common.Generation.I => unreachable,
-            common.Generation.II => {
+        switch (version.gen()) {
+            pokemon.Gen.I => unreachable,
+            pokemon.Gen.II => {
                 const info = try gen2.findInfoInFile(data, version, allocator);
 
                 debug.warn(".base_stats = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start, info.base_stats.len);
             },
-            common.Generation.III => {
+            pokemon.Gen.III => {
                 const info = try gen3.findInfoInFile(data, version);
 
                 debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start, info.trainers.len);
@@ -92,29 +92,29 @@ pub fn main() !void {
     }
 }
 
-fn getVersion(gamecode: []const u8) !common.Version {
+fn getVersion(gamecode: []const u8) !pokemon.Version {
     if (mem.startsWith(u8, gamecode, "BPE"))
-        return common.Version.Emerald;
+        return pokemon.Version.Emerald;
     if (mem.startsWith(u8, gamecode, "BPR"))
-        return common.Version.FireRed;
+        return pokemon.Version.FireRed;
     if (mem.startsWith(u8, gamecode, "BPG"))
-        return common.Version.LeafGreen;
+        return pokemon.Version.LeafGreen;
     if (mem.startsWith(u8, gamecode, "AXV"))
-        return common.Version.Ruby;
+        return pokemon.Version.Ruby;
     if (mem.startsWith(u8, gamecode, "AXP"))
-        return common.Version.Sapphire;
+        return pokemon.Version.Sapphire;
     if (mem.startsWith(u8, gamecode, "AAX"))
-        return common.Version.Silver;
+        return pokemon.Version.Silver;
     if (mem.startsWith(u8, gamecode, "AAU"))
-        return common.Version.Gold;
+        return pokemon.Version.Gold;
     if (mem.startsWith(u8, gamecode, "BYT"))
-        return common.Version.Crystal;
+        return pokemon.Version.Crystal;
     if (mem.startsWith(u8, gamecode, "POKEMON RED"))
-        return common.Version.Red;
+        return pokemon.Version.Red;
     if (mem.startsWith(u8, gamecode, "POKEMON BLUE"))
-        return common.Version.Blue;
+        return pokemon.Version.Blue;
     if (mem.startsWith(u8, gamecode, "POKEMON YELLOW"))
-        return common.Version.Yellow;
+        return pokemon.Version.Yellow;
 
     return error.UnknownPokemonVersion;
 }

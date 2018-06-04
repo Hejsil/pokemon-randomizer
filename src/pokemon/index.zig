@@ -16,6 +16,7 @@ const generic = fun.generic;
 const math = std.math;
 const debug = std.debug;
 const os = std.os;
+const mem = std.mem;
 
 test "pokemon" {
     _ = common;
@@ -89,7 +90,7 @@ pub const Version = extern enum {
     }
 };
 
-const Hidden = @OpagueType();
+const Hidden = @OpaqueType();
 
 pub const Pokemon = extern struct {
     game: *const Game,
@@ -113,7 +114,7 @@ pub const Game = extern struct {
         const start = try file.getPos();
         gba_blk: {
             try file.seekTo(start);
-            const game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
+            const game = gen3.Game.fromFile(file, allocator) catch break :gba_blk;
 
             return Game{
                 .base = &(try allocator.construct(game)).base,
@@ -124,19 +125,23 @@ pub const Game = extern struct {
 
         nds_blk: {
             try file.seekTo(start);
-            var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
+            const nds_rom = try allocator.create(nds.Rom);
+            nds_rom.* = nds.Rom.fromFile(file, allocator) catch {
+                allocator.destroy(nds_rom);
+                break :nds_blk;
+            };
 
-            if (gen4.Game.fromRom(&nds_rom)) |game| {
+            if (gen4.Game.fromRom(nds_rom)) |game| {
                 return Game{
                     .base = &(try allocator.construct(game)).base,
                     .allocator = @ptrCast(*Hidden, allocator),
-                    .other = @ptrCast(*Hidden, try allocator.construct(nds_rom)),
+                    .other = @ptrCast(*Hidden, nds_rom),
                 };
-            } else |e1| if (gen5.Game.fromRom(&nds_rom)) |game| {
+            } else |e1| if (gen5.Game.fromRom(nds_rom)) |game| {
                 return Game{
                     .base = &(try allocator.construct(game)).base,
                     .allocator = @ptrCast(*Hidden, allocator),
-                    .other = @ptrCast(*Hidden, try allocator.construct(nds_rom)),
+                    .other = @ptrCast(*Hidden, nds_rom),
                 };
             } else |e2| {
                 break :nds_blk;
@@ -147,7 +152,24 @@ pub const Game = extern struct {
     }
 
     pub fn save(game: *const Game, file: *os.File) !void {
+        const allocator = @ptrCast(*mem.Allocator, game.allocator);
 
+        switch (game.base.version.gen()) {
+            Gen.I => @panic("TODO: Gen1"),
+            Gen.II => @panic("TODO: Gen2"),
+            Gen.III => {
+                const g = @fieldParentPtr(gen3.Game, "base", game.base);
+                var file_stream = io.FileOutStream.init(file);
+                try g.writeToStream(&file_stream.stream);
+            },
+            Gen.IV,
+            Gen.V => {
+                const nds_rom = @ptrCast(*Hidden, ??game.other);
+                try nds_rom.writeToFile(file, allocator);
+            },
+            Gen.VI => @panic("TODO: Gen6"),
+            Gen.VII => @panic("TODO: Gen7"),
+        }
     }
 
     pub fn deinit(game: *Game) void {
@@ -159,23 +181,29 @@ pub const Game = extern struct {
             Gen.II => @panic("TODO: Gen2"),
             Gen.III => {
                 const g = @fieldParentPtr(gen3.Game, "base", game.base);
-                defer allocator.free(g);
 
+                debug.assert(game.other == null);
                 g.deinit();
+                allocator.free(g);
             },
             Gen.IV => {
                 const g = @fieldParentPtr(gen4.Game, "base", game.base);
-                defer allocator.free(g);
+                const nds_rom = @ptrCast(*Hidden, ??game.other);
 
+                nds_rom.deinit();
+                allocator.free(nds_rom);
+                allocator.free(g);
             },
             Gen.V => {
                 const g = @fieldParentPtr(gen5.Game, "base", game.base);
-                defer allocator.free(g);
+                const nds_rom = @ptrCast(*Hidden, ??game.other);
 
+                nds_rom.deinit();
+                allocator.free(nds_rom);
+                allocator.free(g);
             },
             Gen.VI => @panic("TODO: Gen6"),
             Gen.VII => @panic("TODO: Gen7"),
         }
-
     }
 };

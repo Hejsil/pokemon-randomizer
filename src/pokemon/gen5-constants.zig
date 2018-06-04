@@ -6,7 +6,7 @@ pub const Info = struct {
     level_up_moves: []const u8,
     moves: []const u8,
     trainer_data: []const u8,
-    trainer_pokemons: []const u8,
+    trainer_parties: []const u8,
 };
 
 pub const black2_info = Info{
@@ -15,7 +15,7 @@ pub const black2_info = Info{
     .level_up_moves = "a/0/1/8",
     .moves = "a/0/2/1",
     .trainer_data = "a/0/9/1",
-    .trainer_pokemons = "a/0/9/2",
+    .trainer_parties = "a/0/9/2",
 };
 
 pub const white2_info = blk: {
@@ -27,16 +27,16 @@ pub const white2_info = blk: {
 
 pub const black_info = blk: {
     var res = black2_info;
-    res.version = common.Version.Black;
+    res.version = pokemon.Version.Black;
     res.trainer_data = "a/0/9/2";
-    res.trainer_pokemons = "a/0/9/3";
+    res.trainer_parties = "a/0/9/3";
 
     break :blk res;
 };
 
 pub const white_info = blk: {
     var res = black_info;
-    res.version = common.Version.Black;
+    res.version = pokemon.Version.Black;
 
     break :blk res;
 };

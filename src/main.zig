@@ -144,63 +144,26 @@ pub fn main() !void {
         return;
     }
 
-    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
-        debug.warn("Couldn't open {}.\n", output_file);
-        return err;
-    };
-    defer out_file.close();
-
     var random = rand.DefaultPrng.init(blk: {
         var buf: [8]u8 = undefined;
         try std.os.getRandomBytes(buf[0..]);
         break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
     });
 
-    gba_blk: {
-        var rom_file = try os.File.openRead(allocator, input_file);
-        defer rom_file.close();
-        var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
+    var rom_file = os.File.openRead(allocator, input_file) catch |err| {
+        debug.warn("Couldn't open {}.\n", input_file);
+        return err;
+    };
+    defer rom_file.close();
 
-        var r = Randomizer(pokemon.Gen3).init(game, &random.random, allocator);
-        defer r.deinit();
+    const game = pokemon.Game.load(&rom_file, allocator) catch |err| {
+        debug.warn("Couldn't load game {}.\n", input_file);
+        return err;
+    };
 
-        try r.randomize(options);
-
-        var file_stream = io.FileOutStream.init(&out_file);
-        game.writeToStream(&file_stream.stream) catch |err| {
-            debug.warn("Unable to write gba to {}.\n", output_file);
-            return err;
-        };
-
-        return;
-    }
-
-    nds_blk: {
-        var rom_file = try os.File.openRead(allocator, input_file);
-        defer rom_file.close();
-        var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
-        defer nds_rom.deinit();
-
-        if (gen4.Game.fromRom(&nds_rom)) |game| {
-            var r = Randomizer(pokemon.Gen4).init(game, &random.random, allocator);
-            defer r.deinit();
-            try r.randomize(options);
-        } else |e1| if (gen5.Game.fromRom(&nds_rom)) |game| {
-            var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator);
-            defer r.deinit();
-            try r.randomize(options);
-        } else |e2| {
-            break :nds_blk;
-        }
-
-        nds_rom.writeToFile(&out_file, allocator) catch |err| {
-            debug.warn("Unable to write nds to {}\n", output_file);
-            return err;
-        };
-
-        return;
-    }
-
-    debug.warn("Rom type not supported (yet)\n");
-    return error.NotARom;
+    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
+        debug.warn("Couldn't open {}.\n", output_file);
+        return err;
+    };
+    defer out_file.close();
 }
