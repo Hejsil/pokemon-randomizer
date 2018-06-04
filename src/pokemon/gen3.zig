@@ -173,9 +173,7 @@ pub const Game = struct {
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
         return Game{
-            .base = pokemon.BaseGame{
-                .version = info.version,
-            },
+            .base = pokemon.BaseGame{ .version = info.version },
             .allocator = allocator,
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),

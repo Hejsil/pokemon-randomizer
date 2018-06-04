@@ -170,9 +170,7 @@ pub const Game = struct {
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game{
-            .base = pokemon.BaseGame{
-                .version = info.version,
-            },
+            .base = pokemon.BaseGame{ .version = info.version },
             .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
             .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
             .moves = try getNarcFiles(rom.file_system, info.moves),

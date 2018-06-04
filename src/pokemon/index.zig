@@ -97,8 +97,116 @@ pub const Pokemon = extern struct {
 
     base: *Hidden,
     learnset: *Hidden,
+    level_up_moves_len: usize,
     level_up_moves: [*]Hidden,
-    level_up_moves_count: usize,
+};
+
+pub const Pokemons = extern struct {
+    game: *const BaseGame,
+
+    pub fn at(pokemons: *const Pokemons, id: u16) !Pokemon {
+        const game = pokemons.game;
+        switch (game.version.gen()) {
+            Gen.I => @panic("TODO: Gen1"),
+            Gen.II => @panic("TODO: Gen2"),
+            Gen.III => {
+                const g = @fieldParentPtr(gen3.Game, "base", game);
+                const level_up_moves = blk: {
+                    const start = blk: {
+                        const res = generic.at(g.level_up_learnset_pointers, index) catch return error.InvalidOffset;
+                        break :blk math.sub(usize, res.get(), 0x8000000) catch return error.InvalidOffset;
+                    };
+
+                    const end = end_blk: {
+                        var i: usize = start;
+                        while (true) : (i += @sizeOf(LevelUpMove)) {
+                            const a = generic.at(g.data, i) catch return error.InvalidOffset;
+                            const b = generic.at(g.data, i + 1) catch return error.InvalidOffset;
+                            if (a == 0xFF and b == 0xFF)
+                                break;
+                        }
+
+                        break :end_blk i;
+                    };
+
+                    break :blk ([]LevelUpMove)(g.data[start..end]);
+                };
+
+                return Pokemon{
+                    .base = @ptrCast(*Hidden, &g.base_stats[id]),
+                    .learnset = @ptrCast(*Hidden, &g.tm_hm_learnset[id]),
+                    .level_up_moves_len = level_up_moves.len,
+                    .level_up_moves = @ptrCast([*]Hidden, level_up_moves.ptr),
+                };
+            },
+            Gen.IV => {
+                const g = @fieldParentPtr(gen4.Game, "base", game);
+                return gen45At(gen4.Game, g, id);
+            },
+            Gen.V => {
+                const g = @fieldParentPtr(gen5.Game, "base", game);
+                return gen45At(gen5.Game, g, id);
+            },
+            Gen.VI => @panic("TODO: Gen6"),
+            Gen.VII => @panic("TODO: Gen7"),
+        }
+    }
+
+    fn gen45At(comptime Game: type, game: *const Game, id: usize) !Pokemon {
+        const base_pokemon = try getFileAsType(BasePokemon, g.base_stats, index);
+        const level_up_moves = blk: {
+            var tmp = g.level_up_moves[index].data;
+            const res = ([]LevelUpMove)(tmp[0 .. tmp.len - (tmp.len % @sizeOf(LevelUpMove))]);
+
+            // Even though each level up move have it's own file, level up moves still
+            // end with 0xFFFF.
+            for (res) |level_up_move, i| {
+                if (std.mem.eql(u8, ([]const u8)((&level_up_move)[0..1]), []u8{ 0xFF, 0xFF }))
+                    break :blk res[0..i];
+            }
+
+            // In the case where we don't find the end 0xFFFF, we just
+            // return the level up moves, and assume things are correct.
+            break :blk res;
+        };
+
+        return Pokemon{
+            .base = @ptrCast(*Hidden, base_pokemon),
+            .learnset = @ptrCast(*Hidden, base_pokemon.tm_hm_learnset),
+            .level_up_moves_len = level_up_moves.len,
+            .level_up_moves = @ptrCast([*]Hidden, level_up_moves.ptr),
+        };
+    }
+
+    pub fn len(pokemons: *const Pokemons) u16 {
+        const game = pokemons.game;
+        switch (game.version.gen()) {
+            Gen.I => @panic("TODO: Gen1"),
+            Gen.II => @panic("TODO: Gen2"),
+            Gen.III => {
+                const g = @fieldParentPtr(gen3.Game, "base", game);
+                var min = g.tm_hm_learnset.len;
+                min = math.min(min, g.base_stats.len);
+                min = math.min(min, g.evolution_table.len);
+                return math.min(min, g.level_up_learnset_pointers.len);
+            },
+            Gen.IV => {
+                const g = @fieldParentPtr(gen4.Game, "base", game);
+                return gen45Len(gen4.Game, g);
+            },
+            Gen.V => {
+                const g = @fieldParentPtr(gen5.Game, "base", game);
+                return gen45Len(gen5.Game, g);
+            },
+            Gen.VI => @panic("TODO: Gen6"),
+            Gen.VII => @panic("TODO: Gen7"),
+        }
+    }
+
+    fn gen45Len(comptime Game: type, game: *const Game) usize {
+        var min = math.min(min, game.base_stats.len);
+        return math.min(min, game.level_up_moves.len);
+    }
 };
 
 pub const BaseGame = extern struct {
@@ -162,8 +270,7 @@ pub const Game = extern struct {
                 var file_stream = io.FileOutStream.init(file);
                 try g.writeToStream(&file_stream.stream);
             },
-            Gen.IV,
-            Gen.V => {
+            Gen.IV, Gen.V => {
                 const nds_rom = @ptrCast(*Hidden, ??game.other);
                 try nds_rom.writeToFile(file, allocator);
             },
@@ -206,4 +313,13 @@ pub const Game = extern struct {
             Gen.VII => @panic("TODO: Gen7"),
         }
     }
+
+    pub fn pokemons(game: *const Game) Pokemons {
+        return Pokemons{ .game = game.base };
+    }
 };
+
+fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) !*T {
+    const data = generic.widenTrim(files[index].data, T);
+    return generic.at(data, 0) catch error.FileToSmall;
+}

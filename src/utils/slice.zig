@@ -39,18 +39,14 @@ pub fn ISlice(comptime Item: type, comptime Errors: type) type {
 
         pub fn init(comptime T: type, data: *const T) Self {
             return switch (@typeInfo()) {
-                builtin.TypeId.Slice => |info| initFunctions(
-                    T,
-                    data,
-                    struct{
-                        fn at(s: *const T, index: usize) (Errors!@typeOf(&T[0])) {
-                            return &(s.*)[index];
-                        }
-                        fn length(s: *const T) usize {
-                            return s.len;
-                        }
+                builtin.TypeId.Slice => |info| initFunctions(T, data, struct {
+                    fn at(s: *const T, index: usize) (Errors!@typeOf(&T[0])) {
+                        return &(s.*)[index];
                     }
-                ),
+                    fn length(s: *const T) usize {
+                        return s.len;
+                    }
+                }),
                 else => initFunctions(T, data, T),
             };
         }
