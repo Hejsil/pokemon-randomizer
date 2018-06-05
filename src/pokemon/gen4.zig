@@ -13,13 +13,7 @@ const Little = little.Little;
 const u10 = @IntType(false, 10);
 
 pub const BasePokemon = packed struct {
-    hp: u8,
-    attack: u8,
-    defense: u8,
-    speed: u8,
-    sp_attack: u8,
-    sp_defense: u8,
-
+    stats: common.Stats,
     types: [2]Type,
 
     catch_rate: u8,
@@ -60,6 +54,7 @@ pub const MoveTutor = packed struct {
 ///   item.
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
+/// In HG/SS/Plat, this struct is always padded with a u16 at the end, no matter the party_type
 pub const BasePartyMember = packed struct {
     const has_item = 0b10;
     const has_moves = 0b01;

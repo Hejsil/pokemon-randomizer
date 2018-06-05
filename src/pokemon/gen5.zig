@@ -14,13 +14,7 @@ const Narc = nds.fs.Narc;
 const Nitro = nds.fs.Nitro;
 
 pub const BasePokemon = packed struct {
-    hp: u8,
-    attack: u8,
-    defense: u8,
-    speed: u8,
-    sp_attack: u8,
-    sp_defense: u8,
-
+    stats: common.Stats,
     types: [2]Type,
 
     catch_rate: u8,

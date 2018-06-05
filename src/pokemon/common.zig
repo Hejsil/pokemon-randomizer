@@ -5,6 +5,15 @@ const Little = little.Little;
 
 const u9 = @IntType(false, 9);
 
+pub const Stats = packed struct {
+    hp: u8,
+    attack: u8,
+    defense: u8,
+    speed: u8,
+    sp_attack: u8,
+    sp_defense: u8,
+};
+
 pub const MoveCategory = enum(u8) {
     Physical = 0x00,
     Status = 0x01,
