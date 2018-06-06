@@ -27,20 +27,6 @@ test "pokemon" {
     _ = gen5;
 }
 
-pub const Gen = extern enum {
-    I = 1,
-    II = 2,
-    III = 3,
-    IV = 4,
-    V = 5,
-    VI = 6,
-    VII = 7,
-
-    pub fn hasPhysicalSpecialSplit(gen: Gen) bool {
-        return @TagType(Gen)(gen) > 3;
-    }
-};
-
 pub const Version = extern enum {
     Red,
     Blue,
@@ -77,18 +63,22 @@ pub const Version = extern enum {
     UltraSun,
     UltraMoon,
 
-    pub fn gen(version: Version) Gen {
+    pub fn gen(version: Version) u8 {
         const V = Version;
         // TODO: Fix format
         return switch (version) {
-            V.Red, V.Blue, V.Yellow => Gen.I,
-            V.Gold, V.Silver, V.Crystal => Gen.II,
-            V.Ruby, V.Sapphire, V.Emerald, V.FireRed, V.LeafGreen => Gen.III,
-            V.Diamond, V.Pearl, V.Platinum, V.HeartGold, V.SoulSilver => Gen.IV,
-            V.Black, V.White, V.Black2, V.White2 => Gen.V,
-            V.X, V.Y, V.OmegaRuby, V.AlphaSapphire => Gen.VI,
-            V.Sun, V.Moon, V.UltraSun, V.UltraMoon => Gen.VII,
+            V.Red, V.Blue, V.Yellow => u8(1),
+            V.Gold, V.Silver, V.Crystal => u8(2),
+            V.Ruby, V.Sapphire, V.Emerald, V.FireRed, V.LeafGreen => u8(3),
+            V.Diamond, V.Pearl, V.Platinum, V.HeartGold, V.SoulSilver => u8(4),
+            V.Black, V.White, V.Black2, V.White2 => u8(5),
+            V.X, V.Y, V.OmegaRuby, V.AlphaSapphire => u8(6),
+            V.Sun, V.Moon, V.UltraSun, V.UltraMoon => u8(7),
         };
+    }
+
+    pub fn hasPhysicalSpecialSplit(gen: Gen) bool {
+        return @TagType(Gen)(gen) > 3;
     }
 };
 
@@ -102,28 +92,52 @@ pub const Pokemon = extern struct {
     level_up_moves_len: usize,
     level_up_moves: [*]Hidden,
 
-    pub fn hp(pokemon: *const Pokemon) *u8 {
-        return pokemon.statPtr(u8, "hp");
+    pub fn hp(pokemon: *const Pokemon) u8 {
+        return pokemon.statPtr(u8, "hp").*;
     }
 
-    pub fn attack(pokemon: *const Pokemon) *u8 {
-        return pokemon.statPtr(u8, "attack");
+    pub fn setHp(pokemon: *const Pokemon, v: u8) void {
+        pokemon.statPtr(u8, "hp") = v;
     }
 
-    pub fn defense(pokemon: *const Pokemon) *u8 {
-        return pokemon.statPtr(u8, "defense");
+    pub fn attack(pokemon: *const Pokemon) u8 {
+        return pokemon.statPtr(u8, "attack").*;
     }
 
-    pub fn speed(pokemon: *const Pokemon) *u8 {
-        return pokemon.statPtr(u8, "speed");
+    pub fn setAttack(pokemon: *const Pokemon, v: u8) void {
+        pokemon.statPtr(u8, "attack").* = v;
     }
 
-    pub fn spAttack(pokemon: *const Pokemon) *u8 {
-        return pokemon.statPtr(u8, "sp_attack");
+    pub fn defense(pokemon: *const Pokemon) u8 {
+        return pokemon.statPtr(u8, "defense").*;
     }
 
-    pub fn spDefense(pokemon: *const Pokemon) *u8 {
-        return pokemon.statPtr(u8, "sp_defense");
+    pub fn setDefense(pokemon: *const Pokemon, v: u8) void {
+        pokemon.statPtr(u8, "defense").* = v;
+    }
+
+    pub fn speed(pokemon: *const Pokemon) u8 {
+        return pokemon.statPtr(u8, "speed").*;
+    }
+
+    pub fn setSpeed(pokemon: *const Pokemon, v: u8) void {
+        pokemon.statPtr(u8, "speed").* = v;
+    }
+
+    pub fn spAttack(pokemon: *const Pokemon) u8 {
+        return pokemon.statPtr(u8, "sp_attack").*;
+    }
+
+    pub fn setSpAttack(pokemon: *const Pokemon, v: u8) void {
+        pokemon.statPtr(u8, "sp_attack").* = v;
+    }
+
+    pub fn spDefense(pokemon: *const Pokemon) u8 {
+        return pokemon.statPtr(u8, "sp_defense").*;
+    }
+
+    pub fn setSpDefense(pokemon: *const Pokemon, v: u8) void {
+        pokemon.statPtr(u8, "sp_defense").* = v;
     }
 
     pub fn totalStats(pokemon: *const Pokemon) u16 {
@@ -135,7 +149,7 @@ pub const Pokemon = extern struct {
             pokemon.speed().* +
             pokemon.spAttack().*;
 
-        if (gen != Gen.I)
+        if (gen != 1)
             total += pokemon.spDefense().*;
 
         return total;
@@ -143,13 +157,13 @@ pub const Pokemon = extern struct {
 
     fn statPtr(pokemon: *const Pokemon, comptime field: []const u8) *u8 {
         return switch (pokemons.game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => pokemon.uncheckedStatPtr(gen3, field),
-            Gen.IV => pokemon.uncheckedStatPtr(gen4, field),
-            Gen.V => pokemon.uncheckedStatPtr(gen5, field),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => pokemon.uncheckedStatPtr(gen3, field),
+            4 => pokemon.uncheckedStatPtr(gen4, field),
+            5 => pokemon.uncheckedStatPtr(gen5, field),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -169,13 +183,13 @@ pub const Pokemons = extern struct {
 
     pub fn at(pokemons: *const Pokemons, id: u16) !Pokemon {
         return switch (pokemons.game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => try pokemons.uncheckedAt(gen3, id),
-            Gen.IV => try pokemons.uncheckedAt(gen4, id),
-            Gen.V => try pokemons.uncheckedAt(gen5, id),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => try pokemons.uncheckedAt(gen3, id),
+            4 => try pokemons.uncheckedAt(gen4, id),
+            5 => try pokemons.uncheckedAt(gen5, id),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -243,13 +257,13 @@ pub const Pokemons = extern struct {
 
     pub fn len(pokemons: *const Pokemons) u16 {
         return switch (pokemons.game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => pokemons.uncheckedLen(gen3),
-            Gen.IV => pokemons.uncheckedLen(gen4),
-            Gen.V => pokemons.uncheckedLen(gen5),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => pokemons.uncheckedLen(gen3),
+            4 => pokemons.uncheckedLen(gen4),
+            5 => pokemons.uncheckedLen(gen5),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -282,15 +296,14 @@ pub const Party = extern struct {
     trainer: *const Trainer,
 
     pub fn at(party: *const Party, index: u3) !PartyMember {
-        const game = party.trainer.game;
-        return switch (game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => try party.uncheckedAt(gen3, index),
-            Gen.IV =>  @panic("TODO: Gen4"),
-            Gen.V =>  @panic("TODO: Gen5"),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+        return switch (party.trainer.game.version.gen()) {
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => try party.uncheckedAt(gen3, index),
+            4 => @panic("TODO: Gen4"),
+            5 => @panic("TODO: Gen5"),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -344,13 +357,13 @@ pub const Party = extern struct {
     pub fn len(party: *const Party) u3 {
         const game = party.trainer.game;
         return switch (game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => party.uncheckedLen(gen3),
-            Gen.IV => party.uncheckedLen(gen4),
-            Gen.V => party.uncheckedLen(gen5),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => party.uncheckedLen(gen3),
+            4 => party.uncheckedLen(gen4),
+            5 => party.uncheckedLen(gen5),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -365,13 +378,13 @@ pub const Party = extern struct {
 
     fn memberSize(party: *const Party) usize {
         switch (party.trainer.game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => party.uncheckedMemberSize(gen3),
-            Gen.IV => party.uncheckedMemberSize(gen4),
-            Gen.V => party.uncheckedMemberSize(gen5),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => party.uncheckedMemberSize(gen3),
+            4 => party.uncheckedMemberSize(gen4),
+            5 => party.uncheckedMemberSize(gen5),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         }
     }
 
@@ -390,9 +403,9 @@ pub const Party = extern struct {
             },
             gen4, gen5 => {
                 var res = @sizeOf(gen.BasePartyMember);
-                if (trainer.party_type & GPartyMember.has_item != 0)
+                if (trainer.party_type & gen.BasePartyMember.has_item != 0)
                     res += @sizeOf(u16);
-                if (trainer.party_type & GPartyMember.has_moves != 0)
+                if (trainer.party_type & gen.BasePartyMember.has_moves != 0)
                     res += @sizeOf([4]u16);
 
                 // In HG/SS/Plat party members are padded with two extra bytes.
@@ -413,6 +426,7 @@ pub const Party = extern struct {
 pub const Trainer = extern struct {
     game: *const BaseGame,
 
+    id: u16,
     base: *Hidden,
     party_ptr: [*]Hidden,
 
@@ -426,13 +440,13 @@ pub const Trainers = extern struct {
 
     pub fn at(trainers: *const Trainers, id: u16) !Trainer {
         return switch (trainers.game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => try trainers.uncheckedAt(gen3, id),
-            Gen.IV => @panic("TODO: Gen4"),
-            Gen.V => @panic("TODO: Gen5"),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => try trainers.uncheckedAt(gen3, id),
+            4 => @panic("TODO: Gen4"),
+            5 => @panic("TODO: Gen5"),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -443,6 +457,7 @@ pub const Trainers = extern struct {
             gen3 => {
                 const trainer = &game.trainers[id];
                 var res = Trainer{
+                    .id = id,
                     .game = &game.base,
                     .base = @ptrCast(*Hidden, trainer),
                     .party = undefined,
@@ -463,13 +478,13 @@ pub const Trainers = extern struct {
 
     pub fn len(pokemons: *const Pokemons) u16 {
         return switch (pokemons.game.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => pokemons.uncheckedLen(gen3),
-            Gen.IV =>  @panic("TODO: Gen4"),
-            Gen.V => @panic("TODO: Gen5"),
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => pokemons.uncheckedLen(gen3),
+            4 =>  @panic("TODO: Gen4"),
+            5 => @panic("TODO: Gen5"),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         };
     }
 
@@ -540,19 +555,19 @@ pub const Game = extern struct {
         const allocator = @ptrCast(*mem.Allocator, game.allocator);
 
         switch (game.base.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => {
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => {
                 const g = @fieldParentPtr(gen3.Game, "base", game.base);
                 var file_stream = io.FileOutStream.init(file);
                 try g.writeToStream(&file_stream.stream);
             },
-            Gen.IV, Gen.V => {
+            4, 5 => {
                 const nds_rom = @ptrCast(*Hidden, ??game.other);
                 try nds_rom.writeToFile(file, allocator);
             },
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         }
     }
 
@@ -561,16 +576,16 @@ pub const Game = extern struct {
         defer game.* = undefined;
 
         switch (game.base.version.gen()) {
-            Gen.I => @panic("TODO: Gen1"),
-            Gen.II => @panic("TODO: Gen2"),
-            Gen.III => {
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen2"),
+            3 => {
                 const g = @fieldParentPtr(gen3.Game, "base", game.base);
 
                 debug.assert(game.other == null);
                 g.deinit();
                 allocator.free(g);
             },
-            Gen.IV => {
+            4 => {
                 const g = @fieldParentPtr(gen4.Game, "base", game.base);
                 const nds_rom = @ptrCast(*Hidden, ??game.other);
 
@@ -578,7 +593,7 @@ pub const Game = extern struct {
                 allocator.free(nds_rom);
                 allocator.free(g);
             },
-            Gen.V => {
+            5 => {
                 const g = @fieldParentPtr(gen5.Game, "base", game.base);
                 const nds_rom = @ptrCast(*Hidden, ??game.other);
 
@@ -586,8 +601,8 @@ pub const Game = extern struct {
                 allocator.free(nds_rom);
                 allocator.free(g);
             },
-            Gen.VI => @panic("TODO: Gen6"),
-            Gen.VII => @panic("TODO: Gen7"),
+            6 => @panic("TODO: Gen6"),
+            7 => @panic("TODO: Gen7"),
         }
     }
 
