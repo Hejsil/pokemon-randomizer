@@ -56,7 +56,7 @@ pub const PartyType = enum(u8) {
     WithBoth = 0x03,
 };
 
-pub const BaseTrainer = packed struct {
+pub const Trainer = packed struct {
     party_type: PartyType,
     class: u8,
     encounter_music: u8,
@@ -142,7 +142,7 @@ pub const Game = struct {
 
     // All these fields point into data
     header: *gba.Header,
-    trainers: []BaseTrainer,
+    trainers: []Trainer,
     moves1: []Move,
     tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
@@ -171,7 +171,7 @@ pub const Game = struct {
             .allocator = allocator,
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),
-            .trainers = info.trainers.getSlice(BaseTrainer, rom),
+            .trainers = info.trainers.getSlice(Trainer, rom),
             .moves1 = info.moves.getSlice(Move, rom),
             .tm_hm_learnset = info.tm_hm_learnset.getSlice(Little(u64), rom),
             .base_stats = info.base_stats.getSlice(BasePokemon, rom),

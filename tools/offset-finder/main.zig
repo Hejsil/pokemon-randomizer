@@ -65,16 +65,16 @@ pub fn main() !void {
 
         debug.warn("Gamecode: {}\n", gamecode);
         debug.warn("Game: {}\n", @tagName(version));
-        debug.warn("Generation: {}\n", @tagName(version.gen()));
+        debug.warn("Generation: {}\n", version.gen());
 
         switch (version.gen()) {
-            pokemon.Gen.I => unreachable,
-            pokemon.Gen.II => {
+            1 => unreachable,
+            2 => {
                 const info = try gen2.findInfoInFile(data, version, allocator);
 
                 debug.warn(".base_stats = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start, info.base_stats.len);
             },
-            pokemon.Gen.III => {
+            3 => {
                 const info = try gen3.findInfoInFile(data, version);
 
                 debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start, info.trainers.len);

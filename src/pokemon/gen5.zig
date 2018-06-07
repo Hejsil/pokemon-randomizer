@@ -80,7 +80,7 @@ pub const BasePartyMember = packed struct {
     form: Little(u16),
 };
 
-pub const BaseTrainer = packed struct {
+pub const Trainer = packed struct {
     party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
