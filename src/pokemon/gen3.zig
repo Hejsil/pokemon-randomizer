@@ -18,6 +18,8 @@ const assert = debug.assert;
 const toLittle = little.toLittle;
 const Little = little.Little;
 
+const u9 = @IntType(false, 9);
+
 pub const BasePokemon = packed struct {
     stats: common.Stats,
     types: [2]Type,
@@ -49,15 +51,8 @@ pub const BasePokemon = packed struct {
     padding: [2]u8,
 };
 
-pub const PartyType = enum(u8) {
-    Standard = 0x00,
-    WithMoves = 0x01,
-    WithHeld = 0x02,
-    WithBoth = 0x03,
-};
-
 pub const Trainer = packed struct {
-    party_type: PartyType,
+    party_type: u8,
     class: u8,
     encounter_music: u8,
     trainer_picture: u8,
@@ -74,7 +69,7 @@ pub const Trainer = packed struct {
 ///   item. If this is not true, the the party member is padded with u16
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
-pub const BasePartyMember = packed struct {
+pub const PartyMember = packed struct {
     const has_item = 0b10;
     const has_moves = 0b01;
 
@@ -133,9 +128,12 @@ pub const Type = enum(u8) {
     Dark = 0x11,
 };
 
-pub const Game = struct {
-    const legendaries = constants.legendaries;
+pub const LevelUpMove = packed struct {
+    move_id: u9,
+    level: u7,
+};
 
+pub const Game = struct {
     base: pokemon.BaseGame,
     allocator: *mem.Allocator,
     data: []u8,
@@ -143,14 +141,14 @@ pub const Game = struct {
     // All these fields point into data
     header: *gba.Header,
     trainers: []Trainer,
-    moves1: []Move,
+    moves: []Move,
     tm_hm_learnset: []Little(u64),
     base_stats: []BasePokemon,
     evolution_table: [][5]common.Evolution,
     level_up_learnset_pointers: []Little(u32),
     items: []Item,
-    hms1: []Little(u16),
-    tms1: []Little(u16),
+    hms: []Little(u16),
+    tms: []Little(u16),
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
@@ -172,14 +170,14 @@ pub const Game = struct {
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),
             .trainers = info.trainers.getSlice(Trainer, rom),
-            .moves1 = info.moves.getSlice(Move, rom),
+            .moves = info.moves.getSlice(Move, rom),
             .tm_hm_learnset = info.tm_hm_learnset.getSlice(Little(u64), rom),
             .base_stats = info.base_stats.getSlice(BasePokemon, rom),
             .evolution_table = info.evolution_table.getSlice([5]common.Evolution, rom),
             .level_up_learnset_pointers = info.level_up_learnset_pointers.getSlice(Little(u32), rom),
             .items = info.items.getSlice(Item, rom),
-            .hms1 = info.hms.getSlice(Little(u16), rom),
-            .tms1 = info.tms.getSlice(Little(u16), rom),
+            .hms = info.hms.getSlice(Little(u16), rom),
+            .tms = info.tms.getSlice(Little(u16), rom),
         };
     }
 

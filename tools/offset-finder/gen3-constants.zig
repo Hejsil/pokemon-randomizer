@@ -12,7 +12,7 @@ const toLittle = little.toLittle;
 
 pub const em_first_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0,
         .encounter_music = 0,
         .trainer_picture = 0,
@@ -24,7 +24,7 @@ pub const em_first_trainers = []gen3.Trainer{
         .party_offset = undefined,
     },
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x02,
         .encounter_music = 0x0b,
         .trainer_picture = 0,
@@ -39,7 +39,7 @@ pub const em_first_trainers = []gen3.Trainer{
 
 pub const em_last_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x41,
         .encounter_music = 0x80,
         .trainer_picture = 0x5c,
@@ -54,7 +54,7 @@ pub const em_last_trainers = []gen3.Trainer{
 
 pub const rs_first_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0,
         .encounter_music = 0,
         .trainer_picture = 0,
@@ -66,7 +66,7 @@ pub const rs_first_trainers = []gen3.Trainer{
         .party_offset = undefined,
     },
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x02,
         .encounter_music = 0x06,
         .trainer_picture = 0x46,
@@ -81,7 +81,7 @@ pub const rs_first_trainers = []gen3.Trainer{
 
 pub const rs_last_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x21,
         .encounter_music = 0x0B,
         .trainer_picture = 0x06,
@@ -96,7 +96,7 @@ pub const rs_last_trainers = []gen3.Trainer{
 
 pub const frls_first_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0,
         .encounter_music = 0,
         .trainer_picture = 0,
@@ -113,7 +113,7 @@ pub const frls_first_trainers = []gen3.Trainer{
         .party_offset = undefined,
     },
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 2,
         .encounter_music = 6,
         .trainer_picture = 0,
@@ -133,7 +133,7 @@ pub const frls_first_trainers = []gen3.Trainer{
 
 pub const frls_last_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.WithBoth,
+        .party_type = 0x00,
         .class = 90,
         .encounter_music = 0,
         .trainer_picture = 125,

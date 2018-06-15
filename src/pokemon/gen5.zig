@@ -67,7 +67,7 @@ pub const BasePokemon = packed struct {
 ///   item.
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
-pub const BasePartyMember = packed struct {
+pub const PartyMember = packed struct {
     const has_item = 0b10;
     const has_moves = 0b01;
 
@@ -154,7 +154,7 @@ pub const Game = struct {
     trainer_data: []const *Narc.File,
     trainer_parties: []const *Narc.File,
     tms1: []Little(u16),
-    hms1: []Little(u16),
+    hms: []Little(u16),
     tms2: []Little(u16),
 
     pub fn fromRom(rom: *const nds.Rom) !Game {
@@ -171,7 +171,7 @@ pub const Game = struct {
             .trainer_data = try getNarcFiles(rom.file_system, info.trainer_data),
             .trainer_parties = try getNarcFiles(rom.file_system, info.trainer_parties),
             .tms1 = hm_tms[0..92],
-            .hms1 = hm_tms[92..98],
+            .hms = hm_tms[92..98],
             .tms2 = hm_tms[98..],
         };
     }

@@ -10,6 +10,7 @@ const mem = std.mem;
 
 const Little = little.Little;
 
+const u9 = @IntType(false, 9);
 const u10 = @IntType(false, 10);
 
 pub const BasePokemon = packed struct {
@@ -55,7 +56,7 @@ pub const MoveTutor = packed struct {
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
 /// In HG/SS/Plat, this struct is always padded with a u16 at the end, no matter the party_type
-pub const BasePartyMember = packed struct {
+pub const PartyMember = packed struct {
     const has_item = 0b10;
     const has_moves = 0b01;
 
@@ -68,7 +69,7 @@ pub const BasePartyMember = packed struct {
 };
 
 pub const Trainer = packed struct {
-    party_type: PartyType,
+    party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
     party_size: u8,
@@ -118,17 +119,20 @@ pub const Move = packed struct {
     u8_15: u8,
 };
 
-pub const Game = struct {
-    const legendaries = common.legendaries;
+pub const LevelUpMove = packed struct {
+    move_id: u9,
+    level: u7,
+};
 
+pub const Game = struct {
     base: pokemon.BaseGame,
     base_stats: []const *nds.fs.Narc.File,
     moves: []const *nds.fs.Narc.File,
     level_up_moves: []const *nds.fs.Narc.File,
     trainer_data: []const *nds.fs.Narc.File,
     trainer_pokemons: []const *nds.fs.Narc.File,
-    tms1: []Little(u16),
-    hms1: []Little(u16),
+    tms: []Little(u16),
+    hms: []Little(u16),
 
     pub fn fromRom(rom: *nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
@@ -143,8 +147,8 @@ pub const Game = struct {
             .moves = try getNarcFiles(rom.file_system, info.moves),
             .trainer_data = try getNarcFiles(rom.file_system, info.trainer_data),
             .trainer_pokemons = try getNarcFiles(rom.file_system, info.trainer_pokemons),
-            .tms1 = hm_tms[0..92],
-            .hms1 = hm_tms[92..],
+            .tms = hm_tms[0..92],
+            .hms = hm_tms[92..],
         };
     }
 

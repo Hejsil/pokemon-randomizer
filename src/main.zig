@@ -83,10 +83,6 @@ fn setTrainerMoves(op: *randomizer.Options, str: []const u8) !void {
     }
 }
 
-fn setTrainerIv(op: *randomizer.Options, str: []const u8) !void {
-    op.trainer.iv = try parseGenericOption(str);
-}
-
 fn parseGenericOption(str: []const u8) !randomizer.GenericOption {
     if (mem.eql(u8, str, "same")) {
         return randomizer.GenericOption.Same;
@@ -106,7 +102,7 @@ fn setLevelModifier(op: *randomizer.Options, str: []const u8) !void {
 
 const Arg = clap.Arg(randomizer.Options);
 // TODO: Format is horrible. Fix
-const program_arguments = comptime []Arg{
+const program_arguments = comptime [8]Arg{
     Arg.init(setHelp).help("Display this help and exit.").short('h').long("help").kind(Arg.Kind.IgnoresRequired),
     Arg.init(setInFile).help("The rom to randomize.").kind(Arg.Kind.Required),
     Arg.init(setOutFile).help("The place to output the randomized rom.").short('o').long("output").takesValue(true),
@@ -114,7 +110,6 @@ const program_arguments = comptime []Arg{
     Arg.init(setTrainerSameStrength).help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.").long("trainer-same-total-stats"),
     Arg.init(setTrainerHeldItems).help("How trainer Pokémon held items should be randomized. Options: [none, same].").long("trainer-held-items").takesValue(true),
     Arg.init(setTrainerMoves).help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].").long("trainer-moves").takesValue(true),
-    Arg.init(setTrainerIv).help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].").long("trainer-iv").takesValue(true),
     Arg.init(setLevelModifier).help("A percent level modifier to trainers Pokémon.").long("trainer-level-modifier").takesValue(true),
 };
 
@@ -144,20 +139,27 @@ pub fn main() !void {
         return;
     }
 
-    var random = rand.DefaultPrng.init(blk: {
-        var buf: [8]u8 = undefined;
-        try std.os.getRandomBytes(buf[0..]);
-        break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
-    });
-
     var rom_file = os.File.openRead(allocator, input_file) catch |err| {
         debug.warn("Couldn't open {}.\n", input_file);
         return err;
     };
     defer rom_file.close();
 
-    const game = pokemon.Game.load(&rom_file, allocator) catch |err| {
+    var game = pokemon.Game.load(&rom_file, allocator) catch |err| {
         debug.warn("Couldn't load game {}.\n", input_file);
+        return err;
+    };
+    defer game.deinit();
+
+    var random = rand.DefaultPrng.init(blk: {
+        var buf: [8]u8 = undefined;
+        try std.os.getRandomBytes(buf[0..]);
+        break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
+    });
+
+    var r = Randomizer.init(&game, &random.random, allocator);
+    r.randomize(options) catch |err| {
+        debug.warn("Randomizing error occured {}.\n", @errorName(err));
         return err;
     };
 
@@ -166,4 +168,9 @@ pub fn main() !void {
         return err;
     };
     defer out_file.close();
+
+    game.save(&out_file) catch |err| {
+        debug.warn("Couldn't save game {}.\n", @errorName(err));
+        return err;
+    };
 }
