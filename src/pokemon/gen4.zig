@@ -129,8 +129,8 @@ pub const Game = struct {
     base_stats: []const *nds.fs.Narc.File,
     moves: []const *nds.fs.Narc.File,
     level_up_moves: []const *nds.fs.Narc.File,
-    trainer_data: []const *nds.fs.Narc.File,
-    trainer_pokemons: []const *nds.fs.Narc.File,
+    trainers: []const *nds.fs.Narc.File,
+    parties: []const *nds.fs.Narc.File,
     tms: []Little(u16),
     hms: []Little(u16),
 
@@ -145,8 +145,8 @@ pub const Game = struct {
             .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
             .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
             .moves = try getNarcFiles(rom.file_system, info.moves),
-            .trainer_data = try getNarcFiles(rom.file_system, info.trainer_data),
-            .trainer_pokemons = try getNarcFiles(rom.file_system, info.trainer_pokemons),
+            .trainers = try getNarcFiles(rom.file_system, info.trainer_data),
+            .parties = try getNarcFiles(rom.file_system, info.trainer_pokemons),
             .tms = hm_tms[0..92],
             .hms = hm_tms[92..],
         };

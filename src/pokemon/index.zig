@@ -595,7 +595,7 @@ pub const Pokemons = extern struct {
             min = math.min(min, game.level_up_moves.len);
         }
 
-        return u16(min);
+        return min;
     }
 
     pub fn iterator(pokemons: *const Pokemons) Iter {
@@ -765,52 +765,45 @@ pub const Party = extern struct {
     };
 
     fn atHelper(comptime gen: Namespace, c: var) PartyMember {
-        const party = c.party;
         const index = c.index;
         const trainer = @ptrCast(*gen.Trainer, c.party.trainer.base);
-        switch (gen) {
-            gen3 => {
-                const member_size = party.memberSize();
-                const party_ptr = @ptrCast([*]u8, party.trainer.party_ptr);
-                const party_data = party_ptr[0 .. trainer.party_size.get() * member_size];
-                const member_data = party_data[index * member_size ..][0..member_size];
-                var off: usize = 0;
+        const member_size = c.party.memberSize();
+        const party_size = if (gen == gen3) trainer.party_size.get() else trainer.party_size;
+        const party_data = c.party.trainer.party_ptr[0 .. party_size * member_size];
+        const member_data = party_data[index * member_size ..][0..member_size];
+        var off: usize = 0;
 
-                const base = @ptrCast(*u8, &member_data[off]);
-                off += @sizeOf(gen.PartyMember);
+        const base = &member_data[off];
+        off += @sizeOf(gen.PartyMember);
 
-                const item = blk: {
-                    const has_item = trainer.party_type & gen.PartyMember.has_item != 0;
-                    if (has_item) {
-                        const end = off + @sizeOf(u16);
-                        defer off = end;
-                        break :blk @ptrCast(*u8, &member_data[off..end][0]);
-                    }
+        const item = blk: {
+            const has_item = trainer.party_type & gen.PartyMember.has_item != 0;
+            if (has_item) {
+                const end = off + @sizeOf(u16);
+                defer off = end;
+                break :blk @ptrCast(*u8, &member_data[off..end][0]);
+            }
 
-                    break :blk null;
-                };
+            break :blk null;
+        };
 
-                const moves = blk: {
-                    const has_item = trainer.party_type & gen.PartyMember.has_moves != 0;
-                    if (has_item) {
-                        const end = off + @sizeOf([4]u16);
-                        defer off = end;
-                        break :blk member_data[off..end].ptr;
-                    }
+        const moves = blk: {
+            const has_item = trainer.party_type & gen.PartyMember.has_moves != 0;
+            if (has_item) {
+                const end = off + @sizeOf([4]u16);
+                defer off = end;
+                break :blk member_data[off..end].ptr;
+            }
 
-                    break :blk null;
-                };
+            break :blk null;
+        };
 
-                return PartyMember{
-                    .game = party.trainer.game,
-                    .base = base,
-                    .item_ptr = item,
-                    .moves_ptr = moves,
-                };
-            },
-            gen4, gen5 => @panic("TODO:"),
-            else => @compileError("Gen not supported!"),
-        }
+        return PartyMember{
+            .game = c.party.trainer.game,
+            .base = base,
+            .item_ptr = item,
+            .moves_ptr = moves,
+        };
     }
 
     pub fn len(party: *const Party) usize {
@@ -878,7 +871,10 @@ pub const Trainers = extern struct {
         }, atHelper);
     }
 
-    const AtErr = error{InvalidOffset};
+    const AtErr = error{
+        InvalidOffset,
+        FileToSmall,
+    };
 
     const AtC = struct {
         trainers: *const Trainers,
@@ -889,27 +885,26 @@ pub const Trainers = extern struct {
         const trainers = c.trainers;
         const index = c.index;
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
-        switch (gen) {
-            gen3 => {
-                const trainer = &game.trainers[index];
-                var res = Trainer{
-                    .game = &game.base,
-                    .base = @ptrCast(*u8, trainer),
-                    .party_ptr = undefined,
-                };
 
-                const party = blk: {
-                    const start = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
-                    const end = start + trainer.party_size.get() * res.party().memberSize();
-                    break :blk generic.slice(game.data, start, end) catch return error.InvalidOffset;
-                };
-                res.party_ptr = @ptrCast([*]u8, party.ptr);
+        const trainer = if (gen == gen3) &game.trainers[index] else try getFileAsType(gen.Trainer, game.trainers, index);
+        var res = Trainer{
+            .game = &game.base,
+            .base = @ptrCast(*u8, trainer),
+            .party_ptr = undefined,
+        };
 
-                return res;
+        res.party_ptr = switch (gen) {
+            gen3 => blk: {
+                const start = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
+                const end = start + trainer.party_size.get() * res.party().memberSize();
+                const party = generic.slice(game.data, start, end) catch return error.InvalidOffset;
+                break :blk party.ptr;
             },
-            gen4, gen5 => @panic("TODO:"),
+            gen4, gen5 => game.parties[index].data.ptr,
             else => @compileError("Gen not supported!"),
-        }
+        };
+
+        return res;
     }
 
     pub fn len(trainers: *const Trainers) usize {
@@ -918,11 +913,11 @@ pub const Trainers = extern struct {
 
     fn lenHelper(comptime gen: Namespace, trainers: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
-        switch (gen) {
-            gen3 => return game.trainers.len,
-            gen4, gen5 => @panic("TODO:"),
-            else => @compileError("Gen not supported!"),
-        }
+        var min = game.trainers.len;
+        if (gen == gen4 or gen == gen5)
+            min = math.min(min, game.parties.len);
+
+        return min;
     }
 
     pub fn iterator(trainers: *const Trainers) Iter {
