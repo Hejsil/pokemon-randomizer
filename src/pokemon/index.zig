@@ -313,7 +313,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
             learnset.set(bits.set(T, learnset.get(), math.Log2Int(T)(i), c.value));
         }
 
-        pub fn indexInLearnset(learnset: *const Self, comptime gen: Namespace, index: usize) usize {
+        fn indexInLearnset(learnset: *const Self, comptime gen: Namespace, index: usize) usize {
             const game = @fieldParentPtr(gen.Game, "base", learnset.game);
             const i = switch (gen) {
                 gen3, gen4 => {
@@ -444,7 +444,7 @@ pub const Pokemon = extern struct {
         return pokemon.game.version.dispatch(*[2]u8, pokemon, typesHelper);
     }
 
-    pub fn typesHelper(comptime gen: Namespace, pokemon: *const Pokemon) *[2]u8 {
+    fn typesHelper(comptime gen: Namespace, pokemon: *const Pokemon) *[2]u8 {
         const ts = &@ptrCast(*gen.BasePokemon, pokemon.base).types;
         return @ptrCast(*[2]u8, ts);
     }
@@ -793,7 +793,7 @@ pub const Trainers = extern struct {
     };
 
     const AtC = struct { trainers: *const Trainers, index: usize };
-    pub fn atHelper(comptime gen: Namespace, c: var) AtErr!Trainer {
+    fn atHelper(comptime gen: Namespace, c: var) AtErr!Trainer {
         const trainers = c.trainers;
         const index = c.index;
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
@@ -824,7 +824,7 @@ pub const Trainers = extern struct {
         return trainers.game.version.dispatch(usize, trainers, lenHelper);
     }
 
-    pub fn lenHelper(comptime gen: Namespace, trainers: var) usize {
+    fn lenHelper(comptime gen: Namespace, trainers: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
         switch (gen) {
             gen3 => return game.trainers.len,
