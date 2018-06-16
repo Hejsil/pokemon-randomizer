@@ -3,7 +3,6 @@ const little = @import("../little.zig");
 const toLittle = little.toLittle;
 const Little = little.Little;
 
-
 pub const Stats = packed struct {
     hp: u8,
     attack: u8,
