@@ -150,7 +150,6 @@ pub const Randomizer = struct {
         const trainers = game.trainers();
 
         var trainer_it = trainers.iterator();
-        @breakpoint();
         while (trainer_it.nextValid()) |trainer_item| {
             const trainer = trainer_item.value;
             const party = trainer.party();
@@ -261,9 +260,7 @@ pub const Randomizer = struct {
 
     fn randomizeTrainerPokemonMoves(randomizer: *Randomizer, member: *const libpoke.PartyMember, option: *const Options.Trainer) !void {
         const pokemons = randomizer.game.pokemons();
-
-        // If member doesn't have moves, then we just return and don't randomize
-        _ = member.move(0) catch return;
+        const member_moves = member.moves() ?? return;
 
         switch (option.moves) {
             Options.Trainer.Moves.Same => {
@@ -299,15 +296,16 @@ pub const Randomizer = struct {
                         break :blk moves;
                     };
 
+                    debug.assert(member_moves.len() == new_moves.len);
                     for (new_moves) |new_move, i| {
-                        member.setMove(u2(i), new_move.move_id) catch unreachable;
+                        member_moves.atSet(i, new_move.move_id);
                     }
                 }
             },
             Options.Trainer.Moves.Random => {
                 var i: usize = 0;
-                while (i < 4) : (i += 1) {
-                    member.setMove(u2(i), randomizer.randomMoveId()) catch unreachable;
+                while (i < member_moves.len()) : (i += 1) {
+                    member_moves.atSet(i, randomizer.randomMoveId());
                 }
             },
             Options.Trainer.Moves.RandomWithinLearnset => {
@@ -315,9 +313,9 @@ pub const Randomizer = struct {
                 defer randomizer.allocator.free(learned_moves);
 
                 var i: usize = 0;
-                while (i < 4) : (i += 1) {
+                while (i < member_moves.len()) : (i += 1) {
                     const pick = learned_moves[randomizer.random.range(usize, 0, learned_moves.len)];
-                    member.setMove(u2(i), pick) catch unreachable;
+                    member_moves.atSet(i, pick);
                 }
             },
             Options.Trainer.Moves.Best => {
@@ -328,16 +326,16 @@ pub const Randomizer = struct {
 
                 {
                     var i: usize = 0;
-                    while (i < 4) : (i += 1)
-                        member.setMove(u2(i), 0) catch unreachable;
+                    while (i < member_moves.len()) : (i += 1)
+                        member_moves.atSet(i, 0);
                 }
 
                 for (learned_moves) |learned| {
                     const learned_move = moves.at(learned);
 
                     var i: usize = 0;
-                    while (i < 4) : (i += 1) {
-                        const move_id = member.move(u2(i)) catch unreachable;
+                    while (i < member_moves.len()) : (i += 1) {
+                        const move_id = member_moves.at(i);
                         const move = moves.at(move_id);
 
                         const p_t1 = pokemon.types()[0];
@@ -356,7 +354,7 @@ pub const Randomizer = struct {
                         // TODO: We probably want to pick attack vs sp_attack moves
                         //       depending on the Pokémons stats.
                         if (move_power < learned_power) {
-                            member.setMove(u2(i), learned) catch unreachable;
+                            member_moves.atSet(i, learned);
                             break;
                         }
                     }

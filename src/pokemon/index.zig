@@ -19,6 +19,7 @@ const os = std.os;
 const io = std.io;
 const mem = std.mem;
 
+const toLittle = little.toLittle;
 const Little = little.Little;
 const Namespace = @typeOf(std);
 
@@ -82,8 +83,11 @@ pub const Version = extern enum {
         };
     }
 
-    // Dispatch a generic function with signature fn(comptime Namespace, @typeOf(context)) Result
-    // based on the versions runtime gen.
+    /// Dispatches a generic function with signature fn(comptime Namespace, @typeOf(context)) Result
+    /// based on the result of ::version.gen(). The first parameter passed to ::func is a comptime
+    /// known ::Namespace containing the declarations for the generation that ::version.get()
+    /// corrispons too. This allows us to write ::func once, but have it use different types
+    /// depending on the generation of Pokémon games we are working on.
     pub fn dispatch(
         version: Version,
         comptime Result: type,
@@ -135,8 +139,6 @@ pub const Version = extern enum {
         };
     }
 };
-
-const Hidden = @OpaqueType();
 
 pub const Type = extern enum {
     Invalid,
@@ -201,127 +203,62 @@ pub const Type = extern enum {
 
 pub const LevelUpMove = extern struct {
     game: *const BaseGame,
-    data: *Hidden,
+    data: *u8,
 
     pub fn level(move: *const LevelUpMove) u8 {
         return move.game.version.dispatch(u8, move, levelHelper);
     }
 
     fn levelHelper(comptime gen: Namespace, lvl_up_move: *const LevelUpMove) u8 {
-        const lvl_ptr = &@ptrCast(*gen.LevelUpMove, lvl_up_move.data).level;
-        return if (gen == gen5) u8(lvl_ptr.get()) else lvl_ptr.*;
+        const lvl = @ptrCast(*gen.LevelUpMove, lvl_up_move.data).level;
+        return if (gen == gen5) u8(lvl.get()) else lvl;
     }
 
     pub fn setLevel(move: *const LevelUpMove, lvl: u8) void {
-        return move.game.version.dispatch(u8, SetLvlC{ .move = move, .lvl = lvl, }, setLevelHelper);
+        move.game.version.dispatch(void, SetLvlC{ .move = move, .lvl = lvl, }, setLevelHelper);
     }
 
     const SetLvlC = struct { move: *const LevelUpMove, lvl: u8 };
     fn setLevelHelper(comptime gen: Namespace, c: var) void {
-        setLevelHelperHelper(
-            &@ptrCast(*gen.LevelUpMove, c.move.data).level,
-            if (gen == gen5) toLittle(u16(c.lvl)) else u7(c.lvl)
-        );
+        const lvl = if (gen == gen5) toLittle(u16(c.lvl)) else u7(c.lvl);
+        @ptrCast(*gen.LevelUpMove, c.move.data).level = lvl;
     }
 
-    fn setLevelHelperHelper(ptr: var, lvl: var) u8 {
-        ptr.* = lvl;
+    pub fn moveId(move: *const LevelUpMove) u16 {
+        return move.game.version.dispatch(u16, move, moveIdHelper);
     }
 
-    pub fn moveId(lvl_up_move: *const LevelUpMove) u16 {
-        return lvl_up_move.getSetMoveId(null);
+    fn moveIdHelper(comptime gen: Namespace, move: var) u16 {
+        const move_id = @ptrCast(*gen.LevelUpMove, move.data).move_id;
+        return if (gen == gen5) move_id.get() else move_id;
     }
 
-    pub fn setMoveId(lvl_up_move: *const LevelUpMove, id: u16) void {
-        _ = lvl_up_move.getSetMoveId(id);
+    pub fn setMoveId(move: *const LevelUpMove, id: u16) void {
+        move.game.version.dispatch(u16, SetMoveIdC{ .move = move, .id = id }, setLevelHelper);
     }
 
-    fn getSetLvl(lvl_up_move: *const LevelUpMove, setter: ?u8) u8 {
-        return switch (lvl_up_move.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3, 4 => {
-                const lvl_ptr = switch (lvl_up_move.game.version.gen()) {
-                    3 => lvl_up_move.dataFieldPtr(gen3, *align(1:9:16) u7, [][]const u8{ "level" }),
-                    4 => lvl_up_move.dataFieldPtr(gen4, *align(1:9:16) u7, [][]const u8{ "level" }),
-                    else => unreachable,
-                };
-                if (setter) |v|
-                    lvl_ptr.* = u7(v);
-
-                return u8(lvl_ptr.*);
-            },
-            5 => {
-                const lvl_ptr = lvl_up_move.dataFieldPtr(gen5, *Little(u16), [][]const u8{ "level" });
-                if (setter) |v|
-                    lvl_ptr.set(v);
-
-                return u8(lvl_ptr.get());
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
-    }
-
-    fn getSetMoveId(lvl_up_move: *const LevelUpMove, setter: ?u16) u16 {
-        return switch (lvl_up_move.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3, 4 => {
-                const move_id = switch (lvl_up_move.game.version.gen()) {
-                    3 => lvl_up_move.dataFieldPtr(gen3, *align(1:0:9) u9, [][]const u8{ "move_id" }),
-                    4 => lvl_up_move.dataFieldPtr(gen4, *align(1:0:9) u9, [][]const u8{ "move_id" }),
-                    else => unreachable,
-                };
-                if (setter) |v|
-                    move_id.* = u9(v);
-
-                return move_id.*;
-            },
-            5 => {
-                const move_id = lvl_up_move.dataFieldPtr(gen5, *Little(u16), [][]const u8{ "move_id" });
-                if (setter) |v|
-                    move_id.set(v);
-
-                return move_id.get();
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
-    }
-
-    fn dataFieldPtr(lvl_up_move: *const LevelUpMove, comptime gen: Namespace, comptime T: type, comptime fields: []const []const u8) T {
-        const base = @ptrCast(*gen.LevelUpMove, lvl_up_move.data);
-        return fieldPtr(base, T, fields);
+    const SetMoveIdC = struct { move: *const LevelUpMove, id: u8 };
+    fn setMoveIdHelper(comptime gen: Namespace, c: var) void {
+        const id = if (gen == gen5) toLittle(u16(c.id)) else u9(c.id);
+        @ptrCast(*gen.LevelUpMove, c.move.data).move_id = id;
     }
 };
 
 pub const LevelUpMoves = extern struct {
     game: *const BaseGame,
     data_len: usize,
-    data: *Hidden,
+    data: [*]u8,
 
     pub fn at(moves: *const LevelUpMoves, index: usize) LevelUpMove {
-        return switch (moves.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => moves.atHelper(gen3, index),
-            4 => moves.atHelper(gen4, index),
-            5 => moves.atHelper(gen5, index),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return moves.game.version.dispatch(LevelUpMove, atC{ .moves = moves, .index = index }, atHelper);
     }
 
-    fn atHelper(moves: *const LevelUpMoves, comptime gen: Namespace, index: usize) LevelUpMove {
-        const game = @fieldParentPtr(gen.Game, "base", moves.game);
-        const lvl_up_moves = @ptrCast([*]gen.LevelUpMove, moves.data)[0..moves.data_len];
+    const atC = struct { moves: *const LevelUpMoves, index: usize };
+    fn atHelper(comptime gen: Namespace, c: var) LevelUpMove {
+        const moves = @ptrCast([*]gen.LevelUpMove, c.moves.data)[0..c.moves.data_len];
         return LevelUpMove{
-            .game = moves.game,
-            .data = @ptrCast(*Hidden, &lvl_up_moves[index]),
+            .game = c.moves.game,
+            .data = @ptrCast(*u8, &moves[c.index]),
         };
     }
 
@@ -336,89 +273,80 @@ pub const LevelUpMoves = extern struct {
     const Iter = Iterator(LevelUpMoves, LevelUpMove);
 };
 
-pub const TmLearnset = Learnset(false);
-pub const HmLearnset = Learnset(true);
+const MachineKind = enum {
+    Hidden,
+    Technical,
+};
 
-pub fn Learnset(comptime is_hms: bool) type {
+pub const TmLearnset = Learnset(MachineKind.Technical);
+pub const HmLearnset = Learnset(MachineKind.Hidden);
+
+pub fn Learnset(comptime kind: MachineKind) type {
     return extern struct {
         const Self = this;
         game: *const BaseGame,
-        data: *Hidden,
+        data: *u8,
 
         pub fn at(learnset: *const Self, index: usize) bool {
-            return switch (learnset.game.version.gen()) {
-                1 => @panic("TODO: Gen1"),
-                2 => @panic("TODO: Gen2"),
-                3 => learnset.atHelper(gen3, index, null),
-                4 => learnset.atHelper(gen4, index, null),
-                5 => learnset.atHelper(gen5, index, null),
-                6 => @panic("TODO: Gen6"),
-                7 => @panic("TODO: Gen7"),
-                else => unreachable,
-            };
+            return learnset.game.version.dispatch(bool, atC{ .learnset = learnset, .index = index }, atHelper);
+        }
+
+        const atC = struct { learnset: *const Self, index: usize };
+        fn atHelper(comptime gen: Namespace, c: var) bool {
+            const i = c.learnset.indexInLearnset(gen, c.index);
+
+            const T = if (gen == gen3) u64 else u128;
+            const learnset = @ptrCast(*Little(T), c.learnset.data);
+            return bits.get(T, learnset.get(), math.Log2Int(T)(i));
         }
 
         pub fn atSet(learnset: *const Self, index: usize, value: bool) void {
-            switch (learnset.game.version.gen()) {
-                1 => @panic("TODO: Gen1"),
-                2 => @panic("TODO: Gen2"),
-                3 => _ = learnset.atHelper(gen3, index, value),
-                4 => _ = learnset.atHelper(gen4, index, value),
-                5 => _ = learnset.atHelper(gen5, index, value),
-                6 => @panic("TODO: Gen6"),
-                7 => @panic("TODO: Gen7"),
-                else => unreachable,
-            }
+            learnset.game.version.dispatch(bool, atSetC{ .learnset = learnset, .index = index, .value = value }, atSetHelper);
         }
 
-        fn atHelper(learnset: *const Self, comptime gen: Namespace, index: usize, setter: ?bool) bool {
-            const game = @fieldParentPtr(gen.Game, "base", learnset.game);
+        const atSetC = struct { learnset: *const Self, index: usize, value: bool };
+        fn atSetHelper(comptime gen: Namespace, c: var) void {
+            const i = c.learnset.indexInLearnset(gen, index);
+
             const T = if (gen == gen3) u64 else u128;
-            const Log2T = math.Log2Int(T);
-            const l = @ptrCast(*Little(T), learnset.data);
+            const learnset = @ptrCast(*Little(T), learnset.data);
+            learnset.set(bits.set(T, learnset.get(), math.Log2Int(T)(i), c.value));
+        }
+
+        pub fn indexInLearnset(learnset: *const Self, comptime gen: Namespace, index: usize) usize {
+            const game = @fieldParentPtr(gen.Game, "base", learnset.game);
             const i = switch (gen) {
-                gen3, gen4 => blk: {
-                    if (is_hms) {
+                gen3, gen4 => {
+                    if (kind == MachineKind.Hidden) {
                         debug.assert(index < game.hms.len);
-                        break :blk index + game.tms.len;
+                        return index + game.tms.len;
                     }
 
                     debug.assert(index < game.tms.len);
-                    break :blk index;
+                    return index;
                 },
-                gen5 => blk: {
-                    if (is_hms) {
+                gen5 => {
+                    if (kind == MachineKind.Hidden) {
                         debug.assert(index < game.hms.len);
-                        break :blk index + game.tms1.len;
+                        return index + game.tms1.len;
                     }
 
                     debug.assert(index < game.tms1.len + game.tms2.len);
-                    break :blk if (index < game.tms1.len) index else index + game.hms.len;
+                    return if (index < game.tms1.len) index else index + game.hms.len;
                 },
                 else => @compileError("Gen not supported!"),
             };
-
-            if (setter) |b|
-                l.set(bits.set(T, l.get(), Log2T(i), b));
-
-            return bits.get(T, l.get(), Log2T(i));
         }
 
         pub fn len(learnset: *const Self) usize {
-            return switch (learnset.game.version.gen()) {
-                1 => @panic("TODO: Gen1"),
-                2 => @panic("TODO: Gen2"),
-                3 => learnset.lenHelper(gen3),
-                4 => learnset.lenHelper(gen4),
-                5 => learnset.lenHelper(gen5),
-                6 => @panic("TODO: Gen6"),
-                7 => @panic("TODO: Gen7"),
-                else => unreachable,
-            };
+            return learnset.game.version.dispatch(usize, learnset, lenHelper);
         }
 
-        fn lenHelper(learnset: *const Self, comptime gen: Namespace) usize {
+        fn lenHelper(comptime gen: Namespace, learnset: var) usize {
             const game = @fieldParentPtr(gen.Game, "base", learnset.game);
+            if (kind == MachineKind.Hidden)
+                return game.hms.len;
+
             return switch (gen) {
                 gen3, gen4 => game.tms.len,
                 gen5 => game.tms1.len + game.tms2.len,
@@ -437,33 +365,57 @@ pub fn Learnset(comptime is_hms: bool) type {
 pub const Pokemon = extern struct {
     game: *const BaseGame,
 
-    base: *Hidden,
-    learnset: *Hidden,
+    base: *u8,
+    learnset: *u8,
     level_up_moves_len: usize,
-    level_up_moves: *Hidden,
+    level_up_moves: [*]u8,
 
     pub fn hp(pokemon: *const Pokemon) *u8 {
-        return pokemon.baseFieldPtr(*u8, [][]const u8{ "stats", "hp" });
+        return pokemon.game.version.dispatch(*u8, pokemon, hpHelper);
+    }
+
+    fn hpHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.hp;
     }
 
     pub fn attack(pokemon: *const Pokemon) *u8 {
-        return pokemon.baseFieldPtr(*u8, [][]const u8{ "stats", "attack" });
+        return pokemon.game.version.dispatch(*u8, pokemon, attackHelper);
+    }
+
+    fn attackHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.attack;
     }
 
     pub fn defense(pokemon: *const Pokemon) *u8 {
-        return pokemon.baseFieldPtr(*u8, [][]const u8{ "stats", "defense" });
+        return pokemon.game.version.dispatch(*u8, pokemon, defenseHelper);
+    }
+
+    fn defenseHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.defense;
     }
 
     pub fn speed(pokemon: *const Pokemon) *u8 {
-        return pokemon.baseFieldPtr(*u8, [][]const u8{ "stats", "speed" });
+        return pokemon.game.version.dispatch(*u8, pokemon, speedHelper);
+    }
+
+    fn speedHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.speed;
     }
 
     pub fn spAttack(pokemon: *const Pokemon) *u8 {
-        return pokemon.baseFieldPtr(*u8, [][]const u8{ "stats", "sp_attack" });
+        return pokemon.game.version.dispatch(*u8, pokemon, spAttackHelper);
+    }
+
+    fn spAttackHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.sp_attack;
     }
 
     pub fn spDefense(pokemon: *const Pokemon) *u8 {
-        return pokemon.baseFieldPtr(*u8, [][]const u8{ "stats", "sp_defense" });
+        return pokemon.game.version.dispatch(*u8, pokemon, spDefenseHelper);
+    }
+
+    fn spDefenseHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.sp_defense;
     }
 
     pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
@@ -489,25 +441,12 @@ pub const Pokemon = extern struct {
     }
 
     pub fn types(pokemon: *const Pokemon) *[2]u8 {
-        return switch (pokemon.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => {
-                const base = @ptrCast(*gen3.BasePokemon, pokemon.base);
-                return @ptrCast(*[2]u8, fieldPtr(base, *[2]gen3.Type, [][]const u8{ "types" }));
-            },
-            4 => {
-                const base = @ptrCast(*gen4.BasePokemon, pokemon.base);
-                return @ptrCast(*[2]u8, fieldPtr(base, *[2]gen4.Type, [][]const u8{ "types" }));
-            },
-            5 => {
-                const base = @ptrCast(*gen5.BasePokemon, pokemon.base);
-                return @ptrCast(*[2]u8, fieldPtr(base, *[2]gen5.Type, [][]const u8{ "types" }));
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return pokemon.game.version.dispatch(*[2]u8, pokemon, typesHelper);
+    }
+
+    pub fn typesHelper(comptime gen: Namespace, pokemon: *const Pokemon) *[2]u8 {
+        const ts = &@ptrCast(*gen.BasePokemon, pokemon.base).types;
+        return @ptrCast(*[2]u8, ts);
     }
 
     pub fn tmLearnset(pokemon: *const Pokemon) TmLearnset {
@@ -523,140 +462,96 @@ pub const Pokemon = extern struct {
             .data = pokemon.learnset,
         };
     }
-
-    fn baseFieldPtr(pokemon: *const Pokemon, comptime T: type, comptime fields: []const []const u8) T {
-        return switch (pokemon.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => {
-                const base = @ptrCast(*gen3.BasePokemon, pokemon.base);
-                return fieldPtr(base, T, fields);
-            },
-            4 => {
-                const base = @ptrCast(*gen4.BasePokemon, pokemon.base);
-                return fieldPtr(base, T, fields);
-            },
-            5 => {
-                const base = @ptrCast(*gen5.BasePokemon, pokemon.base);
-                return fieldPtr(base, T, fields);
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
-    }
 };
 
 pub const Pokemons = extern struct {
     game: *const BaseGame,
 
-    pub fn at(pokemons: *const Pokemons, id: usize) !Pokemon {
-        return switch (pokemons.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => try pokemons.atHelper(gen3, id),
-            4 => try pokemons.atHelper(gen4, id),
-            5 => try pokemons.atHelper(gen5, id),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+    pub fn at(pokemons: *const Pokemons, index: usize) AtErrs!Pokemon {
+        return pokemons.game.version.dispatch(AtErrs!Pokemon, atC{ .pokemons = pokemons, .index = index }, atHelper);
     }
 
-    fn atHelper(pokemons: *const Pokemons, comptime gen: Namespace, index: usize) !Pokemon {
+    const AtErrs = error{
+        InvalidOffset,
+        FileToSmall,
+    };
+
+    const atC = struct { pokemons: *const Pokemons, index: usize };
+    fn atHelper(comptime gen: Namespace, c: var) AtErrs!Pokemon {
+        const index = c.index;
+        const pokemons = c.pokemons;
         const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
+
+        var base_pokemon: *gen.BasePokemon = undefined;
+        var learnset: *u8 = undefined;
         switch (gen) {
             gen3 => {
-                const level_up_moves = blk: {
-                    const start = blk: {
-                        const res = generic.at(game.level_up_learnset_pointers, index) catch return error.InvalidOffset;
-                        break :blk math.sub(usize, res.get(), 0x8000000) catch return error.InvalidOffset;
-                    };
-
-                    const end = end_blk: {
-                        var i: usize = start;
-                        while (true) : (i += @sizeOf(gen.LevelUpMove)) {
-                            const a = generic.at(game.data, i) catch return error.InvalidOffset;
-                            const b = generic.at(game.data, i + 1) catch return error.InvalidOffset;
-                            if (a.* == 0xFF and b.* == 0xFF)
-                                break;
-                        }
-
-                        break :end_blk i;
-                    };
-
-                    break :blk ([]gen.LevelUpMove)(game.data[start..end]);
-                };
-
-                return Pokemon{
-                    .game = pokemons.game,
-                    .base = @ptrCast(*Hidden, &game.base_stats[index]),
-                    .learnset = @ptrCast(*Hidden, &game.tm_hm_learnset[index]),
-                    .level_up_moves_len = level_up_moves.len,
-                    .level_up_moves = @ptrCast(*Hidden, level_up_moves.ptr),
-                };
+                base_pokemon = &game.base_stats[index];
+                learnset = @ptrCast(*u8, &game.tm_hm_learnset[index]);
             },
             gen4, gen5 => {
-                const base_pokemon = try getFileAsType(gen.BasePokemon, game.base_stats, index);
-                const level_up_moves = blk: {
-                    var tmp = game.level_up_moves[index].data;
-                    const res = ([]gen.LevelUpMove)(tmp[0 .. tmp.len - (tmp.len % @sizeOf(gen.LevelUpMove))]);
-
-                    // Even though each level up move have it's own file, level up moves still
-                    // end with 0xFFFF.
-                    for (res) |level_up_move, i| {
-                        const bytes = utils.toBytes(@typeOf(level_up_move), level_up_move);
-                        if (std.mem.eql(u8, bytes, []u8{ 0xFF, 0xFF }))
-                            break :blk res[0..i];
-                    }
-
-                    // In the case where we don't find the end 0xFFFF, we just
-                    // return the level up moves, and assume things are correct.
-                    break :blk res;
-                };
-
-                return Pokemon{
-                    .game = pokemons.game,
-                    .base = @ptrCast(*Hidden, base_pokemon),
-                    .learnset = @ptrCast(*Hidden, &base_pokemon.tm_hm_learnset),
-                    .level_up_moves_len = level_up_moves.len,
-                    .level_up_moves = @ptrCast(*Hidden, level_up_moves.ptr),
-                };
+                base_pokemon = try getFileAsType(gen.BasePokemon, game.base_stats, index);
+                learnset = @ptrCast(*u8, &base_pokemon.tm_hm_learnset);
             },
             else => @compileError("Gen not supported!"),
         }
+
+        const level_up_moves = blk: {
+            var start: usize = undefined;
+            var data: []u8 = undefined;
+            switch (gen) {
+                gen3 => {
+                    const s = generic.at(game.level_up_learnset_pointers, index) catch return error.InvalidOffset;
+                    start = math.sub(usize, s.get(), 0x8000000) catch return error.InvalidOffset;
+                    data = game.data;
+                },
+                gen4, gen5 => {
+                    start = 0;
+                    data = game.level_up_moves[index].data;
+                },
+                else => @compileError("Gen not supported!"),
+            }
+
+            // gen3,4,5 all have 0xFF ** @sizeOf(gen.LevelUpMove) terminated level up moves,
+            // even though gen4,5 stores level up moves in files with a length.
+            const terminator = []u8{ 0xFF } ** @sizeOf(gen.LevelUpMove);
+            const res = generic.widenTrim(data[start..], gen.LevelUpMove);
+            for (res) |level_up_move, i| {
+                const bytes = utils.toBytes(@typeOf(level_up_move), level_up_move);
+                if (std.mem.eql(u8, bytes, terminator))
+                    break :blk res[0..i];
+            }
+
+            break :blk res;
+        };
+
+        return Pokemon{
+            .game = pokemons.game,
+            .base = @ptrCast(*u8, base_pokemon),
+            .learnset = learnset,
+            .level_up_moves_len = level_up_moves.len,
+            .level_up_moves = @ptrCast([*]u8, level_up_moves.ptr),
+        };
     }
 
     pub fn len(pokemons: *const Pokemons) usize {
-        return switch (pokemons.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => pokemons.lenHelper(gen3),
-            4 => pokemons.lenHelper(gen4),
-            5 => pokemons.lenHelper(gen5),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return pokemons.game.version.dispatch(usize, pokemons, lenHelper);
     }
 
-    fn lenHelper(pokemons: *const Pokemons, comptime gen: Namespace) usize {
+    fn lenHelper(comptime gen: Namespace, pokemons: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
-        switch (gen) {
-            gen3 => {
-                var min = game.tm_hm_learnset.len;
-                min = math.min(min, game.base_stats.len);
-                min = math.min(min, game.evolution_table.len);
-                min = math.min(min, game.level_up_learnset_pointers.len);
-                return u16(min);
-            },
-            gen4, gen5 => {
-                var min = game.base_stats.len;
-                min = math.min(min, game.level_up_moves.len);
-                return u16(min);
-            },
-            else => @compileError("Gen not supported!"),
+
+        var min = game.base_stats.len;
+        if (gen == gen3) {
+            min = math.min(min, game.tm_hm_learnset.len);
+            min = math.min(min, game.evolution_table.len);
+            min = math.min(min, game.level_up_learnset_pointers.len);
         }
+        if (gen == gen4 or gen == gen5) {
+            min = math.min(min, game.level_up_moves.len);
+        }
+
+        return u16(min);
     }
 
     pub fn iterator(pokemons: *const Pokemons) Iter {
@@ -666,139 +561,110 @@ pub const Pokemons = extern struct {
     const Iter = ErrIterator(Pokemons, Pokemon);
 };
 
+const PartyMemberMoves = extern struct {
+    game: *const BaseGame,
+    data: [*]u8,
+
+    pub fn at(moves: *const PartyMemberMoves, index: usize) u16 {
+        return moves.game.version.dispatch(u16, AtC{ .moves = moves, .index = index }, atHelper);
+    }
+
+    const AtC = struct { moves: *const PartyMemberMoves, index: usize };
+    fn atHelper(comptime gen: Namespace, c: var) u16 {
+        const moves = @ptrCast(*[4]Little(u16), c.moves.data);
+        return moves[c.index].get();
+    }
+
+    pub fn atSet(moves: *const PartyMemberMoves, index: usize, value: u16) void {
+        moves.game.version.dispatch(void, AtSetC{ .moves = moves, .index = index, .value = value }, atSetHelper);
+    }
+
+    const AtSetC = struct { moves: *const PartyMemberMoves, index: usize, value: u16 };
+    fn atSetHelper(comptime gen: Namespace, c: var) void {
+        const moves = @ptrCast(*[4]Little(u16), c.moves.data);
+        return moves[c.index].set(c.value);
+    }
+
+    pub fn len(moves: *const PartyMemberMoves) usize {
+        return 4;
+    }
+
+    pub fn iterator(moves: *const PartyMemberMoves) Iter {
+        return Iter.init(pokemons);
+    }
+
+    const Iter = Iterator(PartyMemberMoves, u16);
+};
+
 pub const PartyMember = extern struct {
     game: *const BaseGame,
-    base: *Hidden,
-    item_ptr: ?*Hidden,
-    moves_ptr: ?*Hidden,
+    base: *u8,
+    item_ptr: ?*u8,
+    moves_ptr: ?[*]u8,
 
     pub fn species(member: *const PartyMember) u16 {
-        return member.getSetSpecies(null);
+        return member.game.version.dispatch(u16, member, speciesHelper);
+    }
+
+    fn speciesHelper(comptime gen: Namespace, member: var) u16 {
+        const s = @ptrCast(*gen.PartyMember, member.base).species;
+        return if (gen != gen4) s.get() else s;
     }
 
     pub fn setSpecies(member: *const PartyMember, v: u16) void {
-        _ = member.getSetSpecies(v);
+        member.game.version.dispatch(void, SetSpeciesC{ .member = member, .value = v }, setSpeciesHelper);
     }
 
-    fn getSetSpecies(member: *const PartyMember, setter: ?u16) u16 {
-        return switch (member.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            4 => {
-                const species_ptr = member.baseFieldPtr(gen4, *align(1:0:10) u10, [][]const u8{ "species" });
-                if (setter) |v|
-                    species_ptr.* = u10(v);
-
-                return species_ptr.*;
-            },
-            3, 5 => {
-                const species_ptr = switch (member.game.version.gen()) {
-                    3 => member.baseFieldPtr(gen3, *Little(u16), [][]const u8{ "species" }),
-                    5 => member.baseFieldPtr(gen5, *Little(u16), [][]const u8{ "species" }),
-                    else => unreachable,
-                };
-                if (setter) |v|
-                    species_ptr.set(v);
-
-                return species_ptr.get();
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+    const SetSpeciesC = struct { member: *const PartyMember, value: u16 };
+    fn setSpeciesHelper(comptime gen: Namespace, c: var) void {
+        const s = if (gen != gen4) toLittle(c.value) else u10(c.value);
+        @ptrCast(*gen.PartyMember, c.member.base).species = s;
     }
 
     pub fn level(member: *const PartyMember) u8 {
-        return member.getSetLvl(null);
+        return member.game.version.dispatch(u8, member, levelHelper);
+    }
+
+    fn levelHelper(comptime gen: Namespace, member: var) u8 {
+        const lvl = @ptrCast(*gen.PartyMember, member.base).level;
+        return if (gen != gen5) u8(lvl.get()) else lvl;
     }
 
     pub fn setLevel(member: *const PartyMember, lvl: u8) void {
-        _ = member.getSetLvl(lvl);
+        return member.game.version.dispatch(void, SetLvlC{ .member = member, .value = lvl }, setLevelHelper);
     }
 
-    fn getSetLvl(member: *const PartyMember, setter: ?u8) u8 {
-        return switch (member.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3, 4 => {
-                @breakpoint();
-                const lvl_ptr = switch (member.game.version.gen()) {
-                    3 => member.baseFieldPtr(gen3, *Little(u16), [][]const u8{ "level" }),
-                    4 => member.baseFieldPtr(gen4, *Little(u16), [][]const u8{ "level" }),
-                    else => unreachable,
-                };
-                if (setter) |v|
-                    lvl_ptr.set(v);
+    const SetLvlC = struct { member: *const PartyMember, value: u8 };
+    fn setLevelHelper(comptime gen: Namespace, c: var) void {
+        const lvl = if (gen != gen5) toLittle(u16(c.value)) else c.value;
+        @ptrCast(*gen.PartyMember, c.member.base).level = lvl;
+    }
 
-                const lvl = lvl_ptr.get();
-                return u8(lvl);
-            },
-            5 => {
-                const lvl_ptr = member.baseFieldPtr(gen5, *u8, [][]const u8{ "level" });
-                if (setter) |v|
-                    lvl_ptr.* = v;
+    pub fn item(member: *const PartyMember) ?u16 {
+        return member.game.version.dispatch(?u16, member, itemHelper);
+    }
 
-                return lvl_ptr.*;
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
+    fn itemHelper(comptime gen: Namespace, member: var) ?u16 {
+        const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) ?? return null;
+        return item_ptr.get();
+    }
+
+    pub fn setItem(member: *const PartyMember, v: u16) SetItemErr!void {
+        return member.game.version.dispatch(SetItemErr!void, SetItemC{ .member = member, .value = v }, setItemHelper);
+    }
+
+    const SetItemErr = error {HasNoItem};
+    const SetItemC = struct { member: *const PartyMember, value: u16 };
+    fn setItemHelper(comptime gen: Namespace, c: var) SetItemErr!void {
+        const item_ptr = @ptrCast(?*Little(u16), c.member.item_ptr) ?? return SetItemErr.HasNoItem;
+        return item_ptr.set(c.value);
+    }
+
+    pub fn moves(member: *const PartyMember) ?PartyMemberMoves {
+        return PartyMemberMoves{
+            .game = member.game,
+            .data = member.moves_ptr ?? return null,
         };
-    }
-
-    pub fn item(member: *const PartyMember) !u16 {
-        return member.getSetItem(null) ?? error.HasNoItem;
-    }
-
-    pub fn setItem(member: *const PartyMember, v: u16) !void {
-        _ = member.getSetItem(v) ?? return error.HasNoItem;
-    }
-
-    fn getSetItem(member: *const PartyMember, setter: ?u16) ?u16 {
-        switch (member.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3, 4, 5 => {
-                const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) ?? return null;
-                if (setter) |v|
-                    item_ptr.set(v);
-
-                return item_ptr.get();
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        }
-    }
-
-    pub fn move(member: *const PartyMember, i: u2) !u16 {
-        return member.getSetMove(i, null) ?? error.HasNoMoves;
-    }
-
-    pub fn setMove(member: *const PartyMember, i: u2, v: u16) !void {
-        _ = member.getSetMove(i, v) ?? return error.HasNoMoves;
-    }
-
-    fn getSetMove(member: *const PartyMember, i: u2, setter: ?u16) ?u16 {
-        return switch (member.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3, 4, 5 => {
-                const moves = @ptrCast(?*[4]Little(u16), member.moves_ptr) ?? return null;
-                if (setter) |v|
-                    moves[i].set(v);
-
-                return moves[i].get();
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
-    }
-
-    fn baseFieldPtr(member: *const PartyMember, comptime gen: Namespace, comptime T: type, comptime fields: []const []const u8) T {
-        const base = @ptrCast(*gen.PartyMember, member.base);
-        return fieldPtr(base, T, fields);
     }
 };
 
@@ -806,21 +672,14 @@ pub const Party = extern struct {
     trainer: *const Trainer,
 
     pub fn at(party: *const Party, index: usize) PartyMember {
-        return switch (party.trainer.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => party.atHelper(gen3, index),
-            4 => @panic("TODO: Gen4"),
-            5 => @panic("TODO: Gen5"),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return party.trainer.game.version.dispatch(PartyMember, AtC{ .party = party, .index = index }, atHelper);
     }
 
-    pub fn atHelper(party: *const Party, comptime gen: Namespace, index: usize) PartyMember {
-        const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
-        @breakpoint();
+    const AtC = struct { party: *const Party, index: usize };
+    fn atHelper(comptime gen: Namespace, c: var) PartyMember {
+        const party = c.party;
+        const index = c.index;
+        const trainer = @ptrCast(*gen.Trainer, c.party.trainer.base);
         switch (gen) {
             gen3 => {
                 const member_size = party.memberSize();
@@ -829,7 +688,7 @@ pub const Party = extern struct {
                 const member_data = party_data[index * member_size..][0..member_size];
                 var off: usize = 0;
 
-                const base = @ptrCast(*Hidden, &member_data[off]);
+                const base = @ptrCast(*u8, &member_data[off]);
                 off += @sizeOf(gen.PartyMember);
 
                 const item = blk: {
@@ -837,7 +696,7 @@ pub const Party = extern struct {
                     if (has_item) {
                         const end = off + @sizeOf(u16);
                         defer off = end;
-                        break :blk @ptrCast(*Hidden, &member_data[off..end][0]);
+                        break :blk @ptrCast(*u8, &member_data[off..end][0]);
                     }
 
                     break :blk null;
@@ -848,7 +707,7 @@ pub const Party = extern struct {
                     if (has_item) {
                         const end = off + @sizeOf([4]u16);
                         defer off = end;
-                        break :blk @ptrCast(*Hidden, member_data[off..end].ptr);
+                        break :blk member_data[off..end].ptr;
                     }
 
                     break :blk null;
@@ -861,24 +720,16 @@ pub const Party = extern struct {
                     .moves_ptr = moves,
                 };
             },
+            gen4, gen5 => @panic("TODO:"),
             else => @compileError("Gen not supported!"),
         }
     }
 
     pub fn len(party: *const Party) usize {
-        return switch (party.trainer.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => party.lenHelper(gen3),
-            4 => party.lenHelper(gen4),
-            5 => party.lenHelper(gen5),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return party.trainer.game.version.dispatch(usize, party, lenHelper);
     }
 
-    pub fn lenHelper(party: *const Party, comptime gen: Namespace) usize {
+    fn lenHelper(comptime gen: Namespace, party: var) usize {
         const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
         return switch (gen) {
             gen3 => trainer.party_size.get(),
@@ -888,19 +739,10 @@ pub const Party = extern struct {
     }
 
     fn memberSize(party: *const Party) usize {
-        return switch (party.trainer.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => party.memberSizeHelper(gen3),
-            4 => party.memberSizeHelper(gen4),
-            5 => party.memberSizeHelper(gen5),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return party.trainer.game.version.dispatch(usize, party, memberSizeHelper);
     }
 
-    fn memberSizeHelper(party: *const Party, comptime gen: Namespace) usize {
+    fn memberSizeHelper(comptime gen: Namespace, party: var) usize {
         const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
         var res: usize = @sizeOf(gen.PartyMember);
         if (gen == gen3 or
@@ -931,8 +773,8 @@ pub const Party = extern struct {
 pub const Trainer = extern struct {
     game: *const BaseGame,
 
-    base: *Hidden,
-    party_ptr: *Hidden,
+    base: *u8,
+    party_ptr: [*]u8,
 
     pub fn party(trainer: *const Trainer) Party {
         return Party{ .trainer = trainer };
@@ -942,60 +784,51 @@ pub const Trainer = extern struct {
 pub const Trainers = extern struct {
     game: *const BaseGame,
 
-    pub fn at(trainers: *const Trainers, id: usize) !Trainer {
-        return switch (trainers.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => try trainers.atHelper(gen3, id),
-            4 => @panic("TODO: Gen4"),
-            5 => @panic("TODO: Gen5"),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+    pub fn at(trainers: *const Trainers, index: usize) AtErr!Trainer {
+        return trainers.game.version.dispatch(AtErr!Trainer, AtC{ .trainers = trainers, .index = index }, atHelper);
     }
 
-    pub fn atHelper(trainers: *const Trainers, comptime gen: Namespace, index: usize) !Trainer {
+    const AtErr = error {
+        InvalidOffset,
+    };
+
+    const AtC = struct { trainers: *const Trainers, index: usize };
+    pub fn atHelper(comptime gen: Namespace, c: var) AtErr!Trainer {
+        const trainers = c.trainers;
+        const index = c.index;
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
         switch (gen) {
             gen3 => {
                 const trainer = &game.trainers[index];
                 var res = Trainer{
                     .game = &game.base,
-                    .base = @ptrCast(*Hidden, trainer),
+                    .base = @ptrCast(*u8, trainer),
                     .party_ptr = undefined,
                 };
 
                 const party = blk: {
                     const start = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
-                    const end = start + trainer.party_size.get() * res.party().memberSizeHelper(gen);
+                    const end = start + trainer.party_size.get() * res.party().memberSize();
                     break :blk generic.slice(game.data, start, end) catch return error.InvalidOffset;
                 };
-                res.party_ptr = @ptrCast(*Hidden, party.ptr);
+                res.party_ptr = @ptrCast([*]u8, party.ptr);
 
                 return res;
             },
+            gen4, gen5 => @panic("TODO:"),
             else => @compileError("Gen not supported!"),
         }
     }
 
     pub fn len(trainers: *const Trainers) usize {
-        return switch (trainers.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => trainers.lenHelper(gen3),
-            4 => @panic("TODO: Gen4"),
-            5 => @panic("TODO: Gen5"),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return trainers.game.version.dispatch(usize, trainers, lenHelper);
     }
 
-    pub fn lenHelper(trainers: *const Trainers, comptime gen: Namespace) usize {
+    pub fn lenHelper(comptime gen: Namespace, trainers: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
         switch (gen) {
             gen3 => return game.trainers.len,
+            gen4, gen5 => @panic("TODO:"),
             else => @compileError("Gen not supported!"),
         }
     }
@@ -1007,92 +840,66 @@ pub const Trainers = extern struct {
     const Iter = ErrIterator(Trainers, Trainer);
 };
 
-pub const Tms = Machines(false);
-pub const Hms = Machines(true);
+pub const Tms = Machines(MachineKind.Technical);
+pub const Hms = Machines(MachineKind.Hidden);
 
-pub fn Machines(comptime is_hms: bool) type {
+pub fn Machines(comptime kind: MachineKind) type {
     return extern struct {
         const Self = this;
 
         game: *const BaseGame,
 
         pub fn at(machines: *const Self, index: usize) u16 {
-            return switch (machines.game.version.gen()) {
-                1 => @panic("TODO: Gen1"),
-                2 => @panic("TODO: Gen2"),
-                3 => machines.atHelper(gen3, index, null),
-                4 => machines.atHelper(gen4, index, null),
-                5 => machines.atHelper(gen5, index, null),
-                6 => @panic("TODO: Gen6"),
-                7 => @panic("TODO: Gen7"),
-                else => unreachable,
-            };
+            return machines.game.version.dispatch(u16, AtC{ .machines = machines, .index = index }, atHelper);
+        }
+
+        const AtC = struct { machines: *const Self, index: usize };
+        fn atHelper(comptime gen: Namespace, c: var) u16 {
+            var index = c.index;
+            const machines = getMachines(gen, c.machines, &index);
+            return machines[index].get();
         }
 
         pub fn atSet(machines: *const Self, index: usize, value: u16) void {
-            switch (machines.game.version.gen()) {
-                1 => @panic("TODO: Gen1"),
-                2 => @panic("TODO: Gen2"),
-                3 => _ = try machines.atHelper(gen3, index, value),
-                4 => _ = try machines.atHelper(gen4, index, value),
-                5 => _ = try machines.atHelper(gen5, index, value),
-                6 => @panic("TODO: Gen6"),
-                7 => @panic("TODO: Gen7"),
-                else => unreachable,
-            }
+            return machines.game.version.dispatch(void, AtSetC{ .machines = machines, .index = index, .value = value }, atSetHelper);
         }
 
-        fn atHelper(machines: *const Self, comptime gen: Namespace, index: usize, setter: ?u16) u16 {
+        const AtSetC = struct { machines: *const Self, index: usize, value: u16 };
+        fn atSetHelper(comptime gen: Namespace, c: var) void {
+            var index = c.index;
+            const machines = getMachines(gen, c.machines, &index);
+            machines[index].set(c.value);
+        }
+
+        fn getMachines(comptime gen: Namespace, machines: *const Self, index: *usize) []Little(u16) {
             const game = @fieldParentPtr(gen.Game, "base", machines.game);
             switch (gen) {
-                gen3, gen4 => {
-                    const m = if (is_hms) game.tms else game.hms;
-
-                    if (setter) |v|
-                        m[index].set(v);
-                    return m[index].get();
-                },
+                gen3, gen4 => return if (kind == MachineKind.Hidden) game.hms else game.tms,
                 gen5 => {
-                    var i: usize = index;
-                    const m = blk: {
-                        if (is_hms)
-                            break :blk game.hms;
+                    if (kind == MachineKind.Hidden)
+                        return game.hms;
 
-                        if (i < game.tms1.len)
-                            break :blk game.tms1;
+                    if (index.* < game.tms1.len)
+                        return game.tms1;
 
-                        i -= game.tms1.len;
-                        break :blk game.tms2;
-                    };
-
-                    if (setter) |v|
-                        m[i].set(v);
-                    return m[i].get();
+                    index.* -= game.tms1.len;
+                    return game.tms2;
                 },
                 else => @compileError("Gen not supported!"),
             }
         }
 
         pub fn len(machines: *const Self) usize {
-            return switch (pokemons.game.version.gen()) {
-                1 => @panic("TODO: Gen1"),
-                2 => @panic("TODO: Gen2"),
-                3 => pokemons.lenHelper(gen3),
-                4 => pokemons.lenHelper(gen4),
-                5 => pokemons.lenHelper(gen5),
-                6 => @panic("TODO: Gen6"),
-                7 => @panic("TODO: Gen7"),
-                else => unreachable,
-            };
+            return machines.game.version.dispatch(usize, machines, lenHelper);
         }
 
-        fn lenHelper(machines: *const Self, comptime gen: Namespace) u16 {
-            const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
-            switch (gen) {
+        fn lenHelper(comptime gen: Namespace, machines: var) usize {
+            const game = @fieldParentPtr(gen.Game, "base", machines.game);
+            return switch (gen) {
                 gen3, gen4 => game.tms.len,
-                gen5 => return game.tms1.len + game.tms2,
+                gen5 => game.tms1.len + game.tms2,
                 else => @compileError("Gen not supported!"),
-            }
+            };
         }
 
         pub fn iterator(machines: *const Self) Iterator {
@@ -1105,58 +912,31 @@ pub fn Machines(comptime is_hms: bool) type {
 
 pub const Move = extern struct {
     game: *const BaseGame,
-    data: *Hidden,
+    data: *u8,
 
     pub fn types(move: *const Move) *[1]u8 {
-        return switch (move.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => {
-                const base = @ptrCast(*gen3.Move, move.data);
-                return @ptrCast(*[1]u8, fieldPtr(base, *gen3.Type, [][]const u8{ "type" }));
-            },
-            4 => {
-                const base = @ptrCast(*gen4.Move, move.data);
-                return @ptrCast(*[1]u8, fieldPtr(base, *gen4.Type, [][]const u8{ "type" }));
-            },
-            5 => {
-                const base = @ptrCast(*gen5.Move, move.data);
-                return @ptrCast(*[1]u8, fieldPtr(base, *gen5.Type, [][]const u8{ "type" }));
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return move.game.version.dispatch(*[1]u8, move, typesHelper);
+    }
+
+    fn typesHelper(comptime gen: Namespace, move: var) *[1]u8 {
+        const t = &@ptrCast(*gen.Move, move.data).@"type";
+        return @ptrCast(*[1]u8, t);
     }
 
     pub fn power(move: *const Move) *u8 {
-        return move.baseFieldPtr(*u8, [][]const u8{ "power" });
+        return move.game.version.dispatch(*u8, move, powerHelper);
+    }
+
+    fn powerHelper(comptime gen: Namespace, move: var) *u8 {
+        return &@ptrCast(*gen.Move, move.data).power;
     }
 
     pub fn pp(move: *const Move) *u8 {
-        return move.baseFieldPtr(*u8, [][]const u8{ "pp" });
+        return move.game.version.dispatch(*u8, move, ppHelper);
     }
 
-    fn baseFieldPtr(move: *const Move, comptime T: type, comptime fields: []const []const u8) T {
-        return switch (move.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => {
-                const base = @ptrCast(*gen3.Move, move.data);
-                return fieldPtr(base, T, fields);
-            },
-            4 => {
-                const base = @ptrCast(*gen4.Move, move.data);
-                return fieldPtr(base, T, fields);
-            },
-            5 => {
-                const base = @ptrCast(*gen5.Move, move.data);
-                return fieldPtr(base, T, fields);
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+    fn ppHelper(comptime gen: Namespace, move: var) *u8 {
+        return &@ptrCast(*gen.Move, move.data).pp;
     }
 };
 
@@ -1164,19 +944,13 @@ pub const Moves = extern struct {
     game: *const BaseGame,
 
     pub fn at(moves: *const Moves, index: usize) Move {
-        return switch (moves.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => moves.atHelper(gen3, index),
-            4 => moves.atHelper(gen4, index),
-            5 => moves.atHelper(gen5, index),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return moves.game.version.dispatch(Move, AtC{ .moves = moves, .index = index }, atHelper);
     }
 
-    fn atHelper(moves: *const Moves, comptime gen: Namespace, index: usize) Move {
+    const AtC = struct { moves: *const Moves, index: usize };
+    fn atHelper(comptime gen: Namespace, c: var) Move {
+        const index = c.index;
+        const moves = c.moves;
         const game = @fieldParentPtr(gen.Game, "base", moves.game);
         const move = switch (gen) {
             gen3 => &game.moves[index],
@@ -1186,24 +960,15 @@ pub const Moves = extern struct {
 
         return Move{
             .game = moves.game,
-            .data = @ptrCast(*Hidden, move),
+            .data = @ptrCast(*u8, move),
         };
     }
 
     pub fn len(moves: *const Moves) usize {
-        return switch (moves.game.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => moves.lenHelper(gen3),
-            4 => moves.lenHelper(gen4),
-            5 => moves.lenHelper(gen5),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        };
+        return moves.game.version.dispatch(usize, moves, lenHelper);
     }
 
-    fn lenHelper(moves: *const Moves, comptime gen: Namespace) usize {
+    fn lenHelper(comptime gen: Namespace, moves: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", moves.game);
         return game.moves.len;
     }
@@ -1222,7 +987,7 @@ pub const BaseGame = extern struct {
 pub const Game = extern struct {
     base: *BaseGame,
     allocator: *mem.Allocator,
-    other: ?*Hidden,
+    nds_rom: ?*nds.Rom,
 
     pub fn load(file: *os.File, allocator: *mem.Allocator) !Game {
         const start = try file.getPos();
@@ -1234,7 +999,7 @@ pub const Game = extern struct {
             return Game{
                 .base = &alloced_game.base,
                 .allocator = allocator,
-                .other = null,
+                .nds_rom = null,
             };
         }
 
@@ -1251,14 +1016,14 @@ pub const Game = extern struct {
                 return Game{
                     .base = &alloced_game.base,
                     .allocator = allocator,
-                    .other = @ptrCast(*Hidden, nds_rom),
+                    .nds_rom =nds_rom,
                 };
             } else |e1| if (gen5.Game.fromRom(nds_rom)) |game| {
                 const alloced_game = try allocator.construct(game);
                 return Game{
                     .base = &alloced_game.base,
                     .allocator = allocator,
-                    .other = @ptrCast(*Hidden, nds_rom),
+                    .nds_rom = nds_rom,
                 };
             } else |e2| {
                 break :nds_blk;
@@ -1269,56 +1034,34 @@ pub const Game = extern struct {
     }
 
     pub fn save(game: *const Game, file: *os.File) !void {
-        switch (game.base.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => {
+        const gen = game.base.version.gen();
+        if (gen == 3) {
                 const g = @fieldParentPtr(gen3.Game, "base", game.base);
                 var file_stream = io.FileOutStream.init(file);
                 try g.writeToStream(&file_stream.stream);
-            },
-            4, 5 => {
-                const nds_rom = @ptrCast(*nds.Rom, ??game.other);
-                try nds_rom.writeToFile(file, game.allocator);
-            },
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
         }
+
+        if (game.nds_rom) |nds_rom|
+            try nds_rom.writeToFile(file, game.allocator);
     }
 
     pub fn deinit(game: *Game) void {
-        defer game.* = undefined;
-
-        switch (game.base.version.gen()) {
-            1 => @panic("TODO: Gen1"),
-            2 => @panic("TODO: Gen2"),
-            3 => game.deinitHelper(gen3),
-            4 => game.deinitHelper(gen4),
-            5 => game.deinitHelper(gen5),
-            6 => @panic("TODO: Gen6"),
-            7 => @panic("TODO: Gen7"),
-            else => unreachable,
-        }
+        game.base.version.dispatch(void, game, deinitHelper);
     }
 
-    fn deinitHelper(game: *Game, comptime gen: Namespace) void {
+    fn deinitHelper(comptime gen: Namespace, game: *Game) void {
         const allocator = @ptrCast(*mem.Allocator, game.allocator);
         const g = @fieldParentPtr(gen.Game, "base", game.base);
-        switch (gen) {
-            gen3 => {
-                debug.assert(game.other == null);
-                g.deinit();
-                allocator.destroy(g);
-            },
-            gen4, gen5 => {
-                const nds_rom = @ptrCast(*nds.Rom, ??game.other);
-                nds_rom.deinit();
-                allocator.destroy(nds_rom);
-                allocator.destroy(g);
-            },
-            else => @compileError("Gen not supported!"),
+
+        if (gen == gen3)
+            g.deinit();
+        if (game.nds_rom) |nds_rom| {
+            nds_rom.deinit();
+            allocator.destroy(nds_rom);
         }
+
+        allocator.destroy(g);
+        game.* = undefined;
     }
 
     pub fn pokemons(game: *const Game) Pokemons {
@@ -1411,40 +1154,6 @@ fn ErrIterator(comptime T: type, comptime Result: type) type {
             }
         }
     };
-}
-
-fn fieldPtr(s: var, comptime T: type, comptime fields: []const []const u8) T {
-    var ptr = @ptrCast(*Hidden, s);
-    comptime var PtrT = @typeOf(s);
-    comptime var i: usize = 0;
-
-    inline for (fields) |field| {
-        ptr = @ptrCast(*Hidden, &@field(@ptrCast(PtrT, ptr), field));
-        PtrT = @typeOf(&@field(@ptrCast(PtrT, ptr), field));
-    }
-
-    return @ptrCast(PtrT, ptr);
-}
-
-test "fieldPtr" {
-    const S2 = struct {
-        a: u8,
-        b: u16,
-    };
-    const S1 = struct {
-        a: u8,
-        b: S2,
-    };
-    var s = S1{
-        .a = 2,
-        .b = S2{
-            .a = 3,
-            .b = 22,
-        },
-    };
-
-    const a = fieldPtr(&s, *u8, [][]const u8{ "b", "a" });
-    debug.assert(a.* == 3);
 }
 
 fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) !*T {
