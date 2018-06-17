@@ -1,4 +1,5 @@
 const std = @import("std");
+const pokemon = @import("index.zig");
 const gba = @import("../gba.zig");
 const bits = @import("../bits.zig");
 const little = @import("../little.zig");
@@ -17,14 +18,10 @@ const assert = debug.assert;
 const toLittle = little.toLittle;
 const Little = little.Little;
 
-pub const BasePokemon = packed struct {
-    hp: u8,
-    attack: u8,
-    defense: u8,
-    speed: u8,
-    sp_attack: u8,
-    sp_defense: u8,
+const u9 = @IntType(false, 9);
 
+pub const BasePokemon = packed struct {
+    stats: common.Stats,
     types: [2]Type,
 
     catch_rate: u8,
@@ -54,15 +51,8 @@ pub const BasePokemon = packed struct {
     padding: [2]u8,
 };
 
-pub const PartyType = enum(u8) {
-    Standard = 0x00,
-    WithMoves = 0x01,
-    WithHeld = 0x02,
-    WithBoth = 0x03,
-};
-
 pub const Trainer = packed struct {
-    party_type: PartyType,
+    party_type: u8,
     class: u8,
     encounter_music: u8,
     trainer_picture: u8,
@@ -74,32 +64,18 @@ pub const Trainer = packed struct {
     party_offset: Little(u32),
 };
 
-pub const PartyMemberBase = packed struct {
+/// All party members have this as the base.
+/// * If trainer.party_type & 0b10 then there is an additional u16 after the base, which is the held
+///   item. If this is not true, the the party member is padded with u16
+/// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
+///   the party members moveset.
+pub const PartyMember = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     iv: Little(u16),
     level: Little(u16),
     species: Little(u16),
-};
-
-pub const PartyMember = packed struct {
-    base: PartyMemberBase,
-    padding: Little(u16),
-};
-
-pub const PartyMemberWithMoves = packed struct {
-    base: PartyMemberBase,
-    moves: [4]Little(u16),
-    padding: Little(u16),
-};
-
-pub const PartyMemberWithHeld = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-};
-
-pub const PartyMemberWithBoth = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-    moves: [4]Little(u16),
 };
 
 pub const Move = packed struct {
@@ -152,10 +128,14 @@ pub const Type = enum(u8) {
     Dark = 0x11,
 };
 
-pub const Game = struct {
-    const legendaries = constants.legendaries;
+pub const LevelUpMove = packed struct {
+    move_id: u9,
+    level: u7,
+};
 
-    version: common.Version,
+pub const Game = struct {
+    base: pokemon.BaseGame,
+    allocator: *mem.Allocator,
     data: []u8,
 
     // All these fields point into data
@@ -166,8 +146,8 @@ pub const Game = struct {
     base_stats: []BasePokemon,
     evolution_table: [][5]common.Evolution,
     level_up_learnset_pointers: []Little(u32),
-    hms: []Little(u16),
     items: []Item,
+    hms: []Little(u16),
     tms: []Little(u16),
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
@@ -185,7 +165,8 @@ pub const Game = struct {
         if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
 
         return Game{
-            .version = info.version,
+            .base = pokemon.BaseGame{ .version = info.version },
+            .allocator = allocator,
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),
             .trainers = info.trainers.getSlice(Trainer, rom),
@@ -194,8 +175,8 @@ pub const Game = struct {
             .base_stats = info.base_stats.getSlice(BasePokemon, rom),
             .evolution_table = info.evolution_table.getSlice([5]common.Evolution, rom),
             .level_up_learnset_pointers = info.level_up_learnset_pointers.getSlice(Little(u32), rom),
-            .hms = info.hms.getSlice(Little(u16), rom),
             .items = info.items.getSlice(Item, rom),
+            .hms = info.hms.getSlice(Little(u16), rom),
             .tms = info.tms.getSlice(Little(u16), rom),
         };
     }
@@ -205,8 +186,9 @@ pub const Game = struct {
         try in_stream.write(game.data);
     }
 
-    pub fn destroy(game: *const Game, allocator: *mem.Allocator) void {
-        allocator.free(game.data);
+    pub fn deinit(game: *Game) void {
+        game.allocator.free(game.data);
+        game.* = undefined;
     }
 
     fn getInfo(gamecode: []const u8) !constants.Info {

@@ -41,24 +41,24 @@ const Info = struct {
     items: Offset,
 };
 
-pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
+pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
     const ignored_trainer_fields = [][]const u8{ "party_offset", "name" };
     const maybe_trainers = switch (version) {
-        common.Version.Emerald => search.findStructs(
+        pokemon.Version.Emerald => search.findStructs(
             gen3.Trainer,
             ignored_trainer_fields,
             data,
             constants.em_first_trainers,
             constants.em_last_trainers,
         ),
-        common.Version.Ruby, common.Version.Sapphire => search.findStructs(
+        pokemon.Version.Ruby, pokemon.Version.Sapphire => search.findStructs(
             gen3.Trainer,
             ignored_trainer_fields,
             data,
             constants.rs_first_trainers,
             constants.rs_last_trainers,
         ),
-        common.Version.FireRed, common.Version.LeafGreen => search.findStructs(
+        pokemon.Version.FireRed, pokemon.Version.LeafGreen => search.findStructs(
             gen3.Trainer,
             ignored_trainer_fields,
             data,
@@ -148,21 +148,21 @@ pub fn findInfoInFile(data: []const u8, version: common.Version) !Info {
 
     const ignored_item_fields = [][]const u8{ "name", "description_offset", "field_use_func", "battle_use_func" };
     const maybe_items = switch (version) {
-        common.Version.Emerald => search.findStructs(
+        pokemon.Version.Emerald => search.findStructs(
             gen3.Item,
             ignored_item_fields,
             data,
             constants.em_first_items,
             constants.em_last_items,
         ),
-        common.Version.Ruby, common.Version.Sapphire => search.findStructs(
+        pokemon.Version.Ruby, pokemon.Version.Sapphire => search.findStructs(
             gen3.Item,
             ignored_item_fields,
             data,
             constants.rs_first_items,
             constants.rs_last_items,
         ),
-        common.Version.FireRed, common.Version.LeafGreen => search.findStructs(
+        pokemon.Version.FireRed, pokemon.Version.LeafGreen => search.findStructs(
             gen3.Item,
             ignored_item_fields,
             data,
