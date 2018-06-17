@@ -40,8 +40,8 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
     switch (version) {
         pokemon.Version.Crystal => {
             // First, we find the first and last group pointers
-            const first_group_pointer = indexOfTrainer(data, 0, constants.first_trainers) ?? return error.TrainerGroupsNotFound;
-            const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) ?? return error.TrainerGroupsNotFound;
+            const first_group_pointer = indexOfTrainer(data, 0, constants.first_trainers) orelse return error.TrainerGroupsNotFound;
+            const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) orelse return error.TrainerGroupsNotFound;
 
             // Then, we can find the group pointer table
             const first_group_pointers = []Little(u16){toLittle(u16(first_group_pointer))};
@@ -52,7 +52,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
                 data,
                 first_group_pointers,
                 last_group_pointers,
-            ) ?? return error.UnableToFindBaseStatsOffset;
+            ) orelse return error.UnableToFindBaseStatsOffset;
 
             // Ensure that the pointers are in ascending order.
             for (trainer_group_pointers[1..]) |item, i| {
@@ -116,7 +116,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
         data,
         constants.first_base_stats,
         constants.last_base_stats,
-    ) ?? {
+    ) orelse {
         return error.UnableToFindBaseStatsOffset;
     };
 

@@ -65,7 +65,7 @@ fn FileSystem(comptime FileType: type) type {
         pub fn getFile(fs: *const Self, path: []const u8) ?*FileType {
             var splitIter = mem.split(path, "/");
             var curr_folder = fs.root;
-            var curr = splitIter.next() ?? return null;
+            var curr = splitIter.next() orelse return null;
 
             while (splitIter.next()) |next| : (curr = next) {
                 for (curr_folder.folders.toSliceConst()) |sub_folder| {

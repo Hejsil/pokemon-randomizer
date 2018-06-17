@@ -162,7 +162,7 @@ pub const Type = extern enum {
     }
 
     fn fromGameHelper(comptime gen: Namespace, id: u8) Type {
-        return toOther(Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) ?? Type.Invalid;
+        return toOther(Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) orelse Type.Invalid;
     }
 
     pub fn toGame(version: Version, t: Type) u8 {
@@ -176,7 +176,7 @@ pub const Type = extern enum {
     }
 
     fn toGameHelper(comptime gen: Namespace, t: Type) u8 {
-        const res = toOther(gen.Type, t) ?? return 0xAA;
+        const res = toOther(gen.Type, t) orelse return 0xAA;
         return u8(res);
     }
 
@@ -716,7 +716,7 @@ pub const PartyMember = extern struct {
     }
 
     fn itemHelper(comptime gen: Namespace, member: var) ?u16 {
-        const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) ?? return null;
+        const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) orelse return null;
         return item_ptr.get();
     }
 
@@ -734,14 +734,14 @@ pub const PartyMember = extern struct {
     };
 
     fn setItemHelper(comptime gen: Namespace, c: var) SetItemErr!void {
-        const item_ptr = @ptrCast(?*Little(u16), c.member.item_ptr) ?? return SetItemErr.HasNoItem;
+        const item_ptr = @ptrCast(?*Little(u16), c.member.item_ptr) orelse return SetItemErr.HasNoItem;
         return item_ptr.set(c.value);
     }
 
     pub fn moves(member: *const PartyMember) ?PartyMemberMoves {
         return PartyMemberMoves{
             .game = member.game,
-            .data = member.moves_ptr ?? return null,
+            .data = member.moves_ptr orelse return null,
         };
     }
 };

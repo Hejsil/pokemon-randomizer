@@ -141,11 +141,11 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: *const T, args
                     break :loop;
                 },
                 Kind.Short => {
-                    const short = option.short_arg ?? continue :loop;
+                    const short = option.short_arg orelse continue :loop;
                     if (arg.len != 1 or arg[0] != short) continue :loop;
                 },
                 Kind.Long => {
-                    const long = option.long_arg ?? continue :loop;
+                    const long = option.long_arg orelse continue :loop;
                     if (!mem.eql(u8, long, arg)) continue :loop;
                 },
             }
@@ -188,7 +188,7 @@ pub fn help(comptime T: type, options: []const Arg(T), out_stream: var) !void {
     const equal_value: []const u8 = "=OPTION";
     var longest_long: usize = 0;
     for (options) |option| {
-        const long = option.long_arg ?? continue;
+        const long = option.long_arg orelse continue;
         var len = long.len;
 
         if (option.takes_value)
@@ -339,7 +339,7 @@ test "clap.parse.Example" {
             assert(res.g == case.res.g);
             assert(res.b == case.res.b);
         } else |err| {
-            assert(err == (case.err ?? unreachable));
+            assert(err == (case.err orelse unreachable));
         }
     }
 }

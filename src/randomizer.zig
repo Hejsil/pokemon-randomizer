@@ -260,7 +260,7 @@ pub const Randomizer = struct {
 
     fn randomizeTrainerPokemonMoves(randomizer: *Randomizer, member: *const libpoke.PartyMember, option: *const Options.Trainer) !void {
         const pokemons = randomizer.game.pokemons();
-        const member_moves = member.moves() ?? return;
+        const member_moves = member.moves() orelse return;
 
         switch (option.moves) {
             Options.Trainer.Moves.Same => {
@@ -450,7 +450,7 @@ pub const Randomizer = struct {
                 continue;
 
             for (pokemon.types().*) |t| {
-                const entry = species_by_type.get(t) ?? blk: {
+                const entry = species_by_type.get(t) orelse blk: {
                     _ = try species_by_type.put(t, std.ArrayList(u16).init(randomizer.allocator));
                     break :blk species_by_type.get(t).?;
                 };

@@ -159,7 +159,7 @@ pub const Game = struct {
 
     pub fn fromRom(rom: *const nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
-        const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
+        const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
@@ -177,7 +177,7 @@ pub const Game = struct {
     }
 
     fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *Narc.File {
-        const file = file_system.getFile(path) ?? return error.CouldntFindFile;
+        const file = file_system.getFile(path) orelse return error.CouldntFindFile;
 
         switch (file.@"type") {
             Nitro.File.Type.Binary => return error.InvalidFileType,
