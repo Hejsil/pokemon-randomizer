@@ -94,20 +94,16 @@ pub const Version = extern enum {
         context: var,
         comptime func: var,
     ) Result {
-        const offset = 3;
-        const g = version.gen();
-        const gen_table = []Namespace{
-            gen3,
-            gen4,
-            gen5,
+        return switch (version.gen()) {
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen1"),
+            3 => func(gen3, context),
+            4 => func(gen4, context),
+            5 => func(gen5, context),
+            6 => @panic("TODO: Gen1"),
+            7 => @panic("TODO: Gen1"),
+            else => unreachable,
         };
-
-        inline for (gen_table) |namespace, i| {
-            if (i + offset == g)
-                return func(namespace, context);
-        }
-
-        unreachable;
     }
 
     pub fn hasPhysicalSpecialSplit(gen: Gen) bool {
@@ -166,7 +162,7 @@ pub const Type = extern enum {
     }
 
     fn fromGameHelper(comptime gen: Namespace, id: u8) Type {
-        return toOther(version, Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) ?? Type.Invalid;
+        return toOther(Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) ?? Type.Invalid;
     }
 
     pub fn toGame(version: Version, t: Type) u8 {
@@ -176,14 +172,15 @@ pub const Type = extern enum {
         //       Should we assert here instead? Throw an error? What if the game have hacked in
         //       types? Maybe these functions are only for convinience when hacking mainline games
         //       and are useless on hacked games.
-        return version.dispatch(Type, t, toGameHelper);
+        return version.dispatch(u8, t, toGameHelper);
     }
 
     fn toGameHelper(comptime gen: Namespace, t: Type) u8 {
-        return toOther(version, gen.Type, t) ?? 0xAA;
+        const res = toOther(gen.Type, t) ?? return 0xAA;
+        return u8(res);
     }
 
-    fn toOther(version: Version, comptime Out: type, in: var) ?Out {
+    fn toOther(comptime Out: type, in: var) ?Out {
         const In = @typeOf(in);
         const in_tags = @typeInfo(@typeOf(in)).Enum.fields;
         const out_tags = @typeInfo(Out).Enum.fields;
@@ -192,8 +189,8 @@ pub const Type = extern enum {
                 if (!mem.eql(u8, in_tag.name, out_tag.name))
                     continue;
 
-                if (out_tag.value == @TagType(In)(in))
-                    return (Out)(out_tag.value);
+                const out_value = @TagType(Out)(out_tag.value);
+                return Out(out_value);
             }
         }
 
@@ -202,11 +199,11 @@ pub const Type = extern enum {
 };
 
 pub const LevelUpMove = extern struct {
-    game: *const BaseGame,
+    version: Version,
     data: *u8,
 
     pub fn level(move: *const LevelUpMove) u8 {
-        return move.game.version.dispatch(u8, move, levelHelper);
+        return move.version.dispatch(u8, move, levelHelper);
     }
 
     fn levelHelper(comptime gen: Namespace, lvl_up_move: *const LevelUpMove) u8 {
@@ -215,7 +212,7 @@ pub const LevelUpMove = extern struct {
     }
 
     pub fn setLevel(move: *const LevelUpMove, lvl: u8) void {
-        move.game.version.dispatch(void, SetLvlC{
+        move.version.dispatch(void, SetLvlC{
             .move = move,
             .lvl = lvl,
         }, setLevelHelper);
@@ -232,7 +229,7 @@ pub const LevelUpMove = extern struct {
     }
 
     pub fn moveId(move: *const LevelUpMove) u16 {
-        return move.game.version.dispatch(u16, move, moveIdHelper);
+        return move.version.dispatch(u16, move, moveIdHelper);
     }
 
     fn moveIdHelper(comptime gen: Namespace, move: var) u16 {
@@ -241,7 +238,7 @@ pub const LevelUpMove = extern struct {
     }
 
     pub fn setMoveId(move: *const LevelUpMove, id: u16) void {
-        move.game.version.dispatch(u16, SetMoveIdC{
+        move.version.dispatch(u16, SetMoveIdC{
             .move = move,
             .id = id,
         }, setLevelHelper);
@@ -259,12 +256,12 @@ pub const LevelUpMove = extern struct {
 };
 
 pub const LevelUpMoves = extern struct {
-    game: *const BaseGame,
+    version: Version,
     data_len: usize,
     data: [*]u8,
 
     pub fn at(moves: *const LevelUpMoves, index: usize) LevelUpMove {
-        return moves.game.version.dispatch(LevelUpMove, atC{
+        return moves.version.dispatch(LevelUpMove, atC{
             .moves = moves,
             .index = index,
         }, atHelper);
@@ -278,7 +275,7 @@ pub const LevelUpMoves = extern struct {
     fn atHelper(comptime gen: Namespace, c: var) LevelUpMove {
         const moves = @ptrCast([*]gen.LevelUpMove, c.moves.data)[0..c.moves.data_len];
         return LevelUpMove{
-            .game = c.moves.game,
+            .version = c.moves.version,
             .data = @ptrCast(*u8, &moves[c.index]),
         };
     }
@@ -457,7 +454,7 @@ pub const Pokemon = extern struct {
 
     pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
         return LevelUpMoves{
-            .game = pokemon.game,
+            .version = pokemon.game.version,
             .data_len = pokemon.level_up_moves_len,
             .data = pokemon.level_up_moves,
         };
@@ -798,6 +795,14 @@ pub const Party = extern struct {
             break :blk null;
         };
 
+        off += switch (c.party.trainer.game.version) {
+            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(2),
+            else => usize(0),
+        };
+
+        // It's a bug, if we haven't read all member_data
+        debug.assert(member_data.len == off);
+
         return PartyMember{
             .game = c.party.trainer.game,
             .base = base,
@@ -826,9 +831,9 @@ pub const Party = extern struct {
     fn memberSizeHelper(comptime gen: Namespace, party: var) usize {
         const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
         var res: usize = @sizeOf(gen.PartyMember);
-        if (gen == gen3 or
-            trainer.party_type & gen.PartyMember.has_item != 0)
-        {
+        if (gen == gen3) {
+            res += @sizeOf(u16);
+        } else if (trainer.party_type & gen.PartyMember.has_item != 0) {
             res += @sizeOf(u16);
         }
         if (trainer.party_type & gen.PartyMember.has_moves != 0)
@@ -874,6 +879,7 @@ pub const Trainers = extern struct {
     const AtErr = error{
         InvalidOffset,
         FileToSmall,
+        InvalidPartySize,
     };
 
     const AtC = struct {
@@ -900,7 +906,14 @@ pub const Trainers = extern struct {
                 const party = generic.slice(game.data, start, end) catch return error.InvalidOffset;
                 break :blk party.ptr;
             },
-            gen4, gen5 => game.parties[index].data.ptr,
+            gen4, gen5 => blk: {
+                const party_data = game.parties[index].data;
+                const min_size = trainer.party_size * res.party().memberSize();
+                if (party_data.len < min_size)
+                    return error.InvalidPartySize;
+
+                break :blk party_data.ptr;
+            },
             else => @compileError("Gen not supported!"),
         };
 

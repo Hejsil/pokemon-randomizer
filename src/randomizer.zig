@@ -333,21 +333,23 @@ pub const Randomizer = struct {
                 for (learned_moves) |learned| {
                     const learned_move = moves.at(learned);
 
+                    const p_t1 = pokemon.types()[0];
+                    const p_t2 = pokemon.types()[1];
+                    const l_t = learned_move.types()[0];
+
+                    // TODO: Rewrite to work with Pokémons that can have N types
+                    const learned_stab = if (l_t == p_t1 or l_t == p_t2) f32(1.5) else f32(1.0);
+                    const learned_power = f32(learned_move.power().*) * learned_stab;
+
                     var i: usize = 0;
                     while (i < member_moves.len()) : (i += 1) {
                         const move_id = member_moves.at(i);
                         const move = moves.at(move_id);
-
-                        const p_t1 = pokemon.types()[0];
-                        const p_t2 = pokemon.types()[1];
                         const m_t = move.types()[0];
-                        const l_t = learned_move.types()[0];
 
                         // TODO: Rewrite to work with Pokémons that can have N types
                         const move_stab = if (m_t == p_t1 or m_t == p_t2) f32(1.5) else f32(1.0);
-                        const learned_stab = if (l_t == p_t1 or l_t == p_t2) f32(1.5) else f32(1.0);
                         const move_power = f32(move.power().*) * move_stab;
-                        const learned_power = f32(learned_move.power().*) * learned_stab;
 
                         // TODO: We probably also want Pokémons to have varied types
                         //       of moves, so it has good coverage.
@@ -430,17 +432,13 @@ pub const Randomizer = struct {
     }
 
     fn speciesByType(randomizer: *Randomizer) !*SpeciesByType {
-        const game = randomizer.game;
-        if (randomizer.species_by_type) |*species_by_type| return species_by_type;
+        if (randomizer.species_by_type) |*species_by_type|
+            return species_by_type;
 
         var species_by_type = SpeciesByType.init(randomizer.allocator);
         errdefer freeSpeciesByType(&species_by_type);
 
-        comptime var i = 0;
-        inline while (i < @memberCount(libpoke.Type)) : (i += 1) {
-            const t = @field(libpoke.Type, @memberName(libpoke.Type, i));
-        }
-
+        const game = randomizer.game;
         const pokemons = game.pokemons();
         var it = pokemons.iterator();
         while (it.nextValid()) |item| {
@@ -448,7 +446,8 @@ pub const Randomizer = struct {
             const species = item.index;
 
             // Asume that Pokémons with 0 hp are dummy Pokémon
-            if (pokemon.hp().* == 0) continue;
+            if (pokemon.hp().* == 0)
+                continue;
 
             for (pokemon.types().*) |t| {
                 const entry = species_by_type.get(t) ?? blk: {

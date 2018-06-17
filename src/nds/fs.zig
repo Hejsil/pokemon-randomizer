@@ -248,19 +248,26 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
         const stream = &buffered_in_stream.stream;
 
         const header = utils.stream.read(stream, formats.Header) catch break :narc_read;
-        if (!mem.eql(u8, header.chunk_name, names.narc)) break :narc_read;
-        if (header.byte_order.get() != 0xFFFE) break :narc_read;
-        if (header.chunk_size.get() != 0x0010) break :narc_read;
-        if (header.following_chunks.get() != 0x0003) break :narc_read;
+        if (!mem.eql(u8, header.chunk_name, names.narc))
+            break :narc_read;
+        if (header.byte_order.get() != 0xFFFE)
+            break :narc_read;
+        if (header.chunk_size.get() != 0x0010)
+            break :narc_read;
+        if (header.following_chunks.get() != 0x0003)
+            break :narc_read;
 
         // If we have a valid narc header, then we assume we are reading a narc
         // file. All error from here, are therefore bubbled up.
         const fat_header = try utils.stream.read(stream, formats.FatChunk);
         const fat_size = math.sub(u32, fat_header.header.size.get(), @sizeOf(formats.FatChunk)) catch return error.InvalidChunkSize;
 
-        if (!mem.eql(u8, fat_header.header.name, names.fat)) return error.InvalidChunkName;
-        if (fat_size % @sizeOf(FatEntry) != 0) return error.InvalidChunkSize;
-        if (fat_size / @sizeOf(FatEntry) != fat_header.file_count.get()) return error.InvalidChunkSize;
+        if (!mem.eql(u8, fat_header.header.name, names.fat))
+            return error.InvalidChunkName;
+        if (fat_size % @sizeOf(FatEntry) != 0)
+            return error.InvalidChunkSize;
+        if (fat_size / @sizeOf(FatEntry) != fat_header.file_count.get())
+            return error.InvalidChunkSize;
 
         const fat = try utils.stream.allocRead(stream, tmp_allocator, FatEntry, fat_header.file_count.get());
         defer tmp_allocator.free(fat);
@@ -277,7 +284,8 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
         const first_fnt = generic.at(fnt_mains, 0) catch return error.InvalidChunkSize;
 
         const file_data_header = try utils.stream.read(stream, formats.Chunk);
-        if (!mem.eql(u8, file_data_header.name, names.file_data)) return error.InvalidChunkName;
+        if (!mem.eql(u8, file_data_header.name, names.file_data))
+            return error.InvalidChunkName;
 
         // Since we are using buffered input, be have to seek back to the narc_img_base,
         // when we start reading the file system
