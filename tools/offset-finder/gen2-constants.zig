@@ -101,13 +101,14 @@ pub const first_base_stats = []gen2.BasePokemon{
     // Bulbasaur
     gen2.BasePokemon{
         .pokedex_number = 1,
-
-        .hp = 45,
-        .attack = 49,
-        .defense = 49,
-        .speed = 45,
-        .sp_attack = 65,
-        .sp_defense = 65,
+        .stats = common.Stats{
+            .hp = 45,
+            .attack = 49,
+            .defense = 49,
+            .speed = 45,
+            .sp_attack = 65,
+            .sp_defense = 65,
+        },
 
         .types = [2]gen2.Type{ gen2.Type.Grass, gen2.Type.Poison },
 
@@ -136,13 +137,14 @@ pub const last_base_stats = []gen2.BasePokemon{
     // Celebi
     gen2.BasePokemon{
         .pokedex_number = 251,
-
-        .hp = 100,
-        .attack = 100,
-        .defense = 100,
-        .speed = 100,
-        .sp_attack = 100,
-        .sp_defense = 100,
+        .stats = common.Stats{
+            .hp = 100,
+            .attack = 100,
+            .defense = 100,
+            .speed = 100,
+            .sp_attack = 100,
+            .sp_defense = 100,
+        },
 
         .types = [2]gen2.Type{ gen2.Type.Psychic, gen2.Type.Grass },
 

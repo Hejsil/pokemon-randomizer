@@ -1,4 +1,4 @@
-const common = @import("common.zig");
+const pokemon = @import("index.zig");
 const std = @import("std");
 const fun = @import("fun");
 const mem = std.mem;
@@ -14,7 +14,7 @@ pub const Offset = struct {
 };
 
 pub const Info = struct {
-    version: common.Version,
+    version: pokemon.Version,
 
     trainers: Offset,
     moves: Offset,
@@ -32,7 +32,7 @@ pub const Info = struct {
 // game_title: POKEMON EMER
 // gamecode: BPEE
 pub const emerald_us_info = Info{
-    .version = common.Version.Emerald,
+    .version = pokemon.Version.Emerald,
 
     .trainers = Offset{
         .start = 0x0310030,
@@ -75,7 +75,7 @@ pub const emerald_us_info = Info{
 // game_title: POKEMON RUBY
 // gamecode: AXVE
 pub const ruby_us_info = Info{
-    .version = common.Version.Ruby,
+    .version = pokemon.Version.Ruby,
 
     .trainers = Offset{
         .start = 0x01F0514,
@@ -118,7 +118,7 @@ pub const ruby_us_info = Info{
 // game_title: POKEMON SAPP
 // gamecode: AXPE
 pub const sapphire_us_info = Info{
-    .version = common.Version.Sapphire,
+    .version = pokemon.Version.Sapphire,
 
     .trainers = Offset{
         .start = 0x01F04A4,
@@ -161,7 +161,7 @@ pub const sapphire_us_info = Info{
 // game_title: POKEMON FIRE
 // gamecode: BPRE
 pub const fire_us_info = Info{
-    .version = common.Version.FireRed,
+    .version = pokemon.Version.FireRed,
 
     .trainers = Offset{
         .start = 0x023EB38,
@@ -204,7 +204,7 @@ pub const fire_us_info = Info{
 // game_title: POKEMON LEAF
 // gamecode: BPGE
 pub const leaf_us_info = Info{
-    .version = common.Version.LeafGreen,
+    .version = pokemon.Version.LeafGreen,
 
     .trainers = Offset{
         .start = 0x023EB14,
@@ -242,22 +242,4 @@ pub const leaf_us_info = Info{
         .start = 0x03DAED4,
         .len = 374,
     },
-};
-
-// TODO: Fix format
-// TODO: We should look up species dex id, and use the dex ids here instead.
-pub const legendaries = []u16{
-    0x090, 0x091, 0x092, // Articuno, Zapdos, Moltres
-    0x096, 0x097, // Mewtwo, Mew
-        0x0F3,
-    0x0F4, 0x0F5, // Raikou, Entei, Suicune
-        0x0F9,
-    0x0FA, 0x0FB, // Lugia, Ho-Oh, Celebi
-        0x191,
-    0x192, 0x193, // Regirock, Regice, Registeel
-        0x194,
-    0x195, 0x196, // Kyogre, Groudon, Rayquaza
-        0x197,
-    0x198, // Latias, Latios
-        0x199, 0x19A, // Jirachi, Deoxys
 };

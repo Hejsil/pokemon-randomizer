@@ -7,13 +7,7 @@ const Little = little.Little;
 pub const BasePokemon = packed struct {
     pokedex_number: u8,
 
-    hp: u8,
-    attack: u8,
-    defense: u8,
-    speed: u8,
-    sp_attack: u8,
-    sp_defense: u8,
-
+    stats: common.Stats,
     types: [2]Type,
 
     catch_rate: u8,

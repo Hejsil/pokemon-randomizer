@@ -83,10 +83,6 @@ fn setTrainerMoves(op: *randomizer.Options, str: []const u8) !void {
     }
 }
 
-fn setTrainerIv(op: *randomizer.Options, str: []const u8) !void {
-    op.trainer.iv = try parseGenericOption(str);
-}
-
 fn parseGenericOption(str: []const u8) !randomizer.GenericOption {
     if (mem.eql(u8, str, "same")) {
         return randomizer.GenericOption.Same;
@@ -106,7 +102,7 @@ fn setLevelModifier(op: *randomizer.Options, str: []const u8) !void {
 
 const Arg = clap.Arg(randomizer.Options);
 // TODO: Format is horrible. Fix
-const program_arguments = comptime []Arg{
+const program_arguments = comptime [8]Arg{
     Arg.init(setHelp).help("Display this help and exit.").short('h').long("help").kind(Arg.Kind.IgnoresRequired),
     Arg.init(setInFile).help("The rom to randomize.").kind(Arg.Kind.Required),
     Arg.init(setOutFile).help("The place to output the randomized rom.").short('o').long("output").takesValue(true),
@@ -114,7 +110,6 @@ const program_arguments = comptime []Arg{
     Arg.init(setTrainerSameStrength).help("The randomizer will replace trainers Pokémon with Pokémon of similar total stats.").long("trainer-same-total-stats"),
     Arg.init(setTrainerHeldItems).help("How trainer Pokémon held items should be randomized. Options: [none, same].").long("trainer-held-items").takesValue(true),
     Arg.init(setTrainerMoves).help("How trainer Pokémon moves should be randomized. Options: [same, random, random-within-learnset, best].").long("trainer-moves").takesValue(true),
-    Arg.init(setTrainerIv).help("How trainer Pokémon ivs should be randomized. Options: [same, random, best].").long("trainer-iv").takesValue(true),
     Arg.init(setLevelModifier).help("A percent level modifier to trainers Pokémon.").long("trainer-level-modifier").takesValue(true),
 };
 
@@ -144,11 +139,17 @@ pub fn main() !void {
         return;
     }
 
-    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
-        debug.warn("Couldn't open {}.\n", output_file);
+    var rom_file = os.File.openRead(allocator, input_file) catch |err| {
+        debug.warn("Couldn't open {}.\n", input_file);
         return err;
     };
-    defer out_file.close();
+    defer rom_file.close();
+
+    var game = pokemon.Game.load(&rom_file, allocator) catch |err| {
+        debug.warn("Couldn't load game {}.\n", input_file);
+        return err;
+    };
+    defer game.deinit();
 
     var random = rand.DefaultPrng.init(blk: {
         var buf: [8]u8 = undefined;
@@ -156,51 +157,20 @@ pub fn main() !void {
         break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
     });
 
-    gba_blk: {
-        var rom_file = try os.File.openRead(allocator, input_file);
-        defer rom_file.close();
-        var game = gen3.Game.fromFile(&rom_file, allocator) catch break :gba_blk;
+    var r = Randomizer.init(&game, &random.random, allocator);
+    r.randomize(options) catch |err| {
+        debug.warn("Randomizing error occured {}.\n", @errorName(err));
+        return err;
+    };
 
-        var r = Randomizer(pokemon.Gen3).init(game, &random.random, allocator);
-        defer r.deinit();
+    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
+        debug.warn("Couldn't open {}.\n", output_file);
+        return err;
+    };
+    defer out_file.close();
 
-        try r.randomize(options);
-
-        var file_stream = io.FileOutStream.init(&out_file);
-        game.writeToStream(&file_stream.stream) catch |err| {
-            debug.warn("Unable to write gba to {}.\n", output_file);
-            return err;
-        };
-
-        return;
-    }
-
-    nds_blk: {
-        var rom_file = try os.File.openRead(allocator, input_file);
-        defer rom_file.close();
-        var nds_rom = nds.Rom.fromFile(&rom_file, allocator) catch break :nds_blk;
-        defer nds_rom.deinit();
-
-        if (gen4.Game.fromRom(&nds_rom)) |game| {
-            var r = Randomizer(pokemon.Gen4).init(game, &random.random, allocator);
-            defer r.deinit();
-            try r.randomize(options);
-        } else |e1| if (gen5.Game.fromRom(&nds_rom)) |game| {
-            var r = Randomizer(pokemon.Gen5).init(game, &random.random, allocator);
-            defer r.deinit();
-            try r.randomize(options);
-        } else |e2| {
-            break :nds_blk;
-        }
-
-        nds_rom.writeToFile(&out_file, allocator) catch |err| {
-            debug.warn("Unable to write nds to {}\n", output_file);
-            return err;
-        };
-
-        return;
-    }
-
-    debug.warn("Rom type not supported (yet)\n");
-    return error.NotARom;
+    game.save(&out_file) catch |err| {
+        debug.warn("Couldn't save game {}.\n", @errorName(err));
+        return err;
+    };
 }

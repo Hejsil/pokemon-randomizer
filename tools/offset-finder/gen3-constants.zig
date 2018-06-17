@@ -12,7 +12,7 @@ const toLittle = little.toLittle;
 
 pub const em_first_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0,
         .encounter_music = 0,
         .trainer_picture = 0,
@@ -24,7 +24,7 @@ pub const em_first_trainers = []gen3.Trainer{
         .party_offset = undefined,
     },
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x02,
         .encounter_music = 0x0b,
         .trainer_picture = 0,
@@ -39,7 +39,7 @@ pub const em_first_trainers = []gen3.Trainer{
 
 pub const em_last_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x41,
         .encounter_music = 0x80,
         .trainer_picture = 0x5c,
@@ -54,7 +54,7 @@ pub const em_last_trainers = []gen3.Trainer{
 
 pub const rs_first_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0,
         .encounter_music = 0,
         .trainer_picture = 0,
@@ -66,7 +66,7 @@ pub const rs_first_trainers = []gen3.Trainer{
         .party_offset = undefined,
     },
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x02,
         .encounter_music = 0x06,
         .trainer_picture = 0x46,
@@ -81,7 +81,7 @@ pub const rs_first_trainers = []gen3.Trainer{
 
 pub const rs_last_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0x21,
         .encounter_music = 0x0B,
         .trainer_picture = 0x06,
@@ -96,7 +96,7 @@ pub const rs_last_trainers = []gen3.Trainer{
 
 pub const frls_first_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 0,
         .encounter_music = 0,
         .trainer_picture = 0,
@@ -113,7 +113,7 @@ pub const frls_first_trainers = []gen3.Trainer{
         .party_offset = undefined,
     },
     gen3.Trainer{
-        .party_type = gen3.PartyType.Standard,
+        .party_type = 0x00,
         .class = 2,
         .encounter_music = 6,
         .trainer_picture = 0,
@@ -133,7 +133,7 @@ pub const frls_first_trainers = []gen3.Trainer{
 
 pub const frls_last_trainers = []gen3.Trainer{
     gen3.Trainer{
-        .party_type = gen3.PartyType.WithBoth,
+        .party_type = 0x00,
         .class = 90,
         .encounter_music = 0,
         .trainer_picture = 125,
@@ -283,12 +283,14 @@ pub const last_tm_hm_learnsets = []Little(u64){
 pub const first_base_stats = []gen3.BasePokemon{
     // Dummy
     gen3.BasePokemon{
-        .hp = 0,
-        .attack = 0,
-        .defense = 0,
-        .speed = 0,
-        .sp_attack = 0,
-        .sp_defense = 0,
+        .stats = common.Stats{
+            .hp = 0,
+            .attack = 0,
+            .defense = 0,
+            .speed = 0,
+            .sp_attack = 0,
+            .sp_defense = 0,
+        },
 
         .types = []gen3.Type{ gen3.Type.Normal, gen3.Type.Normal },
 
@@ -328,12 +330,14 @@ pub const first_base_stats = []gen3.BasePokemon{
     },
     // Bulbasaur
     gen3.BasePokemon{
-        .hp = 45,
-        .attack = 49,
-        .defense = 49,
-        .speed = 45,
-        .sp_attack = 65,
-        .sp_defense = 65,
+        .stats = common.Stats{
+            .hp = 45,
+            .attack = 49,
+            .defense = 49,
+            .speed = 45,
+            .sp_attack = 65,
+            .sp_defense = 65,
+        },
 
         .types = []gen3.Type{ gen3.Type.Grass, gen3.Type.Poison },
 
@@ -376,12 +380,14 @@ pub const first_base_stats = []gen3.BasePokemon{
 pub const last_base_stats = []gen3.BasePokemon{
     // Chimecho
     gen3.BasePokemon{
-        .hp = 65,
-        .attack = 50,
-        .defense = 70,
-        .speed = 65,
-        .sp_attack = 95,
-        .sp_defense = 80,
+        .stats = common.Stats{
+            .hp = 65,
+            .attack = 50,
+            .defense = 70,
+            .speed = 65,
+            .sp_attack = 95,
+            .sp_defense = 80,
+        },
 
         .types = []gen3.Type{ gen3.Type.Psychic, gen3.Type.Psychic },
 

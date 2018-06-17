@@ -32,7 +32,7 @@ pub const MemInStream = struct {
 
 pub fn read(in_stream: var, comptime T: type) !T {
     var result: T = undefined;
-    try in_stream.readNoEof(utils.asBytes(T, &result));
+    try in_stream.readNoEof(utils.asBytes(T, &result)[0..]);
 
     return result;
 }

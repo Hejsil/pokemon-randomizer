@@ -15,8 +15,16 @@ const generic = fun.generic;
 
 const math = std.math;
 const debug = std.debug;
+const os = std.os;
+const io = std.io;
+const mem = std.mem;
 
-const Collection = utils.Collection;
+const toLittle = little.toLittle;
+const Little = little.Little;
+const Namespace = @typeOf(std);
+
+const u9 = @IntType(false, 9);
+const u10 = @IntType(false, 10);
 
 test "pokemon" {
     _ = common;
@@ -25,611 +33,1253 @@ test "pokemon" {
     _ = gen5;
 }
 
-pub const Gen3 = struct {
-    pub const Game = gen3.Game;
-    pub const BasePokemon = gen3.BasePokemon;
-    pub const Evolution = common.Evolution;
-    pub const PartyType = gen3.PartyType;
-    pub const BaseTrainer = gen3.Trainer;
-    pub const PartyMember = gen3.PartyMemberBase;
-    pub const Move = gen3.Move;
-    pub const LevelUpMove = common.LevelUpMove;
-    pub const Item = gen3.Item;
-    pub const Type = gen3.Type;
+pub const Version = extern enum {
+    Red,
+    Blue,
+    Yellow,
 
-    pub const Pokemons = Collection(Pokemon, error{InvalidOffset});
-    pub fn pokemons(game: *const Game) Pokemons {
-        return Pokemons.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) !Pokemon {
-                    const base_pokemons = g.base_stats;
-                    const offset = blk: {
-                        const res = generic.at(g.level_up_learnset_pointers, index) catch return error.InvalidOffset;
-                        if (res.get() < 0x8000000) return error.InvalidOffset;
-                        break :blk res.get() - 0x8000000;
-                    };
-                    if (g.data.len < offset) return error.InvalidOffset;
+    Gold,
+    Silver,
+    Crystal,
 
-                    const end = blk: {
-                        var i: usize = offset;
-                        while (true) : (i += @sizeOf(LevelUpMove)) {
-                            if (g.data.len < i) return error.InvalidOffset;
-                            if (g.data.len < i + 1) return error.InvalidOffset;
-                            if (g.data[i] == 0xFF and g.data[i + 1] == 0xFF) break;
-                        }
+    Ruby,
+    Sapphire,
+    Emerald,
+    FireRed,
+    LeafGreen,
 
-                        break :blk i;
-                    };
+    Diamond,
+    Pearl,
+    Platinum,
+    HeartGold,
+    SoulSilver,
 
-                    return Pokemon{
-                        .base = &base_pokemons[index],
-                        .game = g,
-                        .level_up_moves = ([]LevelUpMove)(g.data[offset..end]),
-                        .learnset = generic.at(g.tm_hm_learnset, index) catch return error.InvalidOffset,
-                    };
-                }
+    Black,
+    White,
+    Black2,
+    White2,
 
-                fn length(g: *const Game) usize {
-                    return g.base_stats.len;
-                }
-            },
-            Game,
-            game,
-        );
+    X,
+    Y,
+    OmegaRuby,
+    AlphaSapphire,
+
+    Sun,
+    Moon,
+    UltraSun,
+    UltraMoon,
+
+    pub fn gen(version: Version) u8 {
+        const V = Version;
+        // TODO: Fix format
+        return switch (version) {
+            V.Red, V.Blue, V.Yellow => u8(1),
+            V.Gold, V.Silver, V.Crystal => u8(2),
+            V.Ruby, V.Sapphire, V.Emerald, V.FireRed, V.LeafGreen => u8(3),
+            V.Diamond, V.Pearl, V.Platinum, V.HeartGold, V.SoulSilver => u8(4),
+            V.Black, V.White, V.Black2, V.White2 => u8(5),
+            V.X, V.Y, V.OmegaRuby, V.AlphaSapphire => u8(6),
+            V.Sun, V.Moon, V.UltraSun, V.UltraMoon => u8(7),
+        };
     }
 
-    pub const Pokemon = struct {
-        base: *BasePokemon,
-        game: *const Game,
-        level_up_moves: []LevelUpMove,
-        learnset: *little.Little(u64),
+    /// Dispatches a generic function with signature fn(comptime Namespace, @typeOf(context)) Result
+    /// based on the result of ::version.gen(). The first parameter passed to ::func is a comptime
+    /// known ::Namespace containing the declarations for the generation that ::version.get()
+    /// corrispons too. This allows us to write ::func once, but have it use different types
+    /// depending on the generation of Pokémon games we are working on.
+    pub fn dispatch(
+        version: Version,
+        comptime Result: type,
+        context: var,
+        comptime func: var,
+    ) Result {
+        return switch (version.gen()) {
+            1 => @panic("TODO: Gen1"),
+            2 => @panic("TODO: Gen1"),
+            3 => func(gen3, context),
+            4 => func(gen4, context),
+            5 => func(gen5, context),
+            6 => @panic("TODO: Gen1"),
+            7 => @panic("TODO: Gen1"),
+            else => unreachable,
+        };
+    }
 
-        pub const LevelUpMoves = Collection(*LevelUpMove, error{});
-        pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
-            return LevelUpMoves.initSlice(LevelUpMove, pokemon.level_up_moves);
+    pub fn hasPhysicalSpecialSplit(gen: Gen) bool {
+        return @TagType(Gen)(gen) > 3;
+    }
+
+    // TODO: Can we find all legendaries in a game without having these hardcoded tables?
+    //       I mean, all legendaries have over 600 total stats, and all appear as static pokemons
+    //       somewhere. Most of them also have custom music. There are lots of stuff to look for
+    //       and I think we can make it work.
+    pub fn legendaries(version: Version) []const u16 {
+        return version.dispatch([]const u16, void{}, legendariesHelper);
+    }
+
+    pub fn legendariesHelper(comptime g: Namespace, c: void) []const u16 {
+        return switch (g) {
+            gen3 => []u16{
+                0x090, 0x091, 0x092, // Articuno, Zapdos, Moltres
+                0x096, 0x097, 0x0F3, // Mewtwo, Mew, Raikou
+                0x0F4, 0x0F5, 0x0F9, // Entei, Suicune, Lugia
+                0x0FA, 0x0FB, 0x191, // Ho-Oh, Celebi, Regirock
+                0x192, 0x193, 0x194, // Regice, Registeel, Kyogre
+                0x195, 0x196, 0x197, // Groudon, Rayquaza, Latias
+                0x198, 0x199, 0x19A, // Latios, Jirachi, Deoxys
+            },
+            gen4 => common.legendaries[0..32],
+            gen5 => common.legendaries,
+            else => unreachable,
+        };
+    }
+};
+
+pub const Type = extern enum {
+    Invalid,
+    Normal,
+    Fighting,
+    Flying,
+    Poison,
+    Ground,
+    Rock,
+    Bug,
+    Ghost,
+    Steel,
+    Fire,
+    Water,
+    Grass,
+    Electric,
+    Psychic,
+    Ice,
+    Dragon,
+    Dark,
+    Fairy,
+
+    pub fn fromGame(version: Version, id: u8) Type {
+        return version.dispatch(Type, id, fromGameHelper);
+    }
+
+    fn fromGameHelper(comptime gen: Namespace, id: u8) Type {
+        return toOther(Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) ?? Type.Invalid;
+    }
+
+    pub fn toGame(version: Version, t: Type) u8 {
+        // TODO: What do we do when the type does not exist in the game we are hacking.
+        //       For now, we just output 0xAA which is highly likely to not be a type in the game,
+        //       so the game will probably crash.
+        //       Should we assert here instead? Throw an error? What if the game have hacked in
+        //       types? Maybe these functions are only for convinience when hacking mainline games
+        //       and are useless on hacked games.
+        return version.dispatch(u8, t, toGameHelper);
+    }
+
+    fn toGameHelper(comptime gen: Namespace, t: Type) u8 {
+        const res = toOther(gen.Type, t) ?? return 0xAA;
+        return u8(res);
+    }
+
+    fn toOther(comptime Out: type, in: var) ?Out {
+        const In = @typeOf(in);
+        const in_tags = @typeInfo(@typeOf(in)).Enum.fields;
+        const out_tags = @typeInfo(Out).Enum.fields;
+        inline for (in_tags) |in_tag| {
+            inline for (out_tags) |out_tag| {
+                if (!mem.eql(u8, in_tag.name, out_tag.name))
+                    continue;
+
+                const out_value = @TagType(Out)(out_tag.value);
+                return Out(out_value);
+            }
         }
 
-        pub const Learnset = Collection(bool, error{});
-        pub fn tmLearnset(pokemon: *const Pokemon) Learnset {
-            return Learnset.initExternFunctionsAndContext(struct {
-                fn at(p: *const Pokemon, index: usize) (error{}!bool) {
-                    debug.assert(index < length(p));
-                    return bits.get(u64, p.learnset.get(), u6(index));
-                }
+        return null;
+    }
+};
 
-                fn length(p: *const Pokemon) usize {
-                    return p.game.tms.len;
-                }
-            }, Pokemon, pokemon);
-        }
+pub const LevelUpMove = extern struct {
+    version: Version,
+    data: *u8,
 
-        pub fn hmLearnset(pokemon: *const Pokemon) Learnset {
-            return Learnset.initExternFunctionsAndContext(struct {
-                fn at(p: *const Pokemon, index: usize) (error{}!bool) {
-                    debug.assert(index <= length(p));
-                    return bits.get(u64, p.learnset.get(), u6(p.game.tms.len + index));
-                }
+    pub fn level(move: *const LevelUpMove) u8 {
+        return move.version.dispatch(u8, move, levelHelper);
+    }
 
-                fn length(p: *const Pokemon) usize {
-                    return p.game.hms.len;
-                }
-            }, Pokemon, pokemon);
-        }
+    fn levelHelper(comptime gen: Namespace, lvl_up_move: *const LevelUpMove) u8 {
+        const lvl = @ptrCast(*gen.LevelUpMove, lvl_up_move.data).level;
+        return if (gen == gen5) u8(lvl.get()) else lvl;
+    }
+
+    pub fn setLevel(move: *const LevelUpMove, lvl: u8) void {
+        move.version.dispatch(void, SetLvlC{
+            .move = move,
+            .lvl = lvl,
+        }, setLevelHelper);
+    }
+
+    const SetLvlC = struct {
+        move: *const LevelUpMove,
+        lvl: u8,
     };
 
-    pub const Trainers = Collection(Trainer, error{
+    fn setLevelHelper(comptime gen: Namespace, c: var) void {
+        const lvl = if (gen == gen5) toLittle(u16(c.lvl)) else u7(c.lvl);
+        @ptrCast(*gen.LevelUpMove, c.move.data).level = lvl;
+    }
+
+    pub fn moveId(move: *const LevelUpMove) u16 {
+        return move.version.dispatch(u16, move, moveIdHelper);
+    }
+
+    fn moveIdHelper(comptime gen: Namespace, move: var) u16 {
+        const move_id = @ptrCast(*gen.LevelUpMove, move.data).move_id;
+        return if (gen == gen5) move_id.get() else move_id;
+    }
+
+    pub fn setMoveId(move: *const LevelUpMove, id: u16) void {
+        move.version.dispatch(u16, SetMoveIdC{
+            .move = move,
+            .id = id,
+        }, setLevelHelper);
+    }
+
+    const SetMoveIdC = struct {
+        move: *const LevelUpMove,
+        id: u8,
+    };
+
+    fn setMoveIdHelper(comptime gen: Namespace, c: var) void {
+        const id = if (gen == gen5) toLittle(u16(c.id)) else u9(c.id);
+        @ptrCast(*gen.LevelUpMove, c.move.data).move_id = id;
+    }
+};
+
+pub const LevelUpMoves = extern struct {
+    version: Version,
+    data_len: usize,
+    data: [*]u8,
+
+    pub fn at(moves: *const LevelUpMoves, index: usize) LevelUpMove {
+        return moves.version.dispatch(LevelUpMove, atC{
+            .moves = moves,
+            .index = index,
+        }, atHelper);
+    }
+
+    const atC = struct {
+        moves: *const LevelUpMoves,
+        index: usize,
+    };
+
+    fn atHelper(comptime gen: Namespace, c: var) LevelUpMove {
+        const moves = @ptrCast([*]gen.LevelUpMove, c.moves.data)[0..c.moves.data_len];
+        return LevelUpMove{
+            .version = c.moves.version,
+            .data = @ptrCast(*u8, &moves[c.index]),
+        };
+    }
+
+    pub fn len(moves: *const LevelUpMoves) usize {
+        return moves.data_len;
+    }
+
+    pub fn iterator(moves: *const LevelUpMoves) Iter {
+        return Iter.init(moves);
+    }
+
+    const Iter = Iterator(LevelUpMoves, LevelUpMove);
+};
+
+const MachineKind = enum {
+    Hidden,
+    Technical,
+};
+
+pub const TmLearnset = Learnset(MachineKind.Technical);
+pub const HmLearnset = Learnset(MachineKind.Hidden);
+
+pub fn Learnset(comptime kind: MachineKind) type {
+    return extern struct {
+        const Self = this;
+        game: *const BaseGame,
+        data: *u8,
+
+        pub fn at(learnset: *const Self, index: usize) bool {
+            return learnset.game.version.dispatch(bool, atC{
+                .learnset = learnset,
+                .index = index,
+            }, atHelper);
+        }
+
+        const atC = struct {
+            learnset: *const Self,
+            index: usize,
+        };
+
+        fn atHelper(comptime gen: Namespace, c: var) bool {
+            const i = c.learnset.indexInLearnset(gen, c.index);
+
+            const T = if (gen == gen3) u64 else u128;
+            const learnset = @ptrCast(*Little(T), c.learnset.data);
+            return bits.get(T, learnset.get(), math.Log2Int(T)(i));
+        }
+
+        pub fn atSet(learnset: *const Self, index: usize, value: bool) void {
+            learnset.game.version.dispatch(bool, atSetC{
+                .learnset = learnset,
+                .index = index,
+                .value = value,
+            }, atSetHelper);
+        }
+
+        const atSetC = struct {
+            learnset: *const Self,
+            index: usize,
+            value: bool,
+        };
+
+        fn atSetHelper(comptime gen: Namespace, c: var) void {
+            const i = c.learnset.indexInLearnset(gen, index);
+
+            const T = if (gen == gen3) u64 else u128;
+            const learnset = @ptrCast(*Little(T), learnset.data);
+            learnset.set(bits.set(T, learnset.get(), math.Log2Int(T)(i), c.value));
+        }
+
+        fn indexInLearnset(learnset: *const Self, comptime gen: Namespace, index: usize) usize {
+            const game = @fieldParentPtr(gen.Game, "base", learnset.game);
+            const i = switch (gen) {
+                gen3, gen4 => {
+                    if (kind == MachineKind.Hidden) {
+                        debug.assert(index < game.hms.len);
+                        return index + game.tms.len;
+                    }
+
+                    debug.assert(index < game.tms.len);
+                    return index;
+                },
+                gen5 => {
+                    if (kind == MachineKind.Hidden) {
+                        debug.assert(index < game.hms.len);
+                        return index + game.tms1.len;
+                    }
+
+                    debug.assert(index < game.tms1.len + game.tms2.len);
+                    return if (index < game.tms1.len) index else index + game.hms.len;
+                },
+                else => @compileError("Gen not supported!"),
+            };
+        }
+
+        pub fn len(learnset: *const Self) usize {
+            return learnset.game.version.dispatch(usize, learnset, lenHelper);
+        }
+
+        fn lenHelper(comptime gen: Namespace, learnset: var) usize {
+            const game = @fieldParentPtr(gen.Game, "base", learnset.game);
+            if (kind == MachineKind.Hidden)
+                return game.hms.len;
+
+            return switch (gen) {
+                gen3, gen4 => game.tms.len,
+                gen5 => game.tms1.len + game.tms2.len,
+                else => @compileError("Gen not supported!"),
+            };
+        }
+
+        pub fn iterator(learnset: *const Self) Iter {
+            return Iter.init(learnset);
+        }
+
+        const Iter = Iterator(Self, bool);
+    };
+}
+
+pub const Pokemon = extern struct {
+    game: *const BaseGame,
+
+    base: *u8,
+    learnset: *u8,
+    level_up_moves_len: usize,
+    level_up_moves: [*]u8,
+
+    pub fn hp(pokemon: *const Pokemon) *u8 {
+        return pokemon.game.version.dispatch(*u8, pokemon, hpHelper);
+    }
+
+    fn hpHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.hp;
+    }
+
+    pub fn attack(pokemon: *const Pokemon) *u8 {
+        return pokemon.game.version.dispatch(*u8, pokemon, attackHelper);
+    }
+
+    fn attackHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.attack;
+    }
+
+    pub fn defense(pokemon: *const Pokemon) *u8 {
+        return pokemon.game.version.dispatch(*u8, pokemon, defenseHelper);
+    }
+
+    fn defenseHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.defense;
+    }
+
+    pub fn speed(pokemon: *const Pokemon) *u8 {
+        return pokemon.game.version.dispatch(*u8, pokemon, speedHelper);
+    }
+
+    fn speedHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.speed;
+    }
+
+    pub fn spAttack(pokemon: *const Pokemon) *u8 {
+        return pokemon.game.version.dispatch(*u8, pokemon, spAttackHelper);
+    }
+
+    fn spAttackHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.sp_attack;
+    }
+
+    pub fn spDefense(pokemon: *const Pokemon) *u8 {
+        return pokemon.game.version.dispatch(*u8, pokemon, spDefenseHelper);
+    }
+
+    fn spDefenseHelper(comptime gen: Namespace, pokemon: var) *u8 {
+        return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.sp_defense;
+    }
+
+    pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
+        return LevelUpMoves{
+            .version = pokemon.game.version,
+            .data_len = pokemon.level_up_moves_len,
+            .data = pokemon.level_up_moves,
+        };
+    }
+
+    pub fn totalStats(pokemon: *const Pokemon) u16 {
+        const gen = pokemon.game.version.gen();
+        var total: u16 = pokemon.hp().*;
+        total += pokemon.attack().*;
+        total += pokemon.defense().*;
+        total += pokemon.speed().*;
+        total += pokemon.spAttack().*;
+
+        if (gen != 1)
+            total += pokemon.spDefense().*;
+
+        return total;
+    }
+
+    pub fn types(pokemon: *const Pokemon) *[2]u8 {
+        return pokemon.game.version.dispatch(*[2]u8, pokemon, typesHelper);
+    }
+
+    fn typesHelper(comptime gen: Namespace, pokemon: *const Pokemon) *[2]u8 {
+        const ts = &@ptrCast(*gen.BasePokemon, pokemon.base).types;
+        return @ptrCast(*[2]u8, ts);
+    }
+
+    pub fn tmLearnset(pokemon: *const Pokemon) TmLearnset {
+        return TmLearnset{
+            .game = pokemon.game,
+            .data = pokemon.learnset,
+        };
+    }
+
+    pub fn hmLearnset(pokemon: *const Pokemon) HmLearnset {
+        return HmLearnset{
+            .game = pokemon.game,
+            .data = pokemon.learnset,
+        };
+    }
+};
+
+pub const Pokemons = extern struct {
+    game: *const BaseGame,
+
+    pub fn at(pokemons: *const Pokemons, index: usize) AtErrs!Pokemon {
+        return pokemons.game.version.dispatch(AtErrs!Pokemon, atC{
+            .pokemons = pokemons,
+            .index = index,
+        }, atHelper);
+    }
+
+    const AtErrs = error{
         InvalidOffset,
-        InvalidPartyType,
-    });
-    pub fn trainers(game: *const Game) Trainers {
-        return Trainers.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) !Trainer {
-                    const trainer = &g.trainers[index];
-                    const offset = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
-
-                    const data = switch (trainer.party_type) {
-                        PartyType.Standard => try partyMemberData(gen3.PartyMember, g.data, offset, trainer.party_size.get()),
-                        PartyType.WithMoves => try partyMemberData(gen3.PartyMemberWithMoves, g.data, offset, trainer.party_size.get()),
-                        PartyType.WithHeld => try partyMemberData(gen3.PartyMemberWithHeld, g.data, offset, trainer.party_size.get()),
-                        PartyType.WithBoth => try partyMemberData(gen3.PartyMemberWithBoth, g.data, offset, trainer.party_size.get()),
-                        else => return error.InvalidPartyType,
-                    };
-
-                    return Trainer{ .base = trainer, .party_data = data };
-                }
-
-                fn length(g: *const Game) usize {
-                    return g.trainers.len;
-                }
-
-                fn partyMemberData(comptime Member: type, data: []u8, offset: usize, size: usize) ![]u8 {
-                    const end = offset + size * @sizeOf(Member);
-                    if (data.len < end) return error.InvalidOffset;
-
-                    return data[offset..end];
-                }
-            },
-            Game,
-            game,
-        );
-    }
-
-    pub const Trainer = struct {
-        base: *BaseTrainer,
-        party_data: []u8,
-
-        pub const PartyMembers = Collection(*PartyMember, error{});
-        pub fn party(trainer: *const Trainer) PartyMembers {
-            return PartyMembers.initExternFunctionsAndContext(
-                struct {
-                    fn at(t: *const Trainer, index: usize) (error{}!*PartyMember) {
-                        return switch (t.base.party_type) {
-                            PartyType.Standard => basePartyMember(gen3.PartyMember, t.party_data, index),
-                            PartyType.WithMoves => basePartyMember(gen3.PartyMemberWithMoves, t.party_data, index),
-                            PartyType.WithHeld => basePartyMember(gen3.PartyMemberWithHeld, t.party_data, index),
-                            PartyType.WithBoth => basePartyMember(gen3.PartyMemberWithBoth, t.party_data, index),
-                            else => unreachable,
-                        };
-                    }
-
-                    fn length(t: *const Trainer) usize {
-                        return t.base.party_size.get();
-                    }
-
-                    fn basePartyMember(comptime TMember: type, data: []u8, index: usize) *PartyMember {
-                        const p = ([]TMember)(data);
-                        return &p[index].base;
-                    }
-                },
-                Trainer,
-                trainer,
-            );
-        }
+        FileToSmall,
     };
 
-    const Moves = Collection(*Move, error{});
-    pub fn moves(game: *const Game) Moves {
-        return Moves.initSlice(Move, game.moves);
+    const atC = struct {
+        pokemons: *const Pokemons,
+        index: usize,
+    };
+
+    fn atHelper(comptime gen: Namespace, c: var) AtErrs!Pokemon {
+        const index = c.index;
+        const pokemons = c.pokemons;
+        const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
+
+        var base_pokemon: *gen.BasePokemon = undefined;
+        var learnset: *u8 = undefined;
+        switch (gen) {
+            gen3 => {
+                base_pokemon = &game.base_stats[index];
+                learnset = @ptrCast(*u8, &game.tm_hm_learnset[index]);
+            },
+            gen4, gen5 => {
+                base_pokemon = try getFileAsType(gen.BasePokemon, game.base_stats, index);
+                learnset = @ptrCast(*u8, &base_pokemon.tm_hm_learnset);
+            },
+            else => @compileError("Gen not supported!"),
+        }
+
+        const level_up_moves = blk: {
+            var start: usize = undefined;
+            var data: []u8 = undefined;
+            switch (gen) {
+                gen3 => {
+                    const s = generic.at(game.level_up_learnset_pointers, index) catch return error.InvalidOffset;
+                    start = math.sub(usize, s.get(), 0x8000000) catch return error.InvalidOffset;
+                    data = game.data;
+                },
+                gen4, gen5 => {
+                    start = 0;
+                    data = game.level_up_moves[index].data;
+                },
+                else => @compileError("Gen not supported!"),
+            }
+
+            // gen3,4,5 all have 0xFF ** @sizeOf(gen.LevelUpMove) terminated level up moves,
+            // even though gen4,5 stores level up moves in files with a length.
+            const terminator = []u8{0xFF} ** @sizeOf(gen.LevelUpMove);
+            const res = generic.widenTrim(data[start..], gen.LevelUpMove);
+            for (res) |level_up_move, i| {
+                const bytes = utils.toBytes(@typeOf(level_up_move), level_up_move);
+                if (std.mem.eql(u8, bytes, terminator))
+                    break :blk res[0..i];
+            }
+
+            break :blk res;
+        };
+
+        return Pokemon{
+            .game = pokemons.game,
+            .base = @ptrCast(*u8, base_pokemon),
+            .learnset = learnset,
+            .level_up_moves_len = level_up_moves.len,
+            .level_up_moves = @ptrCast([*]u8, level_up_moves.ptr),
+        };
     }
 
-    const Machines = Collection(*little.Little(u16), error{});
-    pub fn tms(game: *const Game) Machines {
-        return Machines.initSlice(little.Little(u16), game.tms);
+    pub fn len(pokemons: *const Pokemons) usize {
+        return pokemons.game.version.dispatch(usize, pokemons, lenHelper);
     }
 
-    pub fn hms(game: *const Game) Machines {
-        return Machines.initSlice(little.Little(u16), game.hms);
+    fn lenHelper(comptime gen: Namespace, pokemons: var) usize {
+        const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
+
+        var min = game.base_stats.len;
+        if (gen == gen3) {
+            min = math.min(min, game.tm_hm_learnset.len);
+            min = math.min(min, game.evolution_table.len);
+            min = math.min(min, game.level_up_learnset_pointers.len);
+        }
+        if (gen == gen4 or gen == gen5) {
+            min = math.min(min, game.level_up_moves.len);
+        }
+
+        return min;
+    }
+
+    pub fn iterator(pokemons: *const Pokemons) Iter {
+        return Iter.init(pokemons);
+    }
+
+    const Iter = ErrIterator(Pokemons, Pokemon);
+};
+
+const PartyMemberMoves = extern struct {
+    game: *const BaseGame,
+    data: [*]u8,
+
+    pub fn at(moves: *const PartyMemberMoves, index: usize) u16 {
+        return moves.game.version.dispatch(u16, AtC{
+            .moves = moves,
+            .index = index,
+        }, atHelper);
+    }
+
+    const AtC = struct {
+        moves: *const PartyMemberMoves,
+        index: usize,
+    };
+
+    fn atHelper(comptime gen: Namespace, c: var) u16 {
+        const moves = @ptrCast(*[4]Little(u16), c.moves.data);
+        return moves[c.index].get();
+    }
+
+    pub fn atSet(moves: *const PartyMemberMoves, index: usize, value: u16) void {
+        moves.game.version.dispatch(void, AtSetC{
+            .moves = moves,
+            .index = index,
+            .value = value,
+        }, atSetHelper);
+    }
+
+    const AtSetC = struct {
+        moves: *const PartyMemberMoves,
+        index: usize,
+        value: u16,
+    };
+
+    fn atSetHelper(comptime gen: Namespace, c: var) void {
+        const moves = @ptrCast(*[4]Little(u16), c.moves.data);
+        return moves[c.index].set(c.value);
+    }
+
+    pub fn len(moves: *const PartyMemberMoves) usize {
+        return 4;
+    }
+
+    pub fn iterator(moves: *const PartyMemberMoves) Iter {
+        return Iter.init(pokemons);
+    }
+
+    const Iter = Iterator(PartyMemberMoves, u16);
+};
+
+pub const PartyMember = extern struct {
+    game: *const BaseGame,
+    base: *u8,
+    item_ptr: ?*u8,
+    moves_ptr: ?[*]u8,
+
+    pub fn species(member: *const PartyMember) u16 {
+        return member.game.version.dispatch(u16, member, speciesHelper);
+    }
+
+    fn speciesHelper(comptime gen: Namespace, member: var) u16 {
+        const s = @ptrCast(*gen.PartyMember, member.base).species;
+        return if (gen != gen4) s.get() else s;
+    }
+
+    pub fn setSpecies(member: *const PartyMember, v: u16) void {
+        member.game.version.dispatch(void, SetSpeciesC{
+            .member = member,
+            .value = v,
+        }, setSpeciesHelper);
+    }
+
+    const SetSpeciesC = struct {
+        member: *const PartyMember,
+        value: u16,
+    };
+
+    fn setSpeciesHelper(comptime gen: Namespace, c: var) void {
+        const s = if (gen != gen4) toLittle(c.value) else u10(c.value);
+        @ptrCast(*gen.PartyMember, c.member.base).species = s;
+    }
+
+    pub fn level(member: *const PartyMember) u8 {
+        return member.game.version.dispatch(u8, member, levelHelper);
+    }
+
+    fn levelHelper(comptime gen: Namespace, member: var) u8 {
+        const lvl = @ptrCast(*gen.PartyMember, member.base).level;
+        return if (gen != gen5) u8(lvl.get()) else lvl;
+    }
+
+    pub fn setLevel(member: *const PartyMember, lvl: u8) void {
+        return member.game.version.dispatch(void, SetLvlC{
+            .member = member,
+            .value = lvl,
+        }, setLevelHelper);
+    }
+
+    const SetLvlC = struct {
+        member: *const PartyMember,
+        value: u8,
+    };
+
+    fn setLevelHelper(comptime gen: Namespace, c: var) void {
+        const lvl = if (gen != gen5) toLittle(u16(c.value)) else c.value;
+        @ptrCast(*gen.PartyMember, c.member.base).level = lvl;
+    }
+
+    pub fn item(member: *const PartyMember) ?u16 {
+        return member.game.version.dispatch(?u16, member, itemHelper);
+    }
+
+    fn itemHelper(comptime gen: Namespace, member: var) ?u16 {
+        const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) ?? return null;
+        return item_ptr.get();
+    }
+
+    pub fn setItem(member: *const PartyMember, v: u16) SetItemErr!void {
+        return member.game.version.dispatch(SetItemErr!void, SetItemC{
+            .member = member,
+            .value = v,
+        }, setItemHelper);
+    }
+
+    const SetItemErr = error{HasNoItem};
+    const SetItemC = struct {
+        member: *const PartyMember,
+        value: u16,
+    };
+
+    fn setItemHelper(comptime gen: Namespace, c: var) SetItemErr!void {
+        const item_ptr = @ptrCast(?*Little(u16), c.member.item_ptr) ?? return SetItemErr.HasNoItem;
+        return item_ptr.set(c.value);
+    }
+
+    pub fn moves(member: *const PartyMember) ?PartyMemberMoves {
+        return PartyMemberMoves{
+            .game = member.game,
+            .data = member.moves_ptr ?? return null,
+        };
     }
 };
 
-pub const Gen4 = struct {
-    pub const Game = gen4.Game;
-    pub const BasePokemon = gen4.BasePokemon;
-    pub const Evolution = common.Evolution;
-    pub const PartyType = gen4.PartyType;
-    pub const BaseTrainer = gen4.Trainer;
-    pub const PartyMember = gen4.PartyMemberBase;
-    pub const Move = gen4.Move;
-    pub const LevelUpMove = common.LevelUpMove;
-    pub const Item = gen4.Item;
-    pub const Type = gen4.Type;
+pub const Party = extern struct {
+    trainer: *const Trainer,
 
-    pub const Pokemons = Collection(Pokemon, error{DataTooSmall});
-    pub fn pokemons(game: *const Game) Pokemons {
-        return Pokemons.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) !Pokemon {
-                    const base_pokemon = try getFileAsType(BasePokemon, g.base_stats, index);
-                    const level_up_moves = blk: {
-                        var tmp = g.level_up_moves[index].data;
-                        const res = ([]LevelUpMove)(tmp[0 .. tmp.len - (tmp.len % @sizeOf(LevelUpMove))]);
-
-                        // Even though each level up move have it's own file, level up moves still
-                        // end with 0xFFFF.
-                        for (res) |level_up_move, i| {
-                            if (std.mem.eql(u8, ([]const u8)((&level_up_move)[0..1]), []u8{ 0xFF, 0xFF }))
-                                break :blk res[0..i];
-                        }
-
-                        // In the case where we don't find the end 0xFFFF, we just
-                        // return the level up moves, and assume things are correct.
-                        break :blk res;
-                    };
-
-                    return Pokemon{
-                        .base = base_pokemon,
-                        .game = g,
-                        .level_up_moves = level_up_moves,
-                    };
-                }
-
-                fn length(g: *const Game) usize {
-                    return math.min(g.base_stats.len, g.level_up_moves.len);
-                }
-            },
-            Game,
-            game,
-        );
+    pub fn at(party: *const Party, index: usize) PartyMember {
+        return party.trainer.game.version.dispatch(PartyMember, AtC{
+            .party = party,
+            .index = index,
+        }, atHelper);
     }
 
-    pub const Pokemon = struct {
-        base: *BasePokemon,
-        game: *const Game,
-        level_up_moves: []LevelUpMove,
-
-        pub const LevelUpMoves = Collection(*LevelUpMove, error{});
-        pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
-            return LevelUpMoves.initSlice(LevelUpMove, pokemon.level_up_moves);
-        }
-
-        pub const Learnset = Collection(bool, error{});
-        pub fn tmLearnset(pokemon: *const Pokemon) Learnset {
-            return Learnset.initExternFunctionsAndContext(struct {
-                fn at(p: *const Pokemon, index: usize) (error{}!bool) {
-                    debug.assert(index < length(p));
-                    return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
-                }
-
-                fn length(p: *const Pokemon) usize {
-                    return p.game.tms.len;
-                }
-            }, Pokemon, pokemon);
-        }
-
-        pub fn hmLearnset(pokemon: *const Pokemon) Learnset {
-            return Learnset.initExternFunctionsAndContext(struct {
-                fn at(p: *const Pokemon, index: usize) (error{}!bool) {
-                    debug.assert(index < length(p));
-                    return bits.get(u128, p.base.tm_hm_learnset.get(), u7(p.game.tms.len + index));
-                }
-
-                fn length(p: *const Pokemon) usize {
-                    return p.game.hms.len;
-                }
-            }, Pokemon, pokemon);
-        }
+    const AtC = struct {
+        party: *const Party,
+        index: usize,
     };
 
-    pub const Trainers = Collection(Trainer, error{
-        DataTooSmall,
-        InvalidPartyType,
+    fn atHelper(comptime gen: Namespace, c: var) PartyMember {
+        const index = c.index;
+        const trainer = @ptrCast(*gen.Trainer, c.party.trainer.base);
+        const member_size = c.party.memberSize();
+        const party_size = if (gen == gen3) trainer.party_size.get() else trainer.party_size;
+        const party_data = c.party.trainer.party_ptr[0 .. party_size * member_size];
+        const member_data = party_data[index * member_size ..][0..member_size];
+        var off: usize = 0;
+
+        const base = &member_data[off];
+        off += @sizeOf(gen.PartyMember);
+
+        const item = blk: {
+            const has_item = trainer.party_type & gen.PartyMember.has_item != 0;
+            if (has_item) {
+                const end = off + @sizeOf(u16);
+                defer off = end;
+                break :blk @ptrCast(*u8, &member_data[off..end][0]);
+            }
+
+            break :blk null;
+        };
+
+        const moves = blk: {
+            const has_item = trainer.party_type & gen.PartyMember.has_moves != 0;
+            if (has_item) {
+                const end = off + @sizeOf([4]u16);
+                defer off = end;
+                break :blk member_data[off..end].ptr;
+            }
+
+            break :blk null;
+        };
+
+        off += switch (c.party.trainer.game.version) {
+            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(2),
+            else => usize(0),
+        };
+
+        // It's a bug, if we haven't read all member_data
+        debug.assert(member_data.len == off);
+
+        return PartyMember{
+            .game = c.party.trainer.game,
+            .base = base,
+            .item_ptr = item,
+            .moves_ptr = moves,
+        };
+    }
+
+    pub fn len(party: *const Party) usize {
+        return party.trainer.game.version.dispatch(usize, party, lenHelper);
+    }
+
+    fn lenHelper(comptime gen: Namespace, party: var) usize {
+        const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
+        return switch (gen) {
+            gen3 => trainer.party_size.get(),
+            gen4, gen5 => trainer.party_size,
+            else => @compileError("Gen not supported!"),
+        };
+    }
+
+    fn memberSize(party: *const Party) usize {
+        return party.trainer.game.version.dispatch(usize, party, memberSizeHelper);
+    }
+
+    fn memberSizeHelper(comptime gen: Namespace, party: var) usize {
+        const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
+        var res: usize = @sizeOf(gen.PartyMember);
+        if (gen == gen3) {
+            res += @sizeOf(u16);
+        } else if (trainer.party_type & gen.PartyMember.has_item != 0) {
+            res += @sizeOf(u16);
+        }
+        if (trainer.party_type & gen.PartyMember.has_moves != 0)
+            res += @sizeOf([4]u16);
+
+        // In HG/SS/Plat party members are padded with two extra bytes.
+        res += switch (party.trainer.game.version) {
+            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(2),
+            else => usize(0),
+        };
+
+        return res;
+    }
+
+    pub fn iterator(party: *const Party) Iter {
+        return Iter.init(party);
+    }
+
+    const Iter = Iterator(Party, PartyMember);
+};
+
+pub const Trainer = extern struct {
+    game: *const BaseGame,
+
+    base: *u8,
+    party_ptr: [*]u8,
+
+    pub fn party(trainer: *const Trainer) Party {
+        return Party{ .trainer = trainer };
+    }
+};
+
+pub const Trainers = extern struct {
+    game: *const BaseGame,
+
+    pub fn at(trainers: *const Trainers, index: usize) AtErr!Trainer {
+        return trainers.game.version.dispatch(AtErr!Trainer, AtC{
+            .trainers = trainers,
+            .index = index,
+        }, atHelper);
+    }
+
+    const AtErr = error{
+        InvalidOffset,
+        FileToSmall,
         InvalidPartySize,
-    });
-    pub fn trainers(game: *const Game) Trainers {
-        return Trainers.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) !Trainer {
-                    const trainer = try getFileAsType(BaseTrainer, g.trainer_data, index);
-                    const party = g.trainer_pokemons[index].data;
-
-                    const data = switch (trainer.party_type) {
-                        PartyType.Standard => try partyMemberData(gen4.PartyMemberBase, g.version, party, trainer.party_size),
-                        PartyType.WithMoves => try partyMemberData(gen4.PartyMemberWithMoves, g.version, party, trainer.party_size),
-                        PartyType.WithHeld => try partyMemberData(gen4.PartyMemberWithHeld, g.version, party, trainer.party_size),
-                        PartyType.WithBoth => try partyMemberData(gen4.PartyMemberWithBoth, g.version, party, trainer.party_size),
-                        else => return error.InvalidPartyType,
-                    };
-
-                    return Trainer{
-                        .base = trainer,
-                        .version = g.version,
-                        .party_data = data,
-                    };
-                }
-
-                fn length(g: *const Game) usize {
-                    return math.min(g.trainer_data.len, g.trainer_pokemons.len);
-                }
-
-                fn partyMemberData(comptime Member: type, version: common.Version, data: []u8, size: usize) ![]u8 {
-                    // In HGSS/Plat party members are padded with two extra bytes.
-                    const padding = switch (version) {
-                        common.Version.HeartGold, common.Version.SoulSilver, common.Version.Platinum => usize(2),
-                        common.Version.Diamond, common.Version.Pearl => usize(0),
-                        else => unreachable,
-                    };
-                    const byte_size = size * (@sizeOf(Member) + padding);
-                    if (data.len < byte_size) return error.InvalidPartySize;
-
-                    return data[0..byte_size];
-                }
-            },
-            Game,
-            game,
-        );
-    }
-
-    pub const Trainer = struct {
-        base: *BaseTrainer,
-        version: common.Version,
-        party_data: []u8,
-
-        pub const PartyMembers = Collection(*PartyMember, error{});
-        pub fn party(trainer: *const Trainer) PartyMembers {
-            return PartyMembers.initExternFunctionsAndContext(
-                struct {
-                    fn at(t: *const Trainer, index: usize) (error{}!*PartyMember) {
-                        return switch (t.base.party_type) {
-                            PartyType.Standard => basePartyMember(gen4.PartyMemberBase, t, index),
-                            PartyType.WithMoves => basePartyMember(gen4.PartyMemberWithMoves, t, index),
-                            PartyType.WithHeld => basePartyMember(gen4.PartyMemberWithHeld, t, index),
-                            PartyType.WithBoth => basePartyMember(gen4.PartyMemberWithBoth, t, index),
-                            else => unreachable,
-                        };
-                    }
-
-                    fn length(t: *const Trainer) usize {
-                        return t.base.party_size;
-                    }
-
-                    fn basePartyMember(comptime TMember: type, t: *const Trainer, index: usize) *PartyMember {
-                        // In HGSS/Plat party members are padded with two extra bytes.
-                        const padding = switch (t.version) {
-                            common.Version.HeartGold, common.Version.SoulSilver, common.Version.Platinum => usize(2),
-                            common.Version.Diamond, common.Version.Pearl => usize(0),
-                            else => unreachable,
-                        };
-
-                        const data_index = (@sizeOf(TMember) + padding) * index;
-                        const member_data = t.party_data[data_index..][0..@sizeOf(PartyMember)];
-                        return &([]PartyMember)(member_data)[0];
-                    }
-                },
-                Trainer,
-                trainer,
-            );
-        }
     };
 
-    const Moves = Collection(*Move, error{DataTooSmall});
-    pub fn moves(game: *const Game) Moves {
-        return Moves.initExternFunctionsAndContext(
-            struct {
-                fn at(m: *const []const *nds.fs.Narc.File, index: usize) !*Move {
-                    return try getFileAsType(Move, m.*, index);
-                }
+    const AtC = struct {
+        trainers: *const Trainers,
+        index: usize,
+    };
 
-                fn length(m: *const []const *nds.fs.Narc.File) usize {
-                    return m.len;
-                }
+    fn atHelper(comptime gen: Namespace, c: var) AtErr!Trainer {
+        const trainers = c.trainers;
+        const index = c.index;
+        const game = @fieldParentPtr(gen.Game, "base", trainers.game);
+
+        const trainer = if (gen == gen3) &game.trainers[index] else try getFileAsType(gen.Trainer, game.trainers, index);
+        var res = Trainer{
+            .game = &game.base,
+            .base = @ptrCast(*u8, trainer),
+            .party_ptr = undefined,
+        };
+
+        res.party_ptr = switch (gen) {
+            gen3 => blk: {
+                const start = math.sub(usize, trainer.party_offset.get(), 0x8000000) catch return error.InvalidOffset;
+                const end = start + trainer.party_size.get() * res.party().memberSize();
+                const party = generic.slice(game.data, start, end) catch return error.InvalidOffset;
+                break :blk party.ptr;
             },
-            []const *nds.fs.Narc.File,
-            game.moves,
-        );
+            gen4, gen5 => blk: {
+                const party_data = game.parties[index].data;
+                const min_size = trainer.party_size * res.party().memberSize();
+                if (party_data.len < min_size)
+                    return error.InvalidPartySize;
+
+                break :blk party_data.ptr;
+            },
+            else => @compileError("Gen not supported!"),
+        };
+
+        return res;
     }
 
-    const Machines = Collection(*little.Little(u16), error{});
-    pub fn tms(game: *const Game) Machines {
-        return Machines.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) (error{}!*little.Little(u16)) {
-                    debug.assert(index < g.tms.len);
-                    return &g.tms[index];
-                }
-
-                fn length(g: *const Game) usize {
-                    return g.tms.len;
-                }
-            },
-            Game,
-            game,
-        );
+    pub fn len(trainers: *const Trainers) usize {
+        return trainers.game.version.dispatch(usize, trainers, lenHelper);
     }
 
-    pub fn hms(game: *const Game) Machines {
-        return Machines.initSlice(little.Little(u16), game.hms);
+    fn lenHelper(comptime gen: Namespace, trainers: var) usize {
+        const game = @fieldParentPtr(gen.Game, "base", trainers.game);
+        var min = game.trainers.len;
+        if (gen == gen4 or gen == gen5)
+            min = math.min(min, game.parties.len);
+
+        return min;
+    }
+
+    pub fn iterator(trainers: *const Trainers) Iter {
+        return Iter.init(trainers);
+    }
+
+    const Iter = ErrIterator(Trainers, Trainer);
+};
+
+pub const Tms = Machines(MachineKind.Technical);
+pub const Hms = Machines(MachineKind.Hidden);
+
+pub fn Machines(comptime kind: MachineKind) type {
+    return extern struct {
+        const Self = this;
+
+        game: *const BaseGame,
+
+        pub fn at(machines: *const Self, index: usize) u16 {
+            return machines.game.version.dispatch(u16, AtC{
+                .machines = machines,
+                .index = index,
+            }, atHelper);
+        }
+
+        const AtC = struct {
+            machines: *const Self,
+            index: usize,
+        };
+
+        fn atHelper(comptime gen: Namespace, c: var) u16 {
+            var index = c.index;
+            const machines = getMachines(gen, c.machines, &index);
+            return machines[index].get();
+        }
+
+        pub fn atSet(machines: *const Self, index: usize, value: u16) void {
+            return machines.game.version.dispatch(void, AtSetC{
+                .machines = machines,
+                .index = index,
+                .value = value,
+            }, atSetHelper);
+        }
+
+        const AtSetC = struct {
+            machines: *const Self,
+            index: usize,
+            value: u16,
+        };
+
+        fn atSetHelper(comptime gen: Namespace, c: var) void {
+            var index = c.index;
+            const machines = getMachines(gen, c.machines, &index);
+            machines[index].set(c.value);
+        }
+
+        fn getMachines(comptime gen: Namespace, machines: *const Self, index: *usize) []Little(u16) {
+            const game = @fieldParentPtr(gen.Game, "base", machines.game);
+            switch (gen) {
+                gen3, gen4 => return if (kind == MachineKind.Hidden) game.hms else game.tms,
+                gen5 => {
+                    if (kind == MachineKind.Hidden)
+                        return game.hms;
+
+                    if (index.* < game.tms1.len)
+                        return game.tms1;
+
+                    index.* -= game.tms1.len;
+                    return game.tms2;
+                },
+                else => @compileError("Gen not supported!"),
+            }
+        }
+
+        pub fn len(machines: *const Self) usize {
+            return machines.game.version.dispatch(usize, machines, lenHelper);
+        }
+
+        fn lenHelper(comptime gen: Namespace, machines: var) usize {
+            const game = @fieldParentPtr(gen.Game, "base", machines.game);
+            return switch (gen) {
+                gen3, gen4 => game.tms.len,
+                gen5 => game.tms1.len + game.tms2,
+                else => @compileError("Gen not supported!"),
+            };
+        }
+
+        pub fn iterator(machines: *const Self) Iterator {
+            return Iterator.init(machines);
+        }
+
+        const Iterator = GenerateIterator(Machines, u16);
+    };
+}
+
+pub const Move = extern struct {
+    game: *const BaseGame,
+    data: *u8,
+
+    pub fn types(move: *const Move) *[1]u8 {
+        return move.game.version.dispatch(*[1]u8, move, typesHelper);
+    }
+
+    fn typesHelper(comptime gen: Namespace, move: var) *[1]u8 {
+        const t = &@ptrCast(*gen.Move, move.data).@"type";
+        return @ptrCast(*[1]u8, t);
+    }
+
+    pub fn power(move: *const Move) *u8 {
+        return move.game.version.dispatch(*u8, move, powerHelper);
+    }
+
+    fn powerHelper(comptime gen: Namespace, move: var) *u8 {
+        return &@ptrCast(*gen.Move, move.data).power;
+    }
+
+    pub fn pp(move: *const Move) *u8 {
+        return move.game.version.dispatch(*u8, move, ppHelper);
+    }
+
+    fn ppHelper(comptime gen: Namespace, move: var) *u8 {
+        return &@ptrCast(*gen.Move, move.data).pp;
     }
 };
 
-pub const Gen5 = struct {
-    pub const Game = gen5.Game;
-    pub const BasePokemon = gen5.BasePokemon;
-    pub const Evolution = common.Evolution;
-    pub const PartyType = gen5.PartyType;
-    pub const BaseTrainer = gen5.Trainer;
-    pub const PartyMember = gen5.PartyMemberBase;
-    pub const Move = gen5.Move;
-    pub const LevelUpMove = gen5.LevelUpMove;
-    pub const Item = gen5.Item;
-    pub const Type = gen5.Type;
+pub const Moves = extern struct {
+    game: *const BaseGame,
 
-    pub const Pokemons = Collection(Pokemon, error{DataTooSmall});
+    pub fn at(moves: *const Moves, index: usize) Move {
+        return moves.game.version.dispatch(Move, AtC{
+            .moves = moves,
+            .index = index,
+        }, atHelper);
+    }
+
+    const AtC = struct {
+        moves: *const Moves,
+        index: usize,
+    };
+
+    fn atHelper(comptime gen: Namespace, c: var) Move {
+        const index = c.index;
+        const moves = c.moves;
+        const game = @fieldParentPtr(gen.Game, "base", moves.game);
+        const move = switch (gen) {
+            gen3 => &game.moves[index],
+            gen4, gen5 => game.moves[index],
+            else => @compileError("Gen not supported!"),
+        };
+
+        return Move{
+            .game = moves.game,
+            .data = @ptrCast(*u8, move),
+        };
+    }
+
+    pub fn len(moves: *const Moves) usize {
+        return moves.game.version.dispatch(usize, moves, lenHelper);
+    }
+
+    fn lenHelper(comptime gen: Namespace, moves: var) usize {
+        const game = @fieldParentPtr(gen.Game, "base", moves.game);
+        return game.moves.len;
+    }
+
+    pub fn iterator(moves: *const Moves) Iterator {
+        return Iterator.init(moves);
+    }
+
+    const Iterator = GenerateIterator(Moves, u16);
+};
+
+pub const BaseGame = extern struct {
+    version: Version,
+};
+
+pub const Game = extern struct {
+    base: *BaseGame,
+    allocator: *mem.Allocator,
+    nds_rom: ?*nds.Rom,
+
+    pub fn load(file: *os.File, allocator: *mem.Allocator) !Game {
+        const start = try file.getPos();
+        gba_blk: {
+            try file.seekTo(start);
+            const game = gen3.Game.fromFile(file, allocator) catch break :gba_blk;
+            const alloced_game = try allocator.construct(game);
+
+            return Game{
+                .base = &alloced_game.base,
+                .allocator = allocator,
+                .nds_rom = null,
+            };
+        }
+
+        nds_blk: {
+            try file.seekTo(start);
+            const nds_rom = try allocator.create(nds.Rom);
+            nds_rom.* = nds.Rom.fromFile(file, allocator) catch {
+                allocator.destroy(nds_rom);
+                break :nds_blk;
+            };
+
+            if (gen4.Game.fromRom(nds_rom)) |game| {
+                const alloced_game = try allocator.construct(game);
+                return Game{
+                    .base = &alloced_game.base,
+                    .allocator = allocator,
+                    .nds_rom = nds_rom,
+                };
+            } else |e1| if (gen5.Game.fromRom(nds_rom)) |game| {
+                const alloced_game = try allocator.construct(game);
+                return Game{
+                    .base = &alloced_game.base,
+                    .allocator = allocator,
+                    .nds_rom = nds_rom,
+                };
+            } else |e2| {
+                break :nds_blk;
+            }
+        }
+
+        return error.InvalidGame;
+    }
+
+    pub fn save(game: *const Game, file: *os.File) !void {
+        const gen = game.base.version.gen();
+        if (gen == 3) {
+            const g = @fieldParentPtr(gen3.Game, "base", game.base);
+            var file_stream = io.FileOutStream.init(file);
+            try g.writeToStream(&file_stream.stream);
+        }
+
+        if (game.nds_rom) |nds_rom|
+            try nds_rom.writeToFile(file, game.allocator);
+    }
+
+    pub fn deinit(game: *Game) void {
+        game.base.version.dispatch(void, game, deinitHelper);
+    }
+
+    fn deinitHelper(comptime gen: Namespace, game: *Game) void {
+        const allocator = @ptrCast(*mem.Allocator, game.allocator);
+        const g = @fieldParentPtr(gen.Game, "base", game.base);
+
+        if (gen == gen3)
+            g.deinit();
+        if (game.nds_rom) |nds_rom| {
+            nds_rom.deinit();
+            allocator.destroy(nds_rom);
+        }
+
+        allocator.destroy(g);
+        game.* = undefined;
+    }
+
     pub fn pokemons(game: *const Game) Pokemons {
-        return Pokemons.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) !Pokemon {
-                    const base_pokemon = try getFileAsType(BasePokemon, g.base_stats, index);
-                    const level_up_moves = blk: {
-                        var tmp = g.level_up_moves[index].data;
-                        const res = ([]LevelUpMove)(tmp[0 .. tmp.len - (tmp.len % @sizeOf(LevelUpMove))]);
-
-                        // Even though each level up move have it's own file, level up moves still
-                        // end with 0xFFFF 0xFFFF.
-                        for (res) |level_up_move, i| {
-                            if (level_up_move.move_id.get() == 0xFFFF and level_up_move.level.get() == 0xFFFF)
-                                break :blk res[0..i];
-                        }
-
-                        // In the case where we don't find the end 0xFFFF 0xFFFF, we just
-                        // return the level up moves, and assume things are correct.
-                        break :blk res;
-                    };
-
-                    return Pokemon{
-                        .base = base_pokemon,
-                        .game = g,
-                        .level_up_moves = level_up_moves,
-                    };
-                }
-
-                fn length(g: *const Game) usize {
-                    return math.min(g.base_stats.len, g.level_up_moves.len);
-                }
-            },
-            Game,
-            game,
-        );
+        return Pokemons{ .game = game.base };
     }
 
-    pub const Pokemon = struct {
-        base: *BasePokemon,
-        game: *const Game,
-        level_up_moves: []LevelUpMove,
-
-        pub const LevelUpMoves = Collection(*LevelUpMove, error{});
-        pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
-            return LevelUpMoves.initSlice(LevelUpMove, pokemon.level_up_moves);
-        }
-
-        pub const Learnset = Collection(bool, error{});
-        pub fn tmLearnset(pokemon: *const Pokemon) Learnset {
-            return Learnset.initExternFunctionsAndContext(struct {
-                fn at(p: *const Pokemon, index: usize) (error{}!bool) {
-                    debug.assert(index < length(p));
-                    if (index < p.game.tms1.len) {
-                        return bits.get(u128, p.base.tm_hm_learnset.get(), u7(index));
-                    }
-
-                    return bits.get(u128, p.base.tm_hm_learnset.get(), u7(p.game.hms.len + index));
-                }
-
-                fn length(p: *const Pokemon) usize {
-                    return p.game.tms1.len + p.game.tms2.len;
-                }
-            }, Pokemon, pokemon);
-        }
-
-        pub fn hmLearnset(pokemon: *const Pokemon) Learnset {
-            return Learnset.initExternFunctionsAndContext(struct {
-                fn at(p: *const Pokemon, index: usize) (error{}!bool) {
-                    debug.assert(index < length(p));
-                    return bits.get(u128, p.base.tm_hm_learnset.get(), u7(p.game.tms1.len + index));
-                }
-
-                fn length(p: *const Pokemon) usize {
-                    return p.game.hms.len;
-                }
-            }, Pokemon, pokemon);
-        }
-    };
-
-    pub const Trainers = Collection(Trainer, error{
-        DataTooSmall,
-        InvalidPartyType,
-        InvalidPartySize,
-    });
     pub fn trainers(game: *const Game) Trainers {
-        return Trainers.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) !Trainer {
-                    const trainer = try getFileAsType(BaseTrainer, g.trainer_data, index);
-                    const party = g.trainer_pokemons[index].data;
-
-                    const data = switch (trainer.party_type) {
-                        PartyType.Standard => try partyMemberData(gen5.PartyMemberBase, party, trainer.party_size),
-                        PartyType.WithMoves => try partyMemberData(gen5.PartyMemberWithMoves, party, trainer.party_size),
-                        PartyType.WithHeld => try partyMemberData(gen5.PartyMemberWithHeld, party, trainer.party_size),
-                        PartyType.WithBoth => try partyMemberData(gen5.PartyMemberWithBoth, party, trainer.party_size),
-                        else => return error.InvalidPartyType,
-                    };
-
-                    return Trainer{ .base = trainer, .party_data = data };
-                }
-
-                fn length(g: *const Game) usize {
-                    return math.min(g.trainer_data.len, g.trainer_pokemons.len);
-                }
-
-                fn partyMemberData(comptime Member: type, data: []u8, size: usize) ![]u8 {
-                    const byte_size = size * @sizeOf(Member);
-                    if (data.len < byte_size) return error.InvalidPartySize;
-
-                    return data[0..byte_size];
-                }
-            },
-            Game,
-            game,
-        );
+        return Trainers{ .game = game.base };
     }
 
-    pub const Trainer = struct {
-        base: *BaseTrainer,
-        party_data: []u8,
+    pub fn tms(game: *const Game) Tms {
+        return Tms{ .game = game.base };
+    }
 
-        pub const PartyMembers = Collection(*PartyMember, error{});
-        pub fn party(trainer: *const Trainer) PartyMembers {
-            return PartyMembers.initExternFunctionsAndContext(
-                struct {
-                    fn at(t: *const Trainer, index: usize) (error{}!*PartyMember) {
-                        return switch (t.base.party_type) {
-                            PartyType.Standard => basePartyMember(gen5.PartyMemberBase, t.party_data, index),
-                            PartyType.WithMoves => basePartyMember(gen5.PartyMemberWithMoves, t.party_data, index),
-                            PartyType.WithHeld => basePartyMember(gen5.PartyMemberWithHeld, t.party_data, index),
-                            PartyType.WithBoth => basePartyMember(gen5.PartyMemberWithBoth, t.party_data, index),
-                            else => unreachable,
-                        };
-                    }
+    pub fn hms(game: *const Game) Hms {
+        return Hms{ .game = game.base };
+    }
 
-                    fn length(t: *const Trainer) usize {
-                        return t.base.party_size;
-                    }
-
-                    fn basePartyMember(comptime TMember: type, data: []u8, index: usize) *PartyMember {
-                        const member = &([]TMember)(data)[index];
-                        return if (TMember == PartyMember) member else &member.base;
-                    }
-                },
-                Trainer,
-                trainer,
-            );
-        }
-    };
-
-    const Moves = Collection(*Move, error{DataTooSmall});
     pub fn moves(game: *const Game) Moves {
-        return Moves.initExternFunctionsAndContext(
-            struct {
-                fn at(m: *const []const *nds.fs.Narc.File, index: usize) !*Move {
-                    return try getFileAsType(Move, m.*, index);
-                }
-
-                fn length(m: *const []const *nds.fs.Narc.File) usize {
-                    return m.len;
-                }
-            },
-            []const *nds.fs.Narc.File,
-            game.moves,
-        );
-    }
-
-    const Machines = Collection(*little.Little(u16), error{});
-    pub fn tms(game: *const Game) Machines {
-        return Machines.initExternFunctionsAndContext(
-            struct {
-                fn at(g: *const Game, index: usize) (error{}!*little.Little(u16)) {
-                    debug.assert(index < g.tms1.len + g.tms2.len);
-                    if (index < g.tms1.len)
-                        return &g.tms1[index];
-
-                    return &g.tms2[index - g.tms1.len];
-                }
-
-                fn length(g: *const Game) usize {
-                    return g.tms1.len + g.tms2.len;
-                }
-            },
-            Game,
-            game,
-        );
-    }
-
-    pub fn hms(game: *const Game) Machines {
-        return Machines.initSlice(little.Little(u16), game.hms);
+        return Moves{ .game = game.base };
     }
 };
+
+fn Iterator(comptime T: type, comptime Result: type) type {
+    return struct {
+        const Self = this;
+
+        items: T,
+        curr: usize,
+
+        pub const Pair = struct {
+            index: usize,
+            value: Result,
+        };
+
+        pub fn init(items: *const T) Self {
+            return Self{
+                .items = items.*,
+                .curr = 0,
+            };
+        }
+
+        pub fn next(iter: *Self) ?Pair {
+            if (iter.curr >= iter.items.len())
+                return null;
+
+            defer iter.curr += 1;
+            return Pair{
+                .index = iter.curr,
+                .value = iter.items.at(iter.curr),
+            };
+        }
+    };
+}
+
+fn ErrIterator(comptime T: type, comptime Result: type) type {
+    return struct {
+        const Self = this;
+
+        items: T,
+        curr: usize,
+
+        pub const Pair = struct {
+            index: usize,
+            value: Result,
+        };
+
+        pub fn init(items: *const T) Self {
+            return Self{
+                .items = items.*,
+                .curr = 0,
+            };
+        }
+
+        pub fn next(iter: *Self) !?Pair {
+            if (iter.curr >= iter.items.len())
+                return null;
+
+            defer iter.curr += 1;
+            return Pair{
+                .index = iter.curr,
+                .value = try iter.items.at(iter.curr),
+            };
+        }
+
+        pub fn nextValid(iter: *Self) ?Pair {
+            while (true) {
+                const n = iter.next() catch continue;
+                return n;
+            }
+        }
+    };
+}
 
 fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) !*T {
     const data = generic.widenTrim(files[index].data, T);
-    return generic.at(data, 0) catch error.DataTooSmall;
+    return generic.at(data, 0) catch error.FileToSmall;
 }

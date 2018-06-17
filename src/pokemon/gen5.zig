@@ -1,4 +1,5 @@
 const std = @import("std");
+const pokemon = @import("index.zig");
 const little = @import("../little.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
@@ -7,16 +8,13 @@ const constants = @import("gen5-constants.zig");
 
 const mem = std.mem;
 
+const ISlice = utils.slice.ISlice;
 const Little = little.Little;
+const Narc = nds.fs.Narc;
+const Nitro = nds.fs.Nitro;
 
 pub const BasePokemon = packed struct {
-    hp: u8,
-    attack: u8,
-    defense: u8,
-    speed: u8,
-    sp_attack: u8,
-    sp_defense: u8,
-
+    stats: common.Stats,
     types: [2]Type,
 
     catch_rate: u8,
@@ -64,7 +62,15 @@ pub const BasePokemon = packed struct {
     //nacrene_tutor: Little(u32),
 };
 
-pub const PartyMemberBase = packed struct {
+/// All party members have this as the base.
+/// * If trainer.party_type & 0b10 then there is an additional u16 after the base, which is the held
+///   item.
+/// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
+///   the party members moveset.
+pub const PartyMember = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     iv: u8,
     gender: u4,
     ability: u4,
@@ -74,31 +80,8 @@ pub const PartyMemberBase = packed struct {
     form: Little(u16),
 };
 
-pub const PartyMemberWithMoves = packed struct {
-    base: PartyMemberBase,
-    moves: [4]Little(u16),
-};
-
-pub const PartyMemberWithHeld = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-};
-
-pub const PartyMemberWithBoth = packed struct {
-    base: PartyMemberBase,
-    held_item: Little(u16),
-    moves: [4]Little(u16),
-};
-
-pub const PartyType = enum(u8) {
-    Standard = 0x00,
-    WithMoves = 0x01,
-    WithHeld = 0x02,
-    WithBoth = 0x03,
-};
-
 pub const Trainer = packed struct {
-    party_type: PartyType,
+    party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
     party_size: u8,
@@ -164,41 +147,41 @@ pub const Type = enum(u8) {
 pub const Game = struct {
     const legendaries = common.legendaries;
 
-    version: common.Version,
-    base_stats: []const *nds.fs.Narc.File,
-    moves: []const *nds.fs.Narc.File,
-    level_up_moves: []const *nds.fs.Narc.File,
-    trainer_data: []const *nds.fs.Narc.File,
-    trainer_pokemons: []const *nds.fs.Narc.File,
+    base: pokemon.BaseGame,
+    base_stats: []const *Narc.File,
+    moves: []const *Narc.File,
+    level_up_moves: []const *Narc.File,
+    trainers: []const *Narc.File,
+    parties: []const *Narc.File,
     tms1: []Little(u16),
     hms: []Little(u16),
     tms2: []Little(u16),
 
-    pub fn fromRom(rom: *nds.Rom) !Game {
+    pub fn fromRom(rom: *const nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) ?? return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game{
-            .version = info.version,
+            .base = pokemon.BaseGame{ .version = info.version },
             .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
             .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
             .moves = try getNarcFiles(rom.file_system, info.moves),
-            .trainer_data = try getNarcFiles(rom.file_system, info.trainer_data),
-            .trainer_pokemons = try getNarcFiles(rom.file_system, info.trainer_pokemons),
+            .trainers = try getNarcFiles(rom.file_system, info.trainer_data),
+            .parties = try getNarcFiles(rom.file_system, info.trainer_parties),
             .tms1 = hm_tms[0..92],
             .hms = hm_tms[92..98],
             .tms2 = hm_tms[98..],
         };
     }
 
-    fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *nds.fs.Narc.File {
+    fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *Narc.File {
         const file = file_system.getFile(path) ?? return error.CouldntFindFile;
 
         switch (file.@"type") {
-            nds.fs.Nitro.File.Type.Binary => return error.InvalidFileType,
-            nds.fs.Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
+            Nitro.File.Type.Binary => return error.InvalidFileType,
+            Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
         }
     }
 

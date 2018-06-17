@@ -31,14 +31,14 @@ const Info = struct {
     trainer_group_lenghts: []u8,
 };
 
-pub fn findInfoInFile(data: []const u8, version: common.Version, allocator: *mem.Allocator) !Info {
+pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *mem.Allocator) !Info {
     // In gen2, trainers are split into groups. Each group have attributes for their items, reward ai and so on.
     // The game does not store the size of each group anywere oviuse, so we have to figure out the size of each
     // group.
     var trainer_group_pointers: []const Little(u16) = undefined;
     var trainer_group_lenghts: []u8 = undefined;
     switch (version) {
-        common.Version.Crystal => {
+        pokemon.Version.Crystal => {
             // First, we find the first and last group pointers
             const first_group_pointer = indexOfTrainer(data, 0, constants.first_trainers) ?? return error.TrainerGroupsNotFound;
             const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) ?? return error.TrainerGroupsNotFound;
