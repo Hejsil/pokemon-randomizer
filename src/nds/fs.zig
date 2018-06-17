@@ -62,7 +62,7 @@ fn FileSystem(comptime FileType: type) type {
             return node;
         }
 
-        pub fn getFile(fs: *const Self, path: []const u8) ?*FileType {
+        pub fn getFile(fs: Self, path: []const u8) ?*FileType {
             var splitIter = mem.split(path, "/");
             var curr_folder = fs.root;
             var curr = splitIter.next() orelse return null;
@@ -130,7 +130,7 @@ pub const FatEntry = packed struct {
         };
     }
 
-    fn getSize(entry: *const FatEntry) usize {
+    fn getSize(entry: FatEntry) usize {
         return entry.end.get() - entry.start.get();
     }
 };
@@ -186,8 +186,10 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
         };
         const type_length = try utils.stream.read(stream, u8);
 
-        if (type_length == 0x80) return error.InvalidSubTableTypeLength;
-        if (type_length == 0x00) continue;
+        if (type_length == 0x80)
+            return error.InvalidSubTableTypeLength;
+        if (type_length == 0x00)
+            continue;
 
         const lenght = type_length & 0x7F;
         const kind = Kind((type_length & 0x80));
@@ -198,8 +200,8 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
             Kind.File => {
                 const fat_entry = generic.at(fat, file_id) catch return error.InvalidFileId;
                 try folder.files.append(switch (Fs) {
-                    Nitro => try readNitroFile(fs, file, allocator, fat_entry, img_base, name),
-                    Narc => try readNarcFile(fs, file, allocator, fat_entry, img_base, name),
+                    Nitro => try readNitroFile(fs, file, allocator, fat_entry.*, img_base, name),
+                    Narc => try readNarcFile(fs, file, allocator, fat_entry.*, img_base, name),
                     else => comptime unreachable,
                 });
 
@@ -211,7 +213,8 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
             },
             Kind.Folder => {
                 const id = try utils.stream.read(stream, Little(u16));
-                if (id.get() < 0xF001 or id.get() > 0xFFFF) return error.InvalidSubDirectoryId;
+                if (id.get() < 0xF001 or id.get() > 0xFFFF)
+                    return error.InvalidSubDirectoryId;
 
                 const fnt_entry = generic.at(fnt_main_table, id.get() & 0x0FFF) catch return error.InvalidSubDirectoryId;
                 const sub_folder = try fs.createFolder(name);
@@ -235,7 +238,7 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
     return fs;
 }
 
-pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, fat_entry: *const FatEntry, img_base: usize, name: []u8) !*Nitro.File {
+pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, fat_entry: FatEntry, img_base: usize, name: []u8) !*Nitro.File {
     var file_in_stream = io.FileInStream.init(file);
 
     narc_read: {
@@ -327,7 +330,7 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
     });
 }
 
-pub fn readNarcFile(fs: *Narc, file: *os.File, tmp_allocator: *mem.Allocator, fat_entry: *const FatEntry, img_base: usize, name: []u8) !*Narc.File {
+pub fn readNarcFile(fs: *Narc, file: *os.File, tmp_allocator: *mem.Allocator, fat_entry: FatEntry, img_base: usize, name: []u8) !*Narc.File {
     var file_in_stream = io.FileInStream.init(file);
     const stream = &file_in_stream.stream;
 
@@ -347,7 +350,7 @@ pub fn FntAndFiles(comptime FileType: type) type {
     };
 }
 
-pub fn getFntAndFiles(comptime Fs: type, fs: *const Fs, allocator: *mem.Allocator) !FntAndFiles(Fs.File) {
+pub fn getFntAndFiles(comptime Fs: type, fs: Fs, allocator: *mem.Allocator) !FntAndFiles(Fs.File) {
     comptime assert(Fs == Nitro or Fs == Narc);
 
     var files = std.ArrayList(*Fs.File).init(allocator);
@@ -410,13 +413,13 @@ pub fn getFntAndFiles(comptime Fs: type, fs: *const Fs, allocator: *mem.Allocato
     };
 }
 
-pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: *const Nitro.File) !void {
+pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.File) !void {
     switch (fs_file.@"type") {
         Nitro.File.Type.Binary => |data| {
             try file.write(data);
         },
         Nitro.File.Type.Narc => |narc_fs| {
-            const fntAndFiles = try getFntAndFiles(Narc, narc_fs, allocator);
+            const fntAndFiles = try getFntAndFiles(Narc, narc_fs.*, allocator);
             const files = fntAndFiles.files;
             const main_fnt = fntAndFiles.main_fnt;
             const sub_fnt = fntAndFiles.sub_fnt;

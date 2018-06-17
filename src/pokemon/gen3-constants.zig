@@ -8,7 +8,7 @@ pub const Offset = struct {
     start: usize,
     len: usize,
 
-    fn getSlice(offset: *const Offset, comptime Item: type, data: []u8) []Item {
+    fn getSlice(offset: Offset, comptime Item: type, data: []u8) []Item {
         return generic.widenTrim(data[offset.start..], Item)[0..offset.len];
     }
 };

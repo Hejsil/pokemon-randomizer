@@ -65,17 +65,17 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
     return true;
 }
 
-fn fieldsEql(comptime field: []const u8, comptime T: type, a: *const T, b: *const T) bool {
+fn fieldsEql(comptime field: []const u8, comptime T: type, a: T, b: T) bool {
     const af = @field(a, field);
     const bf = @field(b, field);
-    return compare.equal(@typeOf(af))(af, bf);
+    return compare.equal(@typeOf(af), af, bf);
 }
 
-fn strEql(a: *const []const u8, b: *const []const u8) bool {
-    return mem.eql(u8, a.*, b.*);
+fn strEql(a: []const u8, b: []const u8) bool {
+    return mem.eql(u8, a, b);
 }
 
-fn contains(comptime T: type, items: []const T, value: *const T, eql: fn (*const T, *const T) bool) bool {
+fn contains(comptime T: type, items: []const T, value: T, eql: fn (T, T) bool) bool {
     for (items) |item| {
         if (eql(item, value)) return true;
     }

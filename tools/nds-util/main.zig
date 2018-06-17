@@ -65,10 +65,10 @@ pub fn main() !void {
     try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files, allocator);
     try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files, allocator);
 
-    try writeFs(root_folder, rom.file_system, allocator);
+    try writeFs(root_folder, rom.file_system.*, allocator);
 }
 
-fn writeFs(folder: []const u8, fs: *const nds.fs.Nitro, allocator: *mem.Allocator) !void {
+fn writeFs(folder: []const u8, fs: nds.fs.Nitro, allocator: *mem.Allocator) !void {
     const State = struct {
         path: []const u8,
         folder: *nds.fs.Nitro.Folder,
@@ -92,7 +92,7 @@ fn writeFs(folder: []const u8, fs: *const nds.fs.Nitro, allocator: *mem.Allocato
             var file = try os.File.openWrite(allocator, file_path);
             defer file.close();
 
-            try nds.fs.writeNitroFile(&file, allocator, f);
+            try nds.fs.writeNitroFile(&file, allocator, f.*);
         }
 
         for (state.folder.folders.toSliceConst()) |f| {

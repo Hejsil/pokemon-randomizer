@@ -157,26 +157,27 @@ pub const Game = struct {
     hms: []Little(u16),
     tms2: []Little(u16),
 
-    pub fn fromRom(rom: *const nds.Rom) !Game {
+    pub fn fromRom(rom: nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
+        const fs = rom.file_system.*;
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
         const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },
-            .base_stats = try getNarcFiles(rom.file_system, info.base_stats),
-            .level_up_moves = try getNarcFiles(rom.file_system, info.level_up_moves),
-            .moves = try getNarcFiles(rom.file_system, info.moves),
-            .trainers = try getNarcFiles(rom.file_system, info.trainer_data),
-            .parties = try getNarcFiles(rom.file_system, info.trainer_parties),
+            .base_stats = try getNarcFiles(fs, info.base_stats),
+            .level_up_moves = try getNarcFiles(fs, info.level_up_moves),
+            .moves = try getNarcFiles(fs, info.moves),
+            .trainers = try getNarcFiles(fs, info.trainer_data),
+            .parties = try getNarcFiles(fs, info.trainer_parties),
             .tms1 = hm_tms[0..92],
             .hms = hm_tms[92..98],
             .tms2 = hm_tms[98..],
         };
     }
 
-    fn getNarcFiles(file_system: *const nds.fs.Nitro, path: []const u8) ![]const *Narc.File {
+    fn getNarcFiles(file_system: nds.fs.Nitro, path: []const u8) ![]const *Narc.File {
         const file = file_system.getFile(path) orelse return error.CouldntFindFile;
 
         switch (file.@"type") {
@@ -186,10 +187,14 @@ pub const Game = struct {
     }
 
     fn getInfo(gamecode: []const u8) !constants.Info {
-        if (mem.eql(u8, gamecode, "IREO")) return constants.black2_info;
-        if (mem.eql(u8, gamecode, "IRDO")) return constants.white2_info;
-        if (mem.eql(u8, gamecode, "IRBO")) return constants.black_info;
-        if (mem.eql(u8, gamecode, "IRAO")) return constants.white_info;
+        if (mem.eql(u8, gamecode, "IREO"))
+            return constants.black2_info;
+        if (mem.eql(u8, gamecode, "IRDO"))
+            return constants.white2_info;
+        if (mem.eql(u8, gamecode, "IRBO"))
+            return constants.black_info;
+        if (mem.eql(u8, gamecode, "IRAO"))
+            return constants.white_info;
 
         return error.InvalidGen5GameCode;
     }

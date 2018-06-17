@@ -6,8 +6,8 @@ pub const slice = @import("slice.zig");
 pub const stream = @import("stream.zig");
 
 test "utils" {
-    _ = slice;
-    _ = stream;
+    _ = @import("slice.zig");
+    _ = @import("stream.zig");
 }
 
 /// Returns a mutable byte slice of ::value.
@@ -16,8 +16,8 @@ pub fn asBytes(comptime T: type, value: *T) *[@sizeOf(T)]u8 {
 }
 
 /// Converts ::value to a byte array of size @sizeOf(::T).
-pub fn toBytes(comptime T: type, value: *const T) [@sizeOf(T)]u8 {
-    return @ptrCast(*const [@sizeOf(T)]u8, value).*;
+pub fn toBytes(comptime T: type, value: T) [@sizeOf(T)]u8 {
+    return @ptrCast(*const [@sizeOf(T)]u8, &value).*;
 }
 
 test "utils.asBytes" {

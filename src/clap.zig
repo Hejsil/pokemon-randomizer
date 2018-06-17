@@ -41,40 +41,40 @@ pub fn Arg(comptime T: type) type {
             };
         }
 
-        pub fn help(arg: *const Self, str: []const u8) Self {
-            var res = arg.*;
+        pub fn help(arg: Self, str: []const u8) Self {
+            var res = arg;
             res.help_message = str;
             return res;
         }
 
-        pub fn short(arg: *const Self, char: u8) Self {
-            var res = arg.*;
+        pub fn short(arg: Self, char: u8) Self {
+            var res = arg;
             res.short_arg = char;
             return res;
         }
 
-        pub fn long(arg: *const Self, str: []const u8) Self {
-            var res = arg.*;
+        pub fn long(arg: Self, str: []const u8) Self {
+            var res = arg;
             res.long_arg = str;
             return res;
         }
 
-        pub fn takesValue(arg: *const Self, b: bool) Self {
-            var res = arg.*;
+        pub fn takesValue(arg: Self, b: bool) Self {
+            var res = arg;
             res.takes_value = b;
             return res;
         }
 
-        pub fn kind(arg: *const Self, k: Kind) Self {
-            var res = arg.*;
+        pub fn kind(arg: Self, k: Kind) Self {
+            var res = arg;
             res.arg_kind = k;
             return res;
         }
     };
 }
 
-pub fn parse(comptime T: type, options: []const Arg(T), defaults: *const T, args: []const []const u8) !T {
-    var result = defaults.*;
+pub fn parse(comptime T: type, options: []const Arg(T), defaults: T, args: []const []const u8) !T {
+    var result = defaults;
 
     const Kind = enum {
         Long,

@@ -202,15 +202,15 @@ pub const Header = packed struct {
 
     signature_across_header_entries: [0x80]u8,
 
-    pub fn isDsi(header: *const Header) bool {
+    pub fn isDsi(header: Header) bool {
         return (header.unitcode & 0x02) != 0;
     }
 
-    pub fn calcChecksum(header: *const Header) u16 {
+    pub fn calcChecksum(header: Header) u16 {
         return crc_modbus.checksum(utils.toBytes(Header, header)[0..0x15E]);
     }
 
-    pub fn validate(header: *const Header) !void {
+    pub fn validate(header: Header) !void {
         if (header.header_checksum.get() != header.calcChecksum())
             return error.InvalidHeaderChecksum;
 
@@ -294,7 +294,7 @@ pub const Header = packed struct {
         }
     }
 
-    fn isUpperAsciiOrZero(char: *const u8) bool {
-        return ascii.isUpperAscii(char) or char.* == 0;
+    fn isUpperAsciiOrZero(char: u8) bool {
+        return ascii.isUpperAscii(char) or char == 0;
     }
 };

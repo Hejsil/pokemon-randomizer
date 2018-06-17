@@ -162,7 +162,8 @@ pub const Game = struct {
         const rom = try in_stream.readAllAlloc(allocator, @maxValue(usize));
         errdefer allocator.free(rom);
 
-        if (rom.len % 0x1000000 != 0) return error.InvalidRomSize;
+        if (rom.len % 0x1000000 != 0)
+            return error.InvalidRomSize;
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },
@@ -181,7 +182,7 @@ pub const Game = struct {
         };
     }
 
-    pub fn writeToStream(game: *const Game, in_stream: var) !void {
+    pub fn writeToStream(game: Game, in_stream: var) !void {
         try game.header.validate();
         try in_stream.write(game.data);
     }
