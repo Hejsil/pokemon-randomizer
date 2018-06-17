@@ -166,7 +166,7 @@ pub const Randomizer = struct {
                         // TODO: If a Pokémon is dual type, it has a higher chance of
                         //       being chosen. I think?
                         const pokemon_type = try randomizer.randomType();
-                        const pick_from = (??by_type.get(pokemon_type)).value.toSliceConst();
+                        const pick_from = (by_type.get(pokemon_type).?).value.toSliceConst();
                         const new_pokemon = try randomizer.randomTrainerPokemon(member_pokemon, options.same_total_stats, pick_from);
                         member.setSpecies(new_pokemon);
                     },
@@ -177,13 +177,13 @@ pub const Randomizer = struct {
                             break :blk if (roll < 0.80) member_types[0] else member_types[1];
                         };
 
-                        const pick_from = (??by_type.get(pokemon_type)).value.toSliceConst();
+                        const pick_from = (by_type.get(pokemon_type).?).value.toSliceConst();
                         const new_pokemon = try randomizer.randomTrainerPokemon(member_pokemon, options.same_total_stats, pick_from);
                         member.setSpecies(new_pokemon);
                     },
                     Options.Trainer.Pokemon.TypeThemed => {
                         const trainer_theme = try randomizer.randomType();
-                        const pick_from = (??by_type.get(trainer_theme)).value.toSliceConst();
+                        const pick_from = (by_type.get(trainer_theme).?).value.toSliceConst();
                         const new_pokemon = try randomizer.randomTrainerPokemon(member_pokemon, options.same_total_stats, pick_from);
                         member.setSpecies(new_pokemon);
                     },
@@ -260,7 +260,7 @@ pub const Randomizer = struct {
 
     fn randomizeTrainerPokemonMoves(randomizer: *Randomizer, member: *const libpoke.PartyMember, option: *const Options.Trainer) !void {
         const pokemons = randomizer.game.pokemons();
-        const member_moves = member.moves() ?? return;
+        const member_moves = member.moves() orelse return;
 
         switch (option.moves) {
             Options.Trainer.Moves.Same => {
@@ -371,7 +371,7 @@ pub const Randomizer = struct {
         var it = species_by_type.iterator();
         var i: usize = 0;
         while (i < species_by_type.size) : (i += 1) {
-            var n = ??it.next();
+            var n = it.next().?;
             if (i == choice)
                 return n.key;
         }
@@ -450,16 +450,16 @@ pub const Randomizer = struct {
                 continue;
 
             for (pokemon.types().*) |t| {
-                const entry = species_by_type.get(t) ?? blk: {
+                const entry = species_by_type.get(t) orelse blk: {
                     _ = try species_by_type.put(t, std.ArrayList(u16).init(randomizer.allocator));
-                    break :blk ??species_by_type.get(t);
+                    break :blk species_by_type.get(t).?;
                 };
                 try entry.value.append(u16(species));
             }
         }
 
         randomizer.species_by_type = species_by_type;
-        return &??randomizer.species_by_type;
+        return &randomizer.species_by_type.?;
     }
 
     fn freeSpeciesByType(by_type: *SpeciesByType) void {

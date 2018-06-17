@@ -46,7 +46,7 @@ pub fn main() !void {
         const zdecoded = try @noInlineCall(zblz.decode, bytes2, allocator);
         const cdecoded = blk: {
             var out_len: c_uint = undefined;
-            const res = ??cblz.BLZ_Decode(&bytes[0], c_uint(bytes.len), &out_len);
+            const res = cblz.BLZ_Decode(&bytes[0], c_uint(bytes.len), &out_len).?;
             break :blk res[0..out_len];
         };
         defer heap.c_allocator.free(cdecoded);
@@ -55,7 +55,7 @@ pub fn main() !void {
         const zencoded_best = try @noInlineCall(zblz.encode, cdecoded, zblz.Mode.Best, false, allocator);
         const cencoded_best = blk: {
             var out_len: c_uint = undefined;
-            const res = ??cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_BEST);
+            const res = cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_BEST).?;
             break :blk res[0..out_len];
         };
         defer heap.c_allocator.free(cencoded_best);
@@ -64,7 +64,7 @@ pub fn main() !void {
         const zencoded_normal = try @noInlineCall(zblz.encode, cdecoded, zblz.Mode.Normal, false, allocator);
         const cencoded_normal = blk: {
             var out_len: c_uint = undefined;
-            const res = ??cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_NORMAL);
+            const res = cblz.BLZ_Encode(&cdecoded[0], c_uint(cdecoded.len), &out_len, cblz.BLZ_NORMAL).?;
             break :blk res[0..out_len];
         };
         defer heap.c_allocator.free(cencoded_normal);

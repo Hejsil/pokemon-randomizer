@@ -27,10 +27,15 @@ const u9 = @IntType(false, 9);
 const u10 = @IntType(false, 10);
 
 test "pokemon" {
-    _ = common;
-    _ = gen3;
-    _ = gen4;
-    _ = gen5;
+    _ = @import("common.zig");
+    _ = @import("gen2-constants.zig");
+    _ = @import("gen2.zig");
+    _ = @import("gen3-constants.zig");
+    _ = @import("gen3.zig");
+    _ = @import("gen4-constants.zig");
+    _ = @import("gen4.zig");
+    _ = @import("gen5-constants.zig");
+    _ = @import("gen5.zig");
 }
 
 pub const Version = extern enum {
@@ -162,7 +167,7 @@ pub const Type = extern enum {
     }
 
     fn fromGameHelper(comptime gen: Namespace, id: u8) Type {
-        return toOther(Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) ?? Type.Invalid;
+        return toOther(Type, @bitCast(gen.Type, @TagType(gen.Type)(id))) orelse Type.Invalid;
     }
 
     pub fn toGame(version: Version, t: Type) u8 {
@@ -176,7 +181,7 @@ pub const Type = extern enum {
     }
 
     fn toGameHelper(comptime gen: Namespace, t: Type) u8 {
-        const res = toOther(gen.Type, t) ?? return 0xAA;
+        const res = toOther(gen.Type, t) orelse return 0xAA;
         return u8(res);
     }
 
@@ -202,7 +207,7 @@ pub const LevelUpMove = extern struct {
     version: Version,
     data: *u8,
 
-    pub fn level(move: *const LevelUpMove) u8 {
+    pub fn level(move: LevelUpMove) u8 {
         return move.version.dispatch(u8, move, levelHelper);
     }
 
@@ -211,7 +216,7 @@ pub const LevelUpMove = extern struct {
         return if (gen == gen5) u8(lvl.get()) else lvl;
     }
 
-    pub fn setLevel(move: *const LevelUpMove, lvl: u8) void {
+    pub fn setLevel(move: LevelUpMove, lvl: u8) void {
         move.version.dispatch(void, SetLvlC{
             .move = move,
             .lvl = lvl,
@@ -219,7 +224,7 @@ pub const LevelUpMove = extern struct {
     }
 
     const SetLvlC = struct {
-        move: *const LevelUpMove,
+        move: LevelUpMove,
         lvl: u8,
     };
 
@@ -228,7 +233,7 @@ pub const LevelUpMove = extern struct {
         @ptrCast(*gen.LevelUpMove, c.move.data).level = lvl;
     }
 
-    pub fn moveId(move: *const LevelUpMove) u16 {
+    pub fn moveId(move: LevelUpMove) u16 {
         return move.version.dispatch(u16, move, moveIdHelper);
     }
 
@@ -237,7 +242,7 @@ pub const LevelUpMove = extern struct {
         return if (gen == gen5) move_id.get() else move_id;
     }
 
-    pub fn setMoveId(move: *const LevelUpMove, id: u16) void {
+    pub fn setMoveId(move: LevelUpMove, id: u16) void {
         move.version.dispatch(u16, SetMoveIdC{
             .move = move,
             .id = id,
@@ -245,7 +250,7 @@ pub const LevelUpMove = extern struct {
     }
 
     const SetMoveIdC = struct {
-        move: *const LevelUpMove,
+        move: LevelUpMove,
         id: u8,
     };
 
@@ -260,7 +265,7 @@ pub const LevelUpMoves = extern struct {
     data_len: usize,
     data: [*]u8,
 
-    pub fn at(moves: *const LevelUpMoves, index: usize) LevelUpMove {
+    pub fn at(moves: LevelUpMoves, index: usize) LevelUpMove {
         return moves.version.dispatch(LevelUpMove, atC{
             .moves = moves,
             .index = index,
@@ -268,7 +273,7 @@ pub const LevelUpMoves = extern struct {
     }
 
     const atC = struct {
-        moves: *const LevelUpMoves,
+        moves: LevelUpMoves,
         index: usize,
     };
 
@@ -280,11 +285,11 @@ pub const LevelUpMoves = extern struct {
         };
     }
 
-    pub fn len(moves: *const LevelUpMoves) usize {
+    pub fn len(moves: LevelUpMoves) usize {
         return moves.data_len;
     }
 
-    pub fn iterator(moves: *const LevelUpMoves) Iter {
+    pub fn iterator(moves: LevelUpMoves) Iter {
         return Iter.init(moves);
     }
 
@@ -305,7 +310,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
         game: *const BaseGame,
         data: *u8,
 
-        pub fn at(learnset: *const Self, index: usize) bool {
+        pub fn at(learnset: Self, index: usize) bool {
             return learnset.game.version.dispatch(bool, atC{
                 .learnset = learnset,
                 .index = index,
@@ -313,7 +318,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
         }
 
         const atC = struct {
-            learnset: *const Self,
+            learnset: Self,
             index: usize,
         };
 
@@ -325,7 +330,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
             return bits.get(T, learnset.get(), math.Log2Int(T)(i));
         }
 
-        pub fn atSet(learnset: *const Self, index: usize, value: bool) void {
+        pub fn atSet(learnset: Self, index: usize, value: bool) void {
             learnset.game.version.dispatch(bool, atSetC{
                 .learnset = learnset,
                 .index = index,
@@ -334,7 +339,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
         }
 
         const atSetC = struct {
-            learnset: *const Self,
+            learnset: Self,
             index: usize,
             value: bool,
         };
@@ -347,7 +352,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
             learnset.set(bits.set(T, learnset.get(), math.Log2Int(T)(i), c.value));
         }
 
-        fn indexInLearnset(learnset: *const Self, comptime gen: Namespace, index: usize) usize {
+        fn indexInLearnset(learnset: Self, comptime gen: Namespace, index: usize) usize {
             const game = @fieldParentPtr(gen.Game, "base", learnset.game);
             const i = switch (gen) {
                 gen3, gen4 => {
@@ -372,7 +377,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
             };
         }
 
-        pub fn len(learnset: *const Self) usize {
+        pub fn len(learnset: Self) usize {
             return learnset.game.version.dispatch(usize, learnset, lenHelper);
         }
 
@@ -388,7 +393,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
             };
         }
 
-        pub fn iterator(learnset: *const Self) Iter {
+        pub fn iterator(learnset: Self) Iter {
             return Iter.init(learnset);
         }
 
@@ -404,7 +409,7 @@ pub const Pokemon = extern struct {
     level_up_moves_len: usize,
     level_up_moves: [*]u8,
 
-    pub fn hp(pokemon: *const Pokemon) *u8 {
+    pub fn hp(pokemon: Pokemon) *u8 {
         return pokemon.game.version.dispatch(*u8, pokemon, hpHelper);
     }
 
@@ -412,7 +417,7 @@ pub const Pokemon = extern struct {
         return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.hp;
     }
 
-    pub fn attack(pokemon: *const Pokemon) *u8 {
+    pub fn attack(pokemon: Pokemon) *u8 {
         return pokemon.game.version.dispatch(*u8, pokemon, attackHelper);
     }
 
@@ -420,7 +425,7 @@ pub const Pokemon = extern struct {
         return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.attack;
     }
 
-    pub fn defense(pokemon: *const Pokemon) *u8 {
+    pub fn defense(pokemon: Pokemon) *u8 {
         return pokemon.game.version.dispatch(*u8, pokemon, defenseHelper);
     }
 
@@ -428,7 +433,7 @@ pub const Pokemon = extern struct {
         return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.defense;
     }
 
-    pub fn speed(pokemon: *const Pokemon) *u8 {
+    pub fn speed(pokemon: Pokemon) *u8 {
         return pokemon.game.version.dispatch(*u8, pokemon, speedHelper);
     }
 
@@ -436,7 +441,7 @@ pub const Pokemon = extern struct {
         return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.speed;
     }
 
-    pub fn spAttack(pokemon: *const Pokemon) *u8 {
+    pub fn spAttack(pokemon: Pokemon) *u8 {
         return pokemon.game.version.dispatch(*u8, pokemon, spAttackHelper);
     }
 
@@ -444,7 +449,7 @@ pub const Pokemon = extern struct {
         return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.sp_attack;
     }
 
-    pub fn spDefense(pokemon: *const Pokemon) *u8 {
+    pub fn spDefense(pokemon: Pokemon) *u8 {
         return pokemon.game.version.dispatch(*u8, pokemon, spDefenseHelper);
     }
 
@@ -452,7 +457,7 @@ pub const Pokemon = extern struct {
         return &@ptrCast(*gen.BasePokemon, pokemon.base).stats.sp_defense;
     }
 
-    pub fn levelUpMoves(pokemon: *const Pokemon) LevelUpMoves {
+    pub fn levelUpMoves(pokemon: Pokemon) LevelUpMoves {
         return LevelUpMoves{
             .version = pokemon.game.version,
             .data_len = pokemon.level_up_moves_len,
@@ -460,7 +465,7 @@ pub const Pokemon = extern struct {
         };
     }
 
-    pub fn totalStats(pokemon: *const Pokemon) u16 {
+    pub fn totalStats(pokemon: Pokemon) u16 {
         const gen = pokemon.game.version.gen();
         var total: u16 = pokemon.hp().*;
         total += pokemon.attack().*;
@@ -474,23 +479,23 @@ pub const Pokemon = extern struct {
         return total;
     }
 
-    pub fn types(pokemon: *const Pokemon) *[2]u8 {
+    pub fn types(pokemon: Pokemon) *[2]u8 {
         return pokemon.game.version.dispatch(*[2]u8, pokemon, typesHelper);
     }
 
-    fn typesHelper(comptime gen: Namespace, pokemon: *const Pokemon) *[2]u8 {
+    fn typesHelper(comptime gen: Namespace, pokemon: Pokemon) *[2]u8 {
         const ts = &@ptrCast(*gen.BasePokemon, pokemon.base).types;
         return @ptrCast(*[2]u8, ts);
     }
 
-    pub fn tmLearnset(pokemon: *const Pokemon) TmLearnset {
+    pub fn tmLearnset(pokemon: Pokemon) TmLearnset {
         return TmLearnset{
             .game = pokemon.game,
             .data = pokemon.learnset,
         };
     }
 
-    pub fn hmLearnset(pokemon: *const Pokemon) HmLearnset {
+    pub fn hmLearnset(pokemon: Pokemon) HmLearnset {
         return HmLearnset{
             .game = pokemon.game,
             .data = pokemon.learnset,
@@ -501,7 +506,7 @@ pub const Pokemon = extern struct {
 pub const Pokemons = extern struct {
     game: *const BaseGame,
 
-    pub fn at(pokemons: *const Pokemons, index: usize) AtErrs!Pokemon {
+    pub fn at(pokemons: Pokemons, index: usize) AtErrs!Pokemon {
         return pokemons.game.version.dispatch(AtErrs!Pokemon, atC{
             .pokemons = pokemons,
             .index = index,
@@ -514,7 +519,7 @@ pub const Pokemons = extern struct {
     };
 
     const atC = struct {
-        pokemons: *const Pokemons,
+        pokemons: Pokemons,
         index: usize,
     };
 
@@ -575,11 +580,11 @@ pub const Pokemons = extern struct {
         };
     }
 
-    pub fn len(pokemons: *const Pokemons) usize {
+    pub fn len(pokemons: Pokemons) usize {
         return pokemons.game.version.dispatch(usize, pokemons, lenHelper);
     }
 
-    fn lenHelper(comptime gen: Namespace, pokemons: var) usize {
+    fn lenHelper(comptime gen: Namespace, pokemons: Pokemons) usize {
         const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
 
         var min = game.base_stats.len;
@@ -595,7 +600,7 @@ pub const Pokemons = extern struct {
         return min;
     }
 
-    pub fn iterator(pokemons: *const Pokemons) Iter {
+    pub fn iterator(pokemons: Pokemons) Iter {
         return Iter.init(pokemons);
     }
 
@@ -606,7 +611,7 @@ const PartyMemberMoves = extern struct {
     game: *const BaseGame,
     data: [*]u8,
 
-    pub fn at(moves: *const PartyMemberMoves, index: usize) u16 {
+    pub fn at(moves: PartyMemberMoves, index: usize) u16 {
         return moves.game.version.dispatch(u16, AtC{
             .moves = moves,
             .index = index,
@@ -614,16 +619,16 @@ const PartyMemberMoves = extern struct {
     }
 
     const AtC = struct {
-        moves: *const PartyMemberMoves,
+        moves: PartyMemberMoves,
         index: usize,
     };
 
-    fn atHelper(comptime gen: Namespace, c: var) u16 {
+    fn atHelper(comptime gen: Namespace, c: AtC) u16 {
         const moves = @ptrCast(*[4]Little(u16), c.moves.data);
         return moves[c.index].get();
     }
 
-    pub fn atSet(moves: *const PartyMemberMoves, index: usize, value: u16) void {
+    pub fn atSet(moves: PartyMemberMoves, index: usize, value: u16) void {
         moves.game.version.dispatch(void, AtSetC{
             .moves = moves,
             .index = index,
@@ -632,21 +637,21 @@ const PartyMemberMoves = extern struct {
     }
 
     const AtSetC = struct {
-        moves: *const PartyMemberMoves,
+        moves: PartyMemberMoves,
         index: usize,
         value: u16,
     };
 
-    fn atSetHelper(comptime gen: Namespace, c: var) void {
+    fn atSetHelper(comptime gen: Namespace, c: AtSetC) void {
         const moves = @ptrCast(*[4]Little(u16), c.moves.data);
         return moves[c.index].set(c.value);
     }
 
-    pub fn len(moves: *const PartyMemberMoves) usize {
+    pub fn len(moves: PartyMemberMoves) usize {
         return 4;
     }
 
-    pub fn iterator(moves: *const PartyMemberMoves) Iter {
+    pub fn iterator(moves: PartyMemberMoves) Iter {
         return Iter.init(pokemons);
     }
 
@@ -659,16 +664,16 @@ pub const PartyMember = extern struct {
     item_ptr: ?*u8,
     moves_ptr: ?[*]u8,
 
-    pub fn species(member: *const PartyMember) u16 {
+    pub fn species(member: PartyMember) u16 {
         return member.game.version.dispatch(u16, member, speciesHelper);
     }
 
-    fn speciesHelper(comptime gen: Namespace, member: var) u16 {
+    fn speciesHelper(comptime gen: Namespace, member: PartyMember) u16 {
         const s = @ptrCast(*gen.PartyMember, member.base).species;
         return if (gen != gen4) s.get() else s;
     }
 
-    pub fn setSpecies(member: *const PartyMember, v: u16) void {
+    pub fn setSpecies(member: PartyMember, v: u16) void {
         member.game.version.dispatch(void, SetSpeciesC{
             .member = member,
             .value = v,
@@ -676,16 +681,16 @@ pub const PartyMember = extern struct {
     }
 
     const SetSpeciesC = struct {
-        member: *const PartyMember,
+        member: PartyMember,
         value: u16,
     };
 
-    fn setSpeciesHelper(comptime gen: Namespace, c: var) void {
+    fn setSpeciesHelper(comptime gen: Namespace, c: SetSpeciesC) void {
         const s = if (gen != gen4) toLittle(c.value) else u10(c.value);
         @ptrCast(*gen.PartyMember, c.member.base).species = s;
     }
 
-    pub fn level(member: *const PartyMember) u8 {
+    pub fn level(member: PartyMember) u8 {
         return member.game.version.dispatch(u8, member, levelHelper);
     }
 
@@ -694,7 +699,7 @@ pub const PartyMember = extern struct {
         return if (gen != gen5) u8(lvl.get()) else lvl;
     }
 
-    pub fn setLevel(member: *const PartyMember, lvl: u8) void {
+    pub fn setLevel(member: PartyMember, lvl: u8) void {
         return member.game.version.dispatch(void, SetLvlC{
             .member = member,
             .value = lvl,
@@ -702,25 +707,25 @@ pub const PartyMember = extern struct {
     }
 
     const SetLvlC = struct {
-        member: *const PartyMember,
+        member: PartyMember,
         value: u8,
     };
 
-    fn setLevelHelper(comptime gen: Namespace, c: var) void {
+    fn setLevelHelper(comptime gen: Namespace, c: SetLvlC) void {
         const lvl = if (gen != gen5) toLittle(u16(c.value)) else c.value;
         @ptrCast(*gen.PartyMember, c.member.base).level = lvl;
     }
 
-    pub fn item(member: *const PartyMember) ?u16 {
+    pub fn item(member: PartyMember) ?u16 {
         return member.game.version.dispatch(?u16, member, itemHelper);
     }
 
     fn itemHelper(comptime gen: Namespace, member: var) ?u16 {
-        const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) ?? return null;
+        const item_ptr = @ptrCast(?*Little(u16), member.item_ptr) orelse return null;
         return item_ptr.get();
     }
 
-    pub fn setItem(member: *const PartyMember, v: u16) SetItemErr!void {
+    pub fn setItem(member: PartyMember, v: u16) SetItemErr!void {
         return member.game.version.dispatch(SetItemErr!void, SetItemC{
             .member = member,
             .value = v,
@@ -729,19 +734,19 @@ pub const PartyMember = extern struct {
 
     const SetItemErr = error{HasNoItem};
     const SetItemC = struct {
-        member: *const PartyMember,
+        member: PartyMember,
         value: u16,
     };
 
-    fn setItemHelper(comptime gen: Namespace, c: var) SetItemErr!void {
-        const item_ptr = @ptrCast(?*Little(u16), c.member.item_ptr) ?? return SetItemErr.HasNoItem;
+    fn setItemHelper(comptime gen: Namespace, c: SetItemC) SetItemErr!void {
+        const item_ptr = @ptrCast(?*Little(u16), c.member.item_ptr) orelse return SetItemErr.HasNoItem;
         return item_ptr.set(c.value);
     }
 
-    pub fn moves(member: *const PartyMember) ?PartyMemberMoves {
+    pub fn moves(member: PartyMember) ?PartyMemberMoves {
         return PartyMemberMoves{
             .game = member.game,
-            .data = member.moves_ptr ?? return null,
+            .data = member.moves_ptr orelse return null,
         };
     }
 };
@@ -749,7 +754,7 @@ pub const PartyMember = extern struct {
 pub const Party = extern struct {
     trainer: *const Trainer,
 
-    pub fn at(party: *const Party, index: usize) PartyMember {
+    pub fn at(party: Party, index: usize) PartyMember {
         return party.trainer.game.version.dispatch(PartyMember, AtC{
             .party = party,
             .index = index,
@@ -757,11 +762,11 @@ pub const Party = extern struct {
     }
 
     const AtC = struct {
-        party: *const Party,
+        party: Party,
         index: usize,
     };
 
-    fn atHelper(comptime gen: Namespace, c: var) PartyMember {
+    fn atHelper(comptime gen: Namespace, c: AtC) PartyMember {
         const index = c.index;
         const trainer = @ptrCast(*gen.Trainer, c.party.trainer.base);
         const member_size = c.party.memberSize();
@@ -795,8 +800,13 @@ pub const Party = extern struct {
             break :blk null;
         };
 
+        if (gen == gen3) {
+            if (item == null)
+                off += @sizeOf(u16);
+        }
+
         off += switch (c.party.trainer.game.version) {
-            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(2),
+            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(@sizeOf(u16)),
             else => usize(0),
         };
 
@@ -811,7 +821,7 @@ pub const Party = extern struct {
         };
     }
 
-    pub fn len(party: *const Party) usize {
+    pub fn len(party: Party) usize {
         return party.trainer.game.version.dispatch(usize, party, lenHelper);
     }
 
@@ -824,11 +834,11 @@ pub const Party = extern struct {
         };
     }
 
-    fn memberSize(party: *const Party) usize {
+    fn memberSize(party: Party) usize {
         return party.trainer.game.version.dispatch(usize, party, memberSizeHelper);
     }
 
-    fn memberSizeHelper(comptime gen: Namespace, party: var) usize {
+    fn memberSizeHelper(comptime gen: Namespace, party: Party) usize {
         const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
         var res: usize = @sizeOf(gen.PartyMember);
         if (gen == gen3) {
@@ -848,7 +858,7 @@ pub const Party = extern struct {
         return res;
     }
 
-    pub fn iterator(party: *const Party) Iter {
+    pub fn iterator(party: Party) Iter {
         return Iter.init(party);
     }
 
@@ -861,7 +871,7 @@ pub const Trainer = extern struct {
     base: *u8,
     party_ptr: [*]u8,
 
-    pub fn party(trainer: *const Trainer) Party {
+    pub fn party(trainer: Trainer) Party {
         return Party{ .trainer = trainer };
     }
 };
@@ -869,7 +879,7 @@ pub const Trainer = extern struct {
 pub const Trainers = extern struct {
     game: *const BaseGame,
 
-    pub fn at(trainers: *const Trainers, index: usize) AtErr!Trainer {
+    pub fn at(trainers: Trainers, index: usize) AtErr!Trainer {
         return trainers.game.version.dispatch(AtErr!Trainer, AtC{
             .trainers = trainers,
             .index = index,
@@ -883,11 +893,11 @@ pub const Trainers = extern struct {
     };
 
     const AtC = struct {
-        trainers: *const Trainers,
+        trainers: Trainers,
         index: usize,
     };
 
-    fn atHelper(comptime gen: Namespace, c: var) AtErr!Trainer {
+    fn atHelper(comptime gen: Namespace, c: AtC) AtErr!Trainer {
         const trainers = c.trainers;
         const index = c.index;
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
@@ -920,7 +930,7 @@ pub const Trainers = extern struct {
         return res;
     }
 
-    pub fn len(trainers: *const Trainers) usize {
+    pub fn len(trainers: Trainers) usize {
         return trainers.game.version.dispatch(usize, trainers, lenHelper);
     }
 
@@ -933,7 +943,7 @@ pub const Trainers = extern struct {
         return min;
     }
 
-    pub fn iterator(trainers: *const Trainers) Iter {
+    pub fn iterator(trainers: Trainers) Iter {
         return Iter.init(trainers);
     }
 
@@ -949,7 +959,7 @@ pub fn Machines(comptime kind: MachineKind) type {
 
         game: *const BaseGame,
 
-        pub fn at(machines: *const Self, index: usize) u16 {
+        pub fn at(machines: Self, index: usize) u16 {
             return machines.game.version.dispatch(u16, AtC{
                 .machines = machines,
                 .index = index,
@@ -957,17 +967,17 @@ pub fn Machines(comptime kind: MachineKind) type {
         }
 
         const AtC = struct {
-            machines: *const Self,
+            machines: Self,
             index: usize,
         };
 
-        fn atHelper(comptime gen: Namespace, c: var) u16 {
+        fn atHelper(comptime gen: Namespace, c: AtC) u16 {
             var index = c.index;
             const machines = getMachines(gen, c.machines, &index);
             return machines[index].get();
         }
 
-        pub fn atSet(machines: *const Self, index: usize, value: u16) void {
+        pub fn atSet(machines: Self, index: usize, value: u16) void {
             return machines.game.version.dispatch(void, AtSetC{
                 .machines = machines,
                 .index = index,
@@ -981,13 +991,13 @@ pub fn Machines(comptime kind: MachineKind) type {
             value: u16,
         };
 
-        fn atSetHelper(comptime gen: Namespace, c: var) void {
+        fn atSetHelper(comptime gen: Namespace, c: AtSetC) void {
             var index = c.index;
             const machines = getMachines(gen, c.machines, &index);
             machines[index].set(c.value);
         }
 
-        fn getMachines(comptime gen: Namespace, machines: *const Self, index: *usize) []Little(u16) {
+        fn getMachines(comptime gen: Namespace, machines: Self, index: *usize) []Little(u16) {
             const game = @fieldParentPtr(gen.Game, "base", machines.game);
             switch (gen) {
                 gen3, gen4 => return if (kind == MachineKind.Hidden) game.hms else game.tms,
@@ -1005,11 +1015,11 @@ pub fn Machines(comptime kind: MachineKind) type {
             }
         }
 
-        pub fn len(machines: *const Self) usize {
+        pub fn len(machines: Self) usize {
             return machines.game.version.dispatch(usize, machines, lenHelper);
         }
 
-        fn lenHelper(comptime gen: Namespace, machines: var) usize {
+        fn lenHelper(comptime gen: Namespace, machines: Self) usize {
             const game = @fieldParentPtr(gen.Game, "base", machines.game);
             return switch (gen) {
                 gen3, gen4 => game.tms.len,
@@ -1018,7 +1028,7 @@ pub fn Machines(comptime kind: MachineKind) type {
             };
         }
 
-        pub fn iterator(machines: *const Self) Iterator {
+        pub fn iterator(machines: Self) Iterator {
             return Iterator.init(machines);
         }
 
@@ -1030,7 +1040,7 @@ pub const Move = extern struct {
     game: *const BaseGame,
     data: *u8,
 
-    pub fn types(move: *const Move) *[1]u8 {
+    pub fn types(move: Move) *[1]u8 {
         return move.game.version.dispatch(*[1]u8, move, typesHelper);
     }
 
@@ -1039,19 +1049,19 @@ pub const Move = extern struct {
         return @ptrCast(*[1]u8, t);
     }
 
-    pub fn power(move: *const Move) *u8 {
+    pub fn power(move: Move) *u8 {
         return move.game.version.dispatch(*u8, move, powerHelper);
     }
 
-    fn powerHelper(comptime gen: Namespace, move: var) *u8 {
+    fn powerHelper(comptime gen: Namespace, move: Move) *u8 {
         return &@ptrCast(*gen.Move, move.data).power;
     }
 
-    pub fn pp(move: *const Move) *u8 {
+    pub fn pp(move: Move) *u8 {
         return move.game.version.dispatch(*u8, move, ppHelper);
     }
 
-    fn ppHelper(comptime gen: Namespace, move: var) *u8 {
+    fn ppHelper(comptime gen: Namespace, move: Move) *u8 {
         return &@ptrCast(*gen.Move, move.data).pp;
     }
 };
@@ -1059,7 +1069,7 @@ pub const Move = extern struct {
 pub const Moves = extern struct {
     game: *const BaseGame,
 
-    pub fn at(moves: *const Moves, index: usize) Move {
+    pub fn at(moves: Moves, index: usize) Move {
         return moves.game.version.dispatch(Move, AtC{
             .moves = moves,
             .index = index,
@@ -1067,11 +1077,11 @@ pub const Moves = extern struct {
     }
 
     const AtC = struct {
-        moves: *const Moves,
+        moves: Moves,
         index: usize,
     };
 
-    fn atHelper(comptime gen: Namespace, c: var) Move {
+    fn atHelper(comptime gen: Namespace, c: AtC) Move {
         const index = c.index;
         const moves = c.moves;
         const game = @fieldParentPtr(gen.Game, "base", moves.game);
@@ -1087,7 +1097,7 @@ pub const Moves = extern struct {
         };
     }
 
-    pub fn len(moves: *const Moves) usize {
+    pub fn len(moves: Moves) usize {
         return moves.game.version.dispatch(usize, moves, lenHelper);
     }
 
@@ -1096,7 +1106,7 @@ pub const Moves = extern struct {
         return game.moves.len;
     }
 
-    pub fn iterator(moves: *const Moves) Iterator {
+    pub fn iterator(moves: Moves) Iterator {
         return Iterator.init(moves);
     }
 
@@ -1134,14 +1144,14 @@ pub const Game = extern struct {
                 break :nds_blk;
             };
 
-            if (gen4.Game.fromRom(nds_rom)) |game| {
+            if (gen4.Game.fromRom(nds_rom.*)) |game| {
                 const alloced_game = try allocator.construct(game);
                 return Game{
                     .base = &alloced_game.base,
                     .allocator = allocator,
                     .nds_rom = nds_rom,
                 };
-            } else |e1| if (gen5.Game.fromRom(nds_rom)) |game| {
+            } else |e1| if (gen5.Game.fromRom(nds_rom.*)) |game| {
                 const alloced_game = try allocator.construct(game);
                 return Game{
                     .base = &alloced_game.base,
@@ -1156,7 +1166,7 @@ pub const Game = extern struct {
         return error.InvalidGame;
     }
 
-    pub fn save(game: *const Game, file: *os.File) !void {
+    pub fn save(game: Game, file: *os.File) !void {
         const gen = game.base.version.gen();
         if (gen == 3) {
             const g = @fieldParentPtr(gen3.Game, "base", game.base);
@@ -1187,32 +1197,32 @@ pub const Game = extern struct {
         game.* = undefined;
     }
 
-    pub fn pokemons(game: *const Game) Pokemons {
+    pub fn pokemons(game: Game) Pokemons {
         return Pokemons{ .game = game.base };
     }
 
-    pub fn trainers(game: *const Game) Trainers {
+    pub fn trainers(game: Game) Trainers {
         return Trainers{ .game = game.base };
     }
 
-    pub fn tms(game: *const Game) Tms {
+    pub fn tms(game: Game) Tms {
         return Tms{ .game = game.base };
     }
 
-    pub fn hms(game: *const Game) Hms {
+    pub fn hms(game: Game) Hms {
         return Hms{ .game = game.base };
     }
 
-    pub fn moves(game: *const Game) Moves {
+    pub fn moves(game: Game) Moves {
         return Moves{ .game = game.base };
     }
 };
 
-fn Iterator(comptime T: type, comptime Result: type) type {
+fn Iterator(comptime Items: type, comptime Result: type) type {
     return struct {
         const Self = this;
 
-        items: T,
+        items: Items,
         curr: usize,
 
         pub const Pair = struct {
@@ -1220,9 +1230,9 @@ fn Iterator(comptime T: type, comptime Result: type) type {
             value: Result,
         };
 
-        pub fn init(items: *const T) Self {
+        pub fn init(items: Items) Self {
             return Self{
-                .items = items.*,
+                .items = items,
                 .curr = 0,
             };
         }
@@ -1240,11 +1250,11 @@ fn Iterator(comptime T: type, comptime Result: type) type {
     };
 }
 
-fn ErrIterator(comptime T: type, comptime Result: type) type {
+fn ErrIterator(comptime Items: type, comptime Result: type) type {
     return struct {
         const Self = this;
 
-        items: T,
+        items: Items,
         curr: usize,
 
         pub const Pair = struct {
@@ -1252,9 +1262,9 @@ fn ErrIterator(comptime T: type, comptime Result: type) type {
             value: Result,
         };
 
-        pub fn init(items: *const T) Self {
+        pub fn init(items: Items) Self {
             return Self{
-                .items = items.*,
+                .items = items,
                 .curr = 0,
             };
         }

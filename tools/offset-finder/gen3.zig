@@ -67,7 +67,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         ),
         else => null,
     };
-    const trainers = maybe_trainers ?? return error.UnableToFindTrainerOffset;
+    const trainers = maybe_trainers orelse return error.UnableToFindTrainerOffset;
 
     const moves = search.findStructs(
         gen3.Move,
@@ -75,7 +75,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         data,
         constants.first_moves,
         constants.last_moves,
-    ) ?? {
+    ) orelse {
         return error.UnableToFindMoveOffset;
     };
 
@@ -85,7 +85,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         data,
         constants.first_tm_hm_learnsets,
         constants.last_tm_hm_learnsets,
-    ) ?? {
+    ) orelse {
         return error.UnableToFindTmHmLearnsetOffset;
     };
 
@@ -96,7 +96,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         data,
         constants.first_base_stats,
         constants.last_base_stats,
-    ) ?? {
+    ) orelse {
         return error.UnableToFindBaseStatsOffset;
     };
 
@@ -106,7 +106,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         data,
         constants.first_evolutions,
         constants.last_evolutions,
-    ) ?? {
+    ) orelse {
         return error.UnableToFindEvolutionTableOffset;
     };
 
@@ -114,7 +114,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         var first_pointers = []?u8{null} ** (constants.first_levelup_learnsets.len * 4);
         for (constants.first_levelup_learnsets) |maybe_learnset, i| {
             if (maybe_learnset) |learnset| {
-                const p = mem.indexOf(u8, data, learnset) ?? return error.UnableToFindLevelUpLearnsetOffset;
+                const p = mem.indexOf(u8, data, learnset) orelse return error.UnableToFindLevelUpLearnsetOffset;
                 const l = toLittle(u32(p) + 0x8000000);
                 for (first_pointers[i * 4 ..][0..4]) |*b, j| {
                     b.* = l.bytes[j];
@@ -125,7 +125,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         var last_pointers = []?u8{null} ** (constants.last_levelup_learnsets.len * 4);
         for (constants.last_levelup_learnsets) |maybe_learnset, i| {
             if (maybe_learnset) |learnset| {
-                const p = mem.indexOf(u8, data, learnset) ?? return error.UnableToFindLevelUpLearnsetOffset;
+                const p = mem.indexOf(u8, data, learnset) orelse return error.UnableToFindLevelUpLearnsetOffset;
                 const l = toLittle(u32(p) + 0x8000000);
                 for (last_pointers[i * 4 ..][0..4]) |*b, j| {
                     b.* = l.bytes[j];
@@ -133,17 +133,17 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
             }
         }
 
-        const pointers = search.findPattern(u8, data, first_pointers, last_pointers) ?? return error.UnableToFindLevelUpLearnsetOffset;
+        const pointers = search.findPattern(u8, data, first_pointers, last_pointers) orelse return error.UnableToFindLevelUpLearnsetOffset;
         break :blk ([]const Little(u32))(pointers);
     };
 
-    const hms_start = mem.indexOf(u8, data, constants.hms) ?? return error.UnableToFindHmOffset;
+    const hms_start = mem.indexOf(u8, data, constants.hms) orelse return error.UnableToFindHmOffset;
     const hms = ([]const Little(u16))(data[hms_start..][0..constants.hms.len]);
 
     // TODO: Pokémon Emerald have 2 tm tables. I'll figure out some hack for that
     //       if it turns out that both tables are actually used. For now, I'll
     //       assume that the first table is the only one used.
-    const tms_start = mem.indexOf(u8, data, constants.tms) ?? return error.UnableToFindTmOffset;
+    const tms_start = mem.indexOf(u8, data, constants.tms) orelse return error.UnableToFindTmOffset;
     const tms = ([]const Little(u16))(data[tms_start..][0..constants.tms.len]);
 
     const ignored_item_fields = [][]const u8{ "name", "description_offset", "field_use_func", "battle_use_func" };
@@ -171,7 +171,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         ),
         else => null,
     };
-    const items = maybe_items ?? return error.UnableToFindItemsOffset;
+    const items = maybe_items orelse return error.UnableToFindItemsOffset;
 
     const start = @ptrToInt(data.ptr);
     return Info{

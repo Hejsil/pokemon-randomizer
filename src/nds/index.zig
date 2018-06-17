@@ -21,6 +21,15 @@ pub const Header = @import("header.zig").Header;
 pub const Banner = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
+test "nds" {
+    _ = @import("banner.zig");
+    _ = @import("common.zig");
+    _ = @import("formats.zig");
+    _ = @import("fs.zig");
+    //_ = @import("header.zig");
+    _ = @import("overlay.zig");
+}
+
 pub const Rom = struct {
     // TODO: Do we actually want to store the header?
     //       Info like offsets, the user of the lib shouldn't touch, but other info, are allowed.
@@ -125,8 +134,8 @@ pub const Rom = struct {
         };
     }
 
-    pub fn writeToFile(rom: *Rom, file: *os.File, allocator: *mem.Allocator) !void {
-        const header = &rom.header;
+    pub fn writeToFile(rom: Rom, file: *os.File, allocator: *mem.Allocator) !void {
+        var header = rom.header;
 
         const arm9_pos = 0x4000;
         try file.seekTo(arm9_pos);
@@ -137,7 +146,7 @@ pub const Rom = struct {
         //       of roms. Hmmm :thinking:
         try file.write(rom.arm9);
         if (rom.hasNitroFooter()) {
-            try file.write(([]u8)(rom.nitro_footer[0..]));
+            try file.write(([]const u8)(rom.nitro_footer[0..]));
         }
 
         header.arm9_rom_offset = toLittle(u32(arm9_pos));
@@ -155,7 +164,7 @@ pub const Rom = struct {
         header.banner_offset = toLittle(u32(banner_pos));
         header.banner_size = toLittle(u32(@sizeOf(Banner)));
 
-        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.file_system, allocator);
+        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.file_system.*, allocator);
         const files = fntAndFiles.files;
         const main_fnt = fntAndFiles.main_fnt;
         const sub_fnt = fntAndFiles.sub_fnt;
@@ -177,7 +186,7 @@ pub const Rom = struct {
 
         for (files) |f| {
             const pos = u32(try file.getPos());
-            try fs.writeNitroFile(file, allocator, f);
+            try fs.writeNitroFile(file, allocator, f.*);
             fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
         }
 
@@ -235,7 +244,7 @@ pub const Rom = struct {
         try file.write(utils.toBytes(Header, header));
     }
 
-    pub fn hasNitroFooter(rom: *const Rom) bool {
+    pub fn hasNitroFooter(rom: Rom) bool {
         return rom.nitro_footer[0].get() == 0xDEC00621;
     }
 

@@ -41,40 +41,40 @@ pub fn Arg(comptime T: type) type {
             };
         }
 
-        pub fn help(arg: *const Self, str: []const u8) Self {
-            var res = arg.*;
+        pub fn help(arg: Self, str: []const u8) Self {
+            var res = arg;
             res.help_message = str;
             return res;
         }
 
-        pub fn short(arg: *const Self, char: u8) Self {
-            var res = arg.*;
+        pub fn short(arg: Self, char: u8) Self {
+            var res = arg;
             res.short_arg = char;
             return res;
         }
 
-        pub fn long(arg: *const Self, str: []const u8) Self {
-            var res = arg.*;
+        pub fn long(arg: Self, str: []const u8) Self {
+            var res = arg;
             res.long_arg = str;
             return res;
         }
 
-        pub fn takesValue(arg: *const Self, b: bool) Self {
-            var res = arg.*;
+        pub fn takesValue(arg: Self, b: bool) Self {
+            var res = arg;
             res.takes_value = b;
             return res;
         }
 
-        pub fn kind(arg: *const Self, k: Kind) Self {
-            var res = arg.*;
+        pub fn kind(arg: Self, k: Kind) Self {
+            var res = arg;
             res.arg_kind = k;
             return res;
         }
     };
 }
 
-pub fn parse(comptime T: type, options: []const Arg(T), defaults: *const T, args: []const []const u8) !T {
-    var result = defaults.*;
+pub fn parse(comptime T: type, options: []const Arg(T), defaults: T, args: []const []const u8) !T {
+    var result = defaults;
 
     const Kind = enum {
         Long,
@@ -141,11 +141,11 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: *const T, args
                     break :loop;
                 },
                 Kind.Short => {
-                    const short = option.short_arg ?? continue :loop;
+                    const short = option.short_arg orelse continue :loop;
                     if (arg.len != 1 or arg[0] != short) continue :loop;
                 },
                 Kind.Long => {
-                    const long = option.long_arg ?? continue :loop;
+                    const long = option.long_arg orelse continue :loop;
                     if (!mem.eql(u8, long, arg)) continue :loop;
                 },
             }
@@ -188,7 +188,7 @@ pub fn help(comptime T: type, options: []const Arg(T), out_stream: var) !void {
     const equal_value: []const u8 = "=OPTION";
     var longest_long: usize = 0;
     for (options) |option| {
-        const long = option.long_arg ?? continue;
+        const long = option.long_arg orelse continue;
         var len = long.len;
 
         if (option.takes_value)
@@ -339,7 +339,7 @@ test "clap.parse.Example" {
             assert(res.g == case.res.g);
             assert(res.b == case.res.b);
         } else |err| {
-            assert(err == (case.err ?? unreachable));
+            assert(err == (case.err orelse unreachable));
         }
     }
 }

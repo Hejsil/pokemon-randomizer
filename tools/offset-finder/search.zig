@@ -12,8 +12,8 @@ pub const Offset = struct {
 };
 
 pub fn findStructs(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start: []const Struct, end: []const Struct) ?[]const Struct {
-    const start_index = indexOfStructs(Struct, ignored_fields, data, 0, start) ?? return null;
-    const end_index = indexOfStructs(Struct, ignored_fields, data, start_index, end) ?? return null;
+    const start_index = indexOfStructs(Struct, ignored_fields, data, 0, start) orelse return null;
+    const end_index = indexOfStructs(Struct, ignored_fields, data, start_index, end) orelse return null;
 
     // TODO: This can fail
     return ([]const Struct)(data[start_index .. end_index + end.len * @sizeOf(Struct)]);
@@ -65,17 +65,17 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
     return true;
 }
 
-fn fieldsEql(comptime field: []const u8, comptime T: type, a: *const T, b: *const T) bool {
+fn fieldsEql(comptime field: []const u8, comptime T: type, a: T, b: T) bool {
     const af = @field(a, field);
     const bf = @field(b, field);
-    return compare.equal(@typeOf(af))(af, bf);
+    return compare.equal(@typeOf(af), af, bf);
 }
 
-fn strEql(a: *const []const u8, b: *const []const u8) bool {
-    return mem.eql(u8, a.*, b.*);
+fn strEql(a: []const u8, b: []const u8) bool {
+    return mem.eql(u8, a, b);
 }
 
-fn contains(comptime T: type, items: []const T, value: *const T, eql: fn (*const T, *const T) bool) bool {
+fn contains(comptime T: type, items: []const T, value: T, eql: fn (T, T) bool) bool {
     for (items) |item| {
         if (eql(item, value)) return true;
     }
@@ -85,16 +85,16 @@ fn contains(comptime T: type, items: []const T, value: *const T, eql: fn (*const
 
 /// Finds the start and end index based on a start and end pattern.
 pub fn findPattern(comptime T: type, data: []const T, start: []const ?T, end: []const ?T) ?[]const u8 {
-    const start_index = indexOfPattern(T, data, 0, start) ?? return null;
-    const end_index = indexOfPattern(T, data, start_index, end) ?? return null;
+    const start_index = indexOfPattern(T, data, 0, start) orelse return null;
+    const end_index = indexOfPattern(T, data, start_index, end) orelse return null;
 
     return data[start_index .. end_index + end.len];
 }
 
 /// Finds the start and end index based on a start and end.
 pub fn findBytes(comptime T: type, data: []const T, start: []const T, end: []const T) ?[]const u8 {
-    const start_index = mem.indexOf(T, data, start) ?? return null;
-    const end_index = mem.indexOfPos(T, data, start_index, end) ?? return null;
+    const start_index = mem.indexOf(T, data, start) orelse return null;
+    const end_index = mem.indexOfPos(T, data, start_index, end) orelse return null;
 
     return data[start_index .. end_index + end.len];
 }
