@@ -800,8 +800,13 @@ pub const Party = extern struct {
             break :blk null;
         };
 
+        if (gen == gen3) {
+            if (item == null)
+                off += @sizeOf(u16);
+        }
+
         off += switch (c.party.trainer.game.version) {
-            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(2),
+            Version.HeartGold, Version.SoulSilver, Version.Platinum => usize(@sizeOf(u16)),
             else => usize(0),
         };
 
