@@ -38,6 +38,8 @@ fn FileSystem(comptime FileType: type) type {
             return res;
         }
 
+        // TODO: We should probably have a way of ensuring that a folder doesn't have duplicate
+        //       names
         pub const Folder = struct {
             name: []u8,
             files: std.ArrayList(*FileType),
@@ -484,7 +486,7 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: *const
     }
 }
 
-fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: &const Fs, fs2: &const Fs) bool {
+fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *const Fs) bool {
     comptime assert(Fs == Nitro or Fs == Narc);
 
     const FolderPair = struct {
@@ -552,6 +554,9 @@ fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: &const Fs, fs2: &c
 }
 
 test "nds.fs: Nitro.File read/write" {
+    var buff: [1024 * 1024]u8 = undefined;
+    var fix_buf_allocator = heap.FixedBufferAllocator.init(buff[0..]);
+
     const fs = Nitro {
         .folders = std.ArrayList(Nitro.Folder)
     };
