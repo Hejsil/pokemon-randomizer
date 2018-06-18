@@ -213,7 +213,7 @@ pub const LevelUpMove = extern struct {
 
     fn levelHelper(comptime gen: Namespace, lvl_up_move: *const LevelUpMove) u8 {
         const lvl = @ptrCast(*gen.LevelUpMove, lvl_up_move.data).level;
-        return if (gen == gen5) u8(lvl.get()) else lvl;
+        return if (gen == gen5) @intCast(u8, lvl.get()) else lvl;
     }
 
     pub fn setLevel(move: LevelUpMove, lvl: u8) void {
@@ -327,7 +327,7 @@ pub fn Learnset(comptime kind: MachineKind) type {
 
             const T = if (gen == gen3) u64 else u128;
             const learnset = @ptrCast(*Little(T), c.learnset.data);
-            return bits.get(T, learnset.get(), math.Log2Int(T)(i));
+            return bits.get(T, learnset.get(), @intCast(math.Log2Int(T), i));
         }
 
         pub fn atSet(learnset: Self, index: usize, value: bool) void {
@@ -686,7 +686,7 @@ pub const PartyMember = extern struct {
     };
 
     fn setSpeciesHelper(comptime gen: Namespace, c: SetSpeciesC) void {
-        const s = if (gen != gen4) toLittle(c.value) else u10(c.value);
+        const s = if (gen != gen4) toLittle(c.value) else @intCast(u10, c.value);
         @ptrCast(*gen.PartyMember, c.member.base).species = s;
     }
 
@@ -696,7 +696,7 @@ pub const PartyMember = extern struct {
 
     fn levelHelper(comptime gen: Namespace, member: var) u8 {
         const lvl = @ptrCast(*gen.PartyMember, member.base).level;
-        return if (gen != gen5) u8(lvl.get()) else lvl;
+        return if (gen != gen5) @intCast(u8, lvl.get()) else lvl;
     }
 
     pub fn setLevel(member: PartyMember, lvl: u8) void {

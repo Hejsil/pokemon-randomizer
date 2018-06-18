@@ -420,7 +420,7 @@ gen3.BasePokemon{
 }};
 
 fn percentFemale(percent: f64) u8 {
-    return u8(math.min(f64(254), (percent * 255) / 100));
+    return @floatToInt(u8, math.min(f64(254), (percent * 255) / 100));
 }
 
 const unused_evo = common.Evolution{
