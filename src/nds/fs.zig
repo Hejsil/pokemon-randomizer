@@ -376,22 +376,22 @@ pub fn getFntAndFiles(comptime Fs: type, fs: Fs, allocator: *mem.Allocator) !Fnt
         const state = states.toSliceConst()[current_state];
 
         try main_fnt.append(FntMainEntry{
-            .offset_to_subtable = toLittle(u32(sub_fnt.len())),
-            .first_file_id_in_subtable = toLittle(u16(files.len)),
+            .offset_to_subtable = toLittle(@intCast(u32, sub_fnt.len())),
+            .first_file_id_in_subtable = toLittle(@intCast(u16, files.len)),
             .parent_id = toLittle(u16(state.parent_id)),
         });
 
         for (state.folder.files.toSliceConst()) |f| {
             debug.assert(f.name.len != 0x00); // TODO: We should probably return an error here instead of asserting
-            try sub_fnt.appendByte(u8(f.name.len));
+            try sub_fnt.appendByte(@intCast(u8, f.name.len));
             try sub_fnt.append(f.name);
             try files.append(f);
         }
 
         for (state.folder.folders.toSliceConst()) |folder| {
-            try sub_fnt.appendByte(u8(folder.name.len + 0x80));
+            try sub_fnt.appendByte(@intCast(u8, folder.name.len + 0x80));
             try sub_fnt.append(folder.name);
-            try sub_fnt.append(toLittle(u16(states.len + 0xF000)).bytes);
+            try sub_fnt.append(toLittle(@intCast(u16, states.len + 0xF000)).bytes);
 
             try states.append(State{
                 .folder = folder,
@@ -403,9 +403,9 @@ pub fn getFntAndFiles(comptime Fs: type, fs: Fs, allocator: *mem.Allocator) !Fnt
     }
 
     // Filling in root parent id!
-    main_fnt.items[0].parent_id = toLittle(u16(main_fnt.len));
+    main_fnt.items[0].parent_id = toLittle(@intCast(u16, main_fnt.len));
     for (main_fnt.toSlice()) |*entry| {
-        entry.offset_to_subtable = toLittle(u32(main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.get()));
+        entry.offset_to_subtable = toLittle(@intCast(u32, main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.get()));
     }
 
     return FntAndFiles(Fs.File){
@@ -451,26 +451,26 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
 
             const stream = &buffered_out_stream.stream;
 
-            try stream.write(utils.toBytes(formats.Header, formats.Header.narc(u32(file_end - file_start))));
+            try stream.write(utils.toBytes(formats.Header, formats.Header.narc(@intCast(u32, file_end - file_start))));
             try stream.write(utils.toBytes(formats.FatChunk, formats.FatChunk{
                 .header = formats.Chunk{
                     .name = formats.Chunk.names.fat,
-                    .size = toLittle(u32(fnt_start - fat_start)),
+                    .size = toLittle(@intCast(u32, fnt_start - fat_start)),
                 },
-                .file_count = toLittle(u16(files.len)),
+                .file_count = toLittle(@intCast(u16, files.len)),
                 .reserved = toLittle(u16(0x00)),
             }));
 
-            var start = u32(0);
+            var start: u32 = 0;
             for (files) |f| {
-                const fat_entry = FatEntry.init(start, u32(f.data.len));
+                const fat_entry = FatEntry.init(start, @intCast(u32, f.data.len));
                 try stream.write(utils.toBytes(FatEntry, fat_entry));
-                start += u32(f.data.len);
+                start += @intCast(u32, f.data.len);
             }
 
             try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
                 .name = formats.Chunk.names.fnt,
-                .size = toLittle(u32(file_image_start - fnt_start)),
+                .size = toLittle(@intCast(u32, file_image_start - fnt_start)),
             }));
             try stream.write(([]u8)(main_fnt));
             try stream.write(sub_fnt);
@@ -478,7 +478,7 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
 
             try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
                 .name = formats.Chunk.names.file_data,
-                .size = toLittle(u32(file_end - file_image_start)),
+                .size = toLittle(@intCast(u32, file_end - file_image_start)),
             }));
             for (files) |f| {
                 try stream.write(f.data);

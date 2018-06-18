@@ -96,7 +96,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: T, args: []con
         var required_index: usize = 0;
         for (options) |option, i| {
             if (option.arg_kind == Arg(T).Kind.Required) {
-                required = bits.set(u128, required, u7(required_index), true);
+                required = bits.set(u128, required, @intCast(u7, required_index), true);
                 required_index += 1;
             }
         }
@@ -128,7 +128,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: T, args: []con
 
                     switch (option.arg_kind) {
                         Arg(T).Kind.Required => {
-                            required = bits.set(u128, required, u7(required_index), false);
+                            required = bits.set(u128, required, @intCast(u7, required_index), false);
                             required_index += 1;
                         },
                         Arg(T).Kind.IgnoresRequired => {
@@ -157,7 +157,7 @@ pub fn parse(comptime T: type, options: []const Arg(T), defaults: T, args: []con
 
             switch (option.arg_kind) {
                 Arg(T).Kind.Required => {
-                    required = bits.set(u128, required, u7(required_index), false);
+                    required = bits.set(u128, required, @intCast(u7, required_index), false);
                     required_index += 1;
                 },
                 Arg(T).Kind.IgnoresRequired => {

@@ -198,10 +198,10 @@ pub const Randomizer = struct {
 
                 const lvl = member.level();
                 const new_level = blk: {
-                    var res = f64(lvl) * options.level_modifier;
-                    res = math.min(res, f64(100));
-                    res = math.max(res, f64(1));
-                    break :blk u8(math.round(res));
+                    var res = @intToFloat(f32, lvl) * options.level_modifier;
+                    res = math.min(res, f32(100));
+                    res = math.max(res, f32(1));
+                    break :blk @floatToInt(u8, math.round(res));
                 };
                 member.setLevel(new_level);
             }
@@ -339,7 +339,7 @@ pub const Randomizer = struct {
 
                     // TODO: Rewrite to work with Pokémons that can have N types
                     const learned_stab = if (l_t == p_t1 or l_t == p_t2) f32(1.5) else f32(1.0);
-                    const learned_power = f32(learned_move.power().*) * learned_stab;
+                    const learned_power = @intToFloat(f32, learned_move.power().*) * learned_stab;
 
                     var i: usize = 0;
                     while (i < member_moves.len()) : (i += 1) {
@@ -349,7 +349,7 @@ pub const Randomizer = struct {
 
                         // TODO: Rewrite to work with Pokémons that can have N types
                         const move_stab = if (m_t == p_t1 or m_t == p_t2) f32(1.5) else f32(1.0);
-                        const move_power = f32(move.power().*) * move_stab;
+                        const move_power = @intToFloat(f32, move.power().*) * move_stab;
 
                         // TODO: We probably also want Pokémons to have varied types
                         //       of moves, so it has good coverage.
@@ -383,7 +383,7 @@ pub const Randomizer = struct {
         const game = randomizer.game;
         const moves = game.moves();
         while (true) {
-            const move_id = randomizer.random.range(u16, 0, u16(moves.len()));
+            const move_id = randomizer.random.range(u16, 0, @intCast(u16, moves.len()));
             const move = moves.at(move_id);
 
             // A move with 0 pp is useless, so we will assume it's a dummy move.
@@ -454,7 +454,7 @@ pub const Randomizer = struct {
                     _ = try species_by_type.put(t, std.ArrayList(u16).init(randomizer.allocator));
                     break :blk species_by_type.get(t).?;
                 };
-                try entry.value.append(u16(species));
+                try entry.value.append(@intCast(u16, species));
             }
         }
 

@@ -115,7 +115,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         for (constants.first_levelup_learnsets) |maybe_learnset, i| {
             if (maybe_learnset) |learnset| {
                 const p = mem.indexOf(u8, data, learnset) orelse return error.UnableToFindLevelUpLearnsetOffset;
-                const l = toLittle(u32(p) + 0x8000000);
+                const l = toLittle(@intCast(u32, p) + 0x8000000);
                 for (first_pointers[i * 4 ..][0..4]) |*b, j| {
                     b.* = l.bytes[j];
                 }
@@ -126,7 +126,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         for (constants.last_levelup_learnsets) |maybe_learnset, i| {
             if (maybe_learnset) |learnset| {
                 const p = mem.indexOf(u8, data, learnset) orelse return error.UnableToFindLevelUpLearnsetOffset;
-                const l = toLittle(u32(p) + 0x8000000);
+                const l = toLittle(@intCast(u32, p) + 0x8000000);
                 for (last_pointers[i * 4 ..][0..4]) |*b, j| {
                     b.* = l.bytes[j];
                 }

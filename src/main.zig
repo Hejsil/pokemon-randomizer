@@ -97,7 +97,7 @@ fn parseGenericOption(str: []const u8) !randomizer.GenericOption {
 
 fn setLevelModifier(op: *randomizer.Options, str: []const u8) !void {
     const precent = try fmt.parseInt(i16, str, 10);
-    op.trainer.level_modifier = (f64(precent) / 100) + 1;
+    op.trainer.level_modifier = (@intToFloat(f64, precent) / 100) + 1;
 }
 
 const Arg = clap.Arg(randomizer.Options);

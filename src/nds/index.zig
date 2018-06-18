@@ -149,20 +149,20 @@ pub const Rom = struct {
             try file.write(([]const u8)(rom.nitro_footer[0..]));
         }
 
-        header.arm9_rom_offset = toLittle(u32(arm9_pos));
-        header.arm9_size = toLittle(u32(rom.arm9.len));
+        header.arm9_rom_offset = toLittle(@intCast(u32, arm9_pos));
+        header.arm9_size = toLittle(@intCast(u32, rom.arm9.len));
 
         const arm7_pos = try file.getPos();
         try file.write(rom.arm7);
 
-        header.arm7_rom_offset = toLittle(u32(arm7_pos));
-        header.arm7_size = toLittle(u32(rom.arm7.len));
+        header.arm7_rom_offset = toLittle(@intCast(u32, arm7_pos));
+        header.arm7_size = toLittle(@intCast(u32, rom.arm7.len));
 
         const banner_pos = try file.getPos();
         try file.write(utils.toBytes(Banner, rom.banner));
 
-        header.banner_offset = toLittle(u32(banner_pos));
-        header.banner_size = toLittle(u32(@sizeOf(Banner)));
+        header.banner_offset = toLittle(@intCast(u32, banner_pos));
+        header.banner_size = Little(u32).init(@sizeOf(Banner));
 
         const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.file_system.*, allocator);
         const files = fntAndFiles.files;
@@ -178,57 +178,57 @@ pub const Rom = struct {
         try file.write(([]u8)(main_fnt));
         try file.write(sub_fnt);
 
-        header.fnt_offset = toLittle(u32(fnt_pos));
-        header.fnt_size = toLittle(u32(main_fnt.len * @sizeOf(fs.FntMainEntry) + sub_fnt.len));
+        header.fnt_offset = toLittle(@intCast(u32, fnt_pos));
+        header.fnt_size = toLittle(@intCast(u32, main_fnt.len * @sizeOf(fs.FntMainEntry) + sub_fnt.len));
 
         var fat = std.ArrayList(fs.FatEntry).init(allocator);
         try fat.ensureCapacity(files.len + rom.arm9_overlay_files.len + rom.arm7_overlay_files.len);
 
         for (files) |f| {
-            const pos = u32(try file.getPos());
+            const pos = @intCast(u32, try file.getPos());
             try fs.writeNitroFile(file, allocator, f.*);
-            fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
+            fat.append(fs.FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
         }
 
         for (rom.arm9_overlay_files) |f, i| {
-            const pos = u32(try file.getPos());
+            const pos = @intCast(u32, try file.getPos());
             try file.write(f);
-            fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
+            fat.append(fs.FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
 
             const table_entry = &rom.arm9_overlay_table[i];
-            table_entry.overlay_id = toLittle(u32(i));
-            table_entry.file_id = toLittle(u32(files.len + i));
+            table_entry.overlay_id = toLittle(@intCast(u32, i));
+            table_entry.file_id = toLittle(@intCast(u32, files.len + i));
         }
 
         for (rom.arm7_overlay_files) |f, i| {
-            const pos = u32(try file.getPos());
+            const pos = @intCast(u32, try file.getPos());
             try file.write(f);
-            fat.append(fs.FatEntry.init(pos, u32(try file.getPos()) - pos)) catch unreachable;
+            fat.append(fs.FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
 
             const table_entry = &rom.arm7_overlay_table[i];
-            table_entry.overlay_id = toLittle(u32(i));
-            table_entry.file_id = toLittle(u32(rom.arm9_overlay_files.len + files.len + i));
+            table_entry.overlay_id = toLittle(@intCast(u32, i));
+            table_entry.file_id = toLittle(@intCast(u32, rom.arm9_overlay_files.len + files.len + i));
         }
 
         const fat_pos = try file.getPos();
         try file.write(([]const u8)(fat.toSliceConst()));
 
-        header.fat_offset = toLittle(u32(fat_pos));
-        header.fat_size = toLittle(u32((files.len + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
+        header.fat_offset = toLittle(@intCast(u32, fat_pos));
+        header.fat_size = toLittle(@intCast(u32, (files.len + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
         const arm9_overlay_pos = try file.getPos();
         try file.write(([]const u8)(rom.arm9_overlay_table));
 
-        header.arm9_overlay_offset = toLittle(u32(arm9_overlay_pos));
-        header.arm9_overlay_size = toLittle(u32(rom.arm9_overlay_table.len * @sizeOf(Overlay)));
+        header.arm9_overlay_offset = toLittle(@intCast(u32, arm9_overlay_pos));
+        header.arm9_overlay_size = toLittle(@intCast(u32, rom.arm9_overlay_table.len * @sizeOf(Overlay)));
 
         const arm7_overlay_pos = try file.getPos();
         try file.write(([]const u8)(rom.arm7_overlay_table));
 
-        header.arm7_overlay_offset = toLittle(u32(arm7_overlay_pos));
-        header.arm7_overlay_size = toLittle(u32(rom.arm7_overlay_table.len * @sizeOf(Overlay)));
+        header.arm7_overlay_offset = toLittle(@intCast(u32, arm7_overlay_pos));
+        header.arm7_overlay_size = toLittle(@intCast(u32, rom.arm7_overlay_table.len * @sizeOf(Overlay)));
 
-        header.total_used_rom_size = toLittle(common.@"align"(u32(try file.getPos()), u32(4)));
+        header.total_used_rom_size = toLittle(common.@"align"(@intCast(u32, try file.getPos()), u32(4)));
         header.device_capacity = blk: {
             // Devicecapacity (Chipsize = 128KB SHL nn) (eg. 7 = 16MB)
             const size = header.total_used_rom_size.get();
