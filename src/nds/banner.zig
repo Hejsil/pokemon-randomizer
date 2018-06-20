@@ -48,7 +48,7 @@ pub const Banner = packed struct {
     //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
 
     pub fn validate(banner: Banner) !void {
-        if (u2(banner.version) == 0)
+        if (@enumToInt(banner.version) == 0)
             return error.InvalidVersion;
         if (banner.version_padding != 0)
             return error.InvalidVersionPadding;

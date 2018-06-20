@@ -131,15 +131,16 @@ pub const Game = struct {
     level_up_moves: []const *nds.fs.Narc.File,
     trainers: []const *nds.fs.Narc.File,
     parties: []const *nds.fs.Narc.File,
-    tms: []Little(u16),
-    hms: []Little(u16),
+    tms: []align(1) Little(u16),
+    hms: []align(1) Little(u16),
 
     pub fn fromRom(rom: nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
         const fs = rom.file_system.*;
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, info.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + info.hm_tm_prefix.len;
-        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
+        const hm_tms_len = (constants.tm_count + constants.hm_count) * @sizeOf(u16);
+        const hm_tms = @bytesToSlice(Little(u16), rom.arm9[hm_tm_index..][0..hm_tms_len]);
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },

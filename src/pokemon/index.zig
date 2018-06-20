@@ -561,7 +561,7 @@ pub const Pokemons = extern struct {
             // gen3,4,5 all have 0xFF ** @sizeOf(gen.LevelUpMove) terminated level up moves,
             // even though gen4,5 stores level up moves in files with a length.
             const terminator = []u8{0xFF} ** @sizeOf(gen.LevelUpMove);
-            const res = generic.widenTrim(data[start..], gen.LevelUpMove);
+            const res = generic.bytesToSliceTrim(gen.LevelUpMove, data[start..]);
             for (res) |level_up_move, i| {
                 const bytes = utils.toBytes(@typeOf(level_up_move), level_up_move);
                 if (std.mem.eql(u8, bytes, terminator))
@@ -1290,6 +1290,6 @@ fn ErrIterator(comptime Items: type, comptime Result: type) type {
 }
 
 fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) !*T {
-    const data = generic.widenTrim(files[index].data, T);
+    const data = generic.bytesToSliceTrim(T, files[index].data);
     return generic.at(data, 0) catch error.FileToSmall;
 }

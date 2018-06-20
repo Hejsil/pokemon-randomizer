@@ -162,7 +162,8 @@ pub const Game = struct {
         const fs = rom.file_system.*;
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
-        const hm_tms = ([]Little(u16))(rom.arm9[hm_tm_index..][0 .. (constants.tm_count + constants.hm_count) * @sizeOf(u16)]);
+        const hm_tm_len = (constants.tm_count + constants.hm_count) * @sizeOf(u16);
+        const hm_tms = @bytesToSlice(Little(u16), rom.arm9[hm_tm_index..][0..hm_tm_len]);
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },

@@ -145,7 +145,7 @@ pub fn readNarc(file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat:
 
 fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*Fs {
     const fnt_main_table = blk: {
-        const fnt_mains = generic.widenTrim(fnt, FntMainEntry);
+        const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
         const first = generic.at(fnt_mains, 0) catch return error.InvalidFnt;
         const res = generic.slice(fnt_mains, 0, first.parent_id.get()) catch return error.InvalidFnt;
         if (res.len > 4096) return error.InvalidFnt;
@@ -192,7 +192,7 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
             continue;
 
         const lenght = type_length & 0x7F;
-        const kind = Kind((type_length & 0x80));
+        const kind = @intToEnum(Kind, type_length & 0x80);
         assert(kind == Kind.File or kind == Kind.Folder);
 
         const name = try utils.stream.allocRead(stream, &fs.arena.allocator, u8, lenght);
@@ -283,7 +283,7 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
         const fnt = try utils.stream.allocRead(stream, tmp_allocator, u8, fnt_size);
         defer tmp_allocator.free(fnt);
 
-        const fnt_mains = generic.widenTrim(fnt, FntMainEntry);
+        const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
         const first_fnt = generic.at(fnt_mains, 0) catch return error.InvalidChunkSize;
 
         const file_data_header = try utils.stream.read(stream, formats.Chunk);
@@ -470,7 +470,7 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
                 .name = formats.Chunk.names.fnt,
                 .size = toLittle(@intCast(u32, file_image_start - fnt_start)),
             }));
-            try stream.write(([]u8)(main_fnt));
+            try stream.write(@sliceToBytes(main_fnt));
             try stream.write(sub_fnt);
             try stream.writeByteNTimes(0xFF, file_image_start - fnt_end);
 

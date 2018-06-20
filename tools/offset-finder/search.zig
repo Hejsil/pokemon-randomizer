@@ -16,7 +16,7 @@ pub fn findStructs(comptime Struct: type, comptime ignored_fields: []const []con
     const end_index = indexOfStructs(Struct, ignored_fields, data, start_index, end) orelse return null;
 
     // TODO: This can fail
-    return ([]const Struct)(data[start_index .. end_index + end.len * @sizeOf(Struct)]);
+    return @bytesToSlice(Struct, data[start_index .. end_index + end.len * @sizeOf(Struct)]);
 }
 
 fn indexOfStructs(comptime Struct: type, comptime ignored_fields: []const []const u8, data: []const u8, start_index: usize, structs: []const Struct) ?usize {
@@ -40,7 +40,7 @@ fn structsMatchesBytes(comptime Struct: type, comptime ignored_fields: []const [
 
     for (structs) |s, s_i| {
         const data_bytes = data[s_i * @sizeOf(Struct) ..][0..@sizeOf(Struct)];
-        const data_s = ([]const Struct)(data_bytes)[0];
+        const data_s = @bytesToSlice(Struct, data_bytes)[0];
 
         switch (@typeInfo(Struct)) {
             builtin.TypeId.Array => |arr| {
