@@ -31,9 +31,11 @@ fn FileSystem(comptime FileType: type) type {
         // TODO: When we have https://github.com/zig-lang/zig/issues/287, then we don't need to
         //       allocate the fs anymore.
         pub fn alloc(allocator: *mem.Allocator) !*Self {
-            const res = try allocator.create(Self);
-            res.arena = std.heap.ArenaAllocator.init(allocator);
-            res.root = try res.createFolder(try mem.dupe(&res.arena.allocator, u8, ""));
+            const res = try allocator.create(Self{
+                .arena = std.heap.ArenaAllocator.init(allocator),
+                .root = undefined,
+            });
+            res.root = try res.createFolder("");
 
             return res;
         }
@@ -45,21 +47,15 @@ fn FileSystem(comptime FileType: type) type {
         };
 
         pub fn createFolder(fs: *Self, name: []u8) !*Folder {
-            const node = try fs.arena.allocator.create(Folder);
-            node.* = Folder{
+            return try fs.arena.allocator.create(Folder{
                 .name = name,
                 .files = std.ArrayList(*FileType).init(&fs.arena.allocator),
                 .folders = std.ArrayList(*Folder).init(&fs.arena.allocator),
-            };
-
-            return node;
+            });
         }
 
-        pub fn createFile(fs: *Self, init_value: *const FileType) !*FileType {
-            const node = try fs.arena.allocator.create(FileType);
-            node.* = init_value.*;
-
-            return node;
+        pub fn createFile(fs: *Self, init_value: FileType) !*FileType {
+            return try fs.arena.allocator.create(init_value);
         }
 
         pub fn getFile(fs: Self, path: []const u8) ?*FileType {

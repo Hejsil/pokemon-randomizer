@@ -1124,46 +1124,51 @@ pub const Game = extern struct {
 
     pub fn load(file: *os.File, allocator: *mem.Allocator) !Game {
         const start = try file.getPos();
-        gba_blk: {
+        try file.seekTo(start);
+        return loadGbaGame(file, allocator) catch {
             try file.seekTo(start);
-            const game = gen3.Game.fromFile(file, allocator) catch break :gba_blk;
-            const alloced_game = try allocator.construct(game);
+            return loadNdsGame(file, allocator) catch return error.InvalidGame;
+        };
+    }
 
+    pub fn loadGbaGame(file: *os.File, allocator: *mem.Allocator) !Game {
+        var game = try gen3.Game.fromFile(file, allocator);
+        errdefer game.deinit();
+
+        const alloced_game = try allocator.create(game);
+        errdefer allocator.destroy(alloced_game);
+
+        return Game{
+            .base = &alloced_game.base,
+            .allocator = allocator,
+            .nds_rom = null,
+        };
+    }
+
+    pub fn loadNdsGame(file: *os.File, allocator: *mem.Allocator) !Game {
+        var rom = try nds.Rom.fromFile(file, allocator);
+        errdefer rom.deinit();
+
+        const nds_rom = try allocator.create(rom);
+        errdefer allocator.destroy(nds_rom);
+
+        if (gen4.Game.fromRom(nds_rom.*)) |game| {
+            const alloced_game = try allocator.create(game);
             return Game{
                 .base = &alloced_game.base,
                 .allocator = allocator,
-                .nds_rom = null,
+                .nds_rom = nds_rom,
             };
-        }
-
-        nds_blk: {
-            try file.seekTo(start);
-            const nds_rom = try allocator.create(nds.Rom);
-            nds_rom.* = nds.Rom.fromFile(file, allocator) catch {
-                allocator.destroy(nds_rom);
-                break :nds_blk;
+        } else |e1| if (gen5.Game.fromRom(nds_rom.*)) |game| {
+            const alloced_game = try allocator.create(game);
+            return Game{
+                .base = &alloced_game.base,
+                .allocator = allocator,
+                .nds_rom = nds_rom,
             };
-
-            if (gen4.Game.fromRom(nds_rom.*)) |game| {
-                const alloced_game = try allocator.construct(game);
-                return Game{
-                    .base = &alloced_game.base,
-                    .allocator = allocator,
-                    .nds_rom = nds_rom,
-                };
-            } else |e1| if (gen5.Game.fromRom(nds_rom.*)) |game| {
-                const alloced_game = try allocator.construct(game);
-                return Game{
-                    .base = &alloced_game.base,
-                    .allocator = allocator,
-                    .nds_rom = nds_rom,
-                };
-            } else |e2| {
-                break :nds_blk;
-            }
+        } else |e2| {
+            return error.InvalidGame;
         }
-
-        return error.InvalidGame;
     }
 
     pub fn save(game: Game, file: *os.File) !void {
