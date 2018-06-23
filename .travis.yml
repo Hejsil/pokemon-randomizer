@@ -1,7 +1,6 @@
 language: bash
 os:
   - linux
-  - osx
 install:
   - wget https://ziglang.org/builds/zig-linux-x86_64-master.tar.xz
   - tar -xf zig-linux-*
