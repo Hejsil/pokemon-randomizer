@@ -1,3 +1,4 @@
+language: bash
 os:
   - linux
 install:
