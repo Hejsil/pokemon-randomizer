@@ -1,5 +1,7 @@
 const std = @import("std");
-const fun = @import("fun");
+
+// TODO: We can't have packages in tests, so we have to import the fun-with-zig lib manually
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const common = @import("common.zig");
 const formats = @import("formats.zig");
 const little = @import("../little.zig");
@@ -30,9 +32,9 @@ fn FileSystem(comptime FileType: type) type {
 
         // TODO: When we have https://github.com/zig-lang/zig/issues/287, then we don't need to
         //       allocate the fs anymore.
-        pub fn alloc(allocator: *mem.Allocator) !*Self {
-            const res = try allocator.create(Self{
-                .arena = std.heap.ArenaAllocator.init(allocator),
+        pub fn alloc(a: *mem.Allocator) !*Self {
+            const res = try a.create(Self{
+                .arena = std.heap.ArenaAllocator.init(a),
                 .root = undefined,
             });
             res.root = try res.createFolder("");
@@ -219,7 +221,7 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
                     return error.InvalidSubDirectoryId;
 
                 const fnt_entry = generic.at(fnt_main_table, id.get() & 0x0FFF) catch return error.InvalidSubDirectoryId;
-                const sub_folder = try fs.constructFolder(name);
+                const sub_folder = try fs.createFolder(name);
 
                 try folder.folders.append(sub_folder);
 
@@ -311,13 +313,13 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
                 files.append(sub_file) catch unreachable;
             }
 
-            return fs.constructFile(Nitro.File{
+            return fs.createFile(Nitro.File{
                 .name = name,
                 .@"type" = Nitro.File.Type{ .Narc = sub_fs },
             });
         } else {
             const sub_fs = try readNarc(file, fs.allocator(), fnt, fat, narc_img_base);
-            return fs.constructFile(Nitro.File{
+            return fs.createFile(Nitro.File{
                 .name = name,
                 .@"type" = Nitro.File.Type{ .Narc = sub_fs },
             });
@@ -326,7 +328,7 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
 
     try file.seekTo(fat_entry.start.get() + img_base);
     const data = try utils.stream.allocRead(&file_in_stream.stream, fs.allocator(), u8, fat_entry.getSize());
-    return fs.constructFile(Nitro.File{
+    return fs.createFile(Nitro.File{
         .name = name,
         .@"type" = Nitro.File.Type{ .Binary = data },
     });
@@ -338,7 +340,7 @@ pub fn readNarcFile(fs: *Narc, file: *os.File, tmp_allocator: *mem.Allocator, fa
 
     try file.seekTo(fat_entry.start.get() + img_base);
     const data = try utils.stream.allocRead(&file_in_stream.stream, fs.allocator(), u8, fat_entry.getSize());
-    return fs.constructFile(Narc.File{
+    return fs.createFile(Narc.File{
         .name = name,
         .data = data,
     });
@@ -489,12 +491,12 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
     }
 }
 
-fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *const Fs) bool {
+fn fsEqual(allocator: *mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *const Fs) !bool {
     comptime assert(Fs == Nitro or Fs == Narc);
 
     const FolderPair = struct {
-        f1: Fs.Folder,
-        f2: Fs.Folder,
+        f1: *Fs.Folder,
+        f2: *Fs.Folder,
     };
 
     var folders_to_compare = std.ArrayList(FolderPair).init(allocator);
@@ -505,10 +507,10 @@ fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *c
     });
 
     while (folders_to_compare.popOrNull()) |pair| {
-        for (pair.f1.folders) |f1| {
-            for (pair.f2.folders) |f2| {
+        for (pair.f1.folders.toSliceConst()) |f1| {
+            for (pair.f2.folders.toSliceConst()) |f2| {
                 if (mem.eql(u8, f1.name, f2.name)) {
-                    folders_to_compare.append(FolderPair {
+                    try folders_to_compare.append(FolderPair {
                         .f1 = f1,
                         .f2 = f2,
                     });
@@ -519,22 +521,22 @@ fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *c
             }
         }
 
-        for (pair.f1.files) |f1| {
-            for (pair.f2.files) |f2| {
+        for (pair.f1.files.toSliceConst()) |f1| {
+            for (pair.f2.files.toSliceConst()) |f2| {
                 if (mem.eql(u8, f1.name, f2.name)) {
                     switch (Fs) {
                         Nitro => {
                             switch (f1.@"type") {
-                                Nitro.File.Binary => {
-                                    if (f2.@"type" != Nitro.File.Binary)
+                                Nitro.File.Type.Binary => {
+                                    if (f2.@"type" != Nitro.File.Type.Binary)
                                         return false;
                                     if (!mem.eql(u8, f1.@"type".Binary, f2.@"type".Binary))
                                         return false;
                                 },
-                                Nitro.File.Narc => {
-                                    if (f2.@"type" != Nitro.File.Narc)
+                                Nitro.File.Type.Narc => {
+                                    if (f2.@"type" != Nitro.File.Type.Narc)
                                         return false;
-                                    if (!fsEqual(allocator, Narc, f1.@"type".Narc, f2.@"type".Narc))
+                                    if (!try fsEqual(allocator, Narc, f1.@"type".Narc, f2.@"type".Narc))
                                         return false;
                                 }
                             }
@@ -557,28 +559,29 @@ fn fsEqual(allocator: &mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *c
 }
 
 test "nds.fs: Nitro.File read/write" {
-    var buf: [100 * 1024]
+    var buf: [100 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
 
-    const allocator = debug.global_allocator;
     const fs = try Nitro.alloc(allocator);
     const root = fs.root;
-    try root.files.append(try fs.constructFile(Nitro.File{
+    try root.files.append(try fs.createFile(Nitro.File{
         .name = try mem.dupe(fs.allocator(), u8, "hello.world"),
         .@"type" = Nitro.File.Type{
             .Binary = try mem.dupe(fs.allocator(), u8, "Hello World!"),
         },
     }));
-    try root.files.append(try fs.constructFile(Nitro.File{
+    try root.files.append(try fs.createFile(Nitro.File{
         .name = try mem.dupe(fs.allocator(), u8, "hello.dupe"),
         .@"type" = Nitro.File.Type{
             .Binary = try mem.dupe(fs.allocator(), u8, "Hello Dupe!"),
         },
     }));
 
-    const folder = try fs.constructFolder(try mem.dupe(fs.allocator(), u8, "hello.folder"));
+    const folder = try fs.createFolder(try mem.dupe(fs.allocator(), u8, "hello.folder"));
     try root.folders.append(folder);
 
-    try folder.files.append(try fs.constructFile(Nitro.File{
+    try folder.files.append(try fs.createFile(Nitro.File{
         .name = try mem.dupe(fs.allocator(), u8, "good.bye"),
         .@"type" = Nitro.File.Type{
             .Binary = try mem.dupe(fs.allocator(), u8, "Cya!"),
@@ -586,7 +589,7 @@ test "nds.fs: Nitro.File read/write" {
     }));
 
     const narc = try Narc.alloc(fs.allocator());
-    try folder.files.append(try fs.constructFile(Nitro.File{
+    try folder.files.append(try fs.createFile(Nitro.File{
         .name = try mem.dupe(fs.allocator(), u8, "good.narc"),
         .@"type" = Nitro.File.Type{
             .Narc = narc,
@@ -595,11 +598,11 @@ test "nds.fs: Nitro.File read/write" {
 
     const n_root = narc.root;
 
-    try n_root.files.append(try narc.constructFile(Narc.File{
+    try n_root.files.append(try narc.createFile(Narc.File{
         .name = try mem.dupe(narc.allocator(), u8, "good"),
         .data = try mem.dupe(narc.allocator(), u8, "Good is good!"),
     }));
-    try n_root.folders.append(try narc.constructFolder(try mem.dupe(narc.allocator(), u8, "empty")));
+    try n_root.folders.append(try narc.createFolder(try mem.dupe(narc.allocator(), u8, "empty")));
 
     const fntAndFiles = try getFntAndFiles(Nitro, fs.*, allocator);
     const files = fntAndFiles.files;
@@ -609,25 +612,27 @@ test "nds.fs: Nitro.File read/write" {
     const fnt_buff_size = @sliceToBytes(main_fnt).len + sub_fnt.len;
     const fnt_buff = try allocator.alloc(u8, fnt_buff_size);
     const fnt = try fmt.bufPrint(fnt_buff, "{}{}", @sliceToBytes(main_fnt), sub_fnt);
-    var fat = std.ArrayList(fs.FatEntry).init(allocator);
+    var fat = std.ArrayList(FatEntry).init(allocator);
 
+    const test_file = "__nds.fs.test.read.write__";
+    defer os.deleteFile(allocator, test_file) catch unreachable;
 
     {
-        var file = os.File.openWrite(allocator, "__nds.fs.test.read.write__");
+        var file = try os.File.openWrite(allocator, test_file);
         defer file.close();
 
         for (files) |f| {
             const pos = @intCast(u32, try file.getPos());
-            try fs.writeNitroFile(file, allocator, f.*);
-            fat.append(fs.FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
+            try writeNitroFile(&file, allocator, f.*);
+            fat.append(FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
         }
     }
 
     const fs2 = blk: {
-        var file = os.File.openRead(allocator, "__nds.fs.test.read.write__");
+        var file = try os.File.openRead(allocator, test_file);
         defer file.close();
-        break :blk try readNitro(file, allocator, fnt, fat.toSlice());
+        break :blk try readNitro(&file, allocator, fnt, fat.toSlice());
     };
 
-    assert(fsEqual(allocator, Nitro, fs, fs2));
+    assert(try fsEqual(allocator, Nitro, fs, fs2));
 }
