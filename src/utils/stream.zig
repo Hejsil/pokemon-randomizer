@@ -41,7 +41,7 @@ pub fn allocRead(in_stream: var, allocator: *mem.Allocator, comptime T: type, si
     const data = try allocator.alloc(T, size);
     errdefer allocator.free(data);
 
-    try in_stream.readNoEof(([]u8)(data));
+    try in_stream.readNoEof(@sliceToBytes(data));
     return data;
 }
 

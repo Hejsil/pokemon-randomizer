@@ -120,16 +120,16 @@ fn getVersion(gamecode: []const u8) !pokemon.Version {
 }
 
 fn gbaGamecode(data: []const u8) []const u8 {
-    const header = &([]const gba.Header)(data[0..@sizeOf(gba.Header)])[0];
+    const header = &@bytesToSlice(gba.Header, data[0..@sizeOf(gba.Header)])[0];
     return header.gamecode;
 }
 
 fn gbGamecode(data: []const u8) []const u8 {
-    const header = &([]const gb.Header)(data[0..@sizeOf(gb.Header)])[0];
+    const header = &@bytesToSlice(gb.Header, data[0..@sizeOf(gb.Header)])[0];
     return header.title.split.gamecode;
 }
 
 fn gbTitle(data: []const u8) []const u8 {
-    const header = &([]const gb.Header)(data[0..@sizeOf(gb.Header)])[0];
+    const header = &@bytesToSlice(gb.Header, data[0..@sizeOf(gb.Header)])[0];
     return header.title.full;
 }

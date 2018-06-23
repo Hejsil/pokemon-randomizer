@@ -146,7 +146,7 @@ pub const Rom = struct {
         //       of roms. Hmmm :thinking:
         try file.write(rom.arm9);
         if (rom.hasNitroFooter()) {
-            try file.write(([]const u8)(rom.nitro_footer[0..]));
+            try file.write(@sliceToBytes(rom.nitro_footer[0..]));
         }
 
         header.arm9_rom_offset = toLittle(@intCast(u32, arm9_pos));
@@ -175,7 +175,7 @@ pub const Rom = struct {
         }
 
         const fnt_pos = try file.getPos();
-        try file.write(([]u8)(main_fnt));
+        try file.write(@sliceToBytes(main_fnt));
         try file.write(sub_fnt);
 
         header.fnt_offset = toLittle(@intCast(u32, fnt_pos));
@@ -211,19 +211,19 @@ pub const Rom = struct {
         }
 
         const fat_pos = try file.getPos();
-        try file.write(([]const u8)(fat.toSliceConst()));
+        try file.write(@sliceToBytes(fat.toSliceConst()));
 
         header.fat_offset = toLittle(@intCast(u32, fat_pos));
         header.fat_size = toLittle(@intCast(u32, (files.len + rom.arm9_overlay_table.len + rom.arm7_overlay_table.len) * @sizeOf(fs.FatEntry)));
 
         const arm9_overlay_pos = try file.getPos();
-        try file.write(([]const u8)(rom.arm9_overlay_table));
+        try file.write(@sliceToBytes(rom.arm9_overlay_table));
 
         header.arm9_overlay_offset = toLittle(@intCast(u32, arm9_overlay_pos));
         header.arm9_overlay_size = toLittle(@intCast(u32, rom.arm9_overlay_table.len * @sizeOf(Overlay)));
 
         const arm7_overlay_pos = try file.getPos();
-        try file.write(([]const u8)(rom.arm7_overlay_table));
+        try file.write(@sliceToBytes(rom.arm7_overlay_table));
 
         header.arm7_overlay_offset = toLittle(@intCast(u32, arm7_overlay_pos));
         header.arm7_overlay_size = toLittle(@intCast(u32, rom.arm7_overlay_table.len * @sizeOf(Overlay)));

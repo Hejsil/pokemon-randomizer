@@ -30,12 +30,12 @@ fn FileSystem(comptime FileType: type) type {
 
         // TODO: When we have https://github.com/zig-lang/zig/issues/287, then we don't need to
         //       allocate the fs anymore.
-        pub fn alloc(a: *mem.Allocator) !*Self {
-            const res = try a.construct(Self{
-                .arena = std.heap.ArenaAllocator.init(a),
+        pub fn alloc(allocator: *mem.Allocator) !*Self {
+            const res = try allocator.create(Self{
+                .arena = std.heap.ArenaAllocator.init(allocator),
                 .root = undefined,
             });
-            res.root = try res.constructFolder([]u8{});
+            res.root = try res.createFolder("");
 
             return res;
         }
@@ -52,16 +52,16 @@ fn FileSystem(comptime FileType: type) type {
             folders: std.ArrayList(*Folder),
         };
 
-        pub fn constructFolder(fs: *Self, name: []u8) !*Folder {
-            return try fs.allocator().construct(Folder{
+        pub fn createFolder(fs: *Self, name: []u8) !*Folder {
+            return try fs.arena.allocator.create(Folder{
                 .name = name,
-                .files = std.ArrayList(*FileType).init(fs.allocator()),
-                .folders = std.ArrayList(*Folder).init(fs.allocator()),
+                .files = std.ArrayList(*FileType).init(&fs.arena.allocator),
+                .folders = std.ArrayList(*Folder).init(&fs.arena.allocator),
             });
         }
 
-        pub fn constructFile(fs: *Self, init_value: FileType) !*FileType {
-            return try fs.allocator().construct(init_value);
+        pub fn createFile(fs: *Self, init_value: FileType) !*FileType {
+            return try fs.arena.allocator.create(init_value);
         }
 
         pub fn getFile(fs: Self, path: []const u8) ?*FileType {
@@ -147,7 +147,7 @@ pub fn readNarc(file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat:
 
 fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*Fs {
     const fnt_main_table = blk: {
-        const fnt_mains = generic.widenTrim(fnt, FntMainEntry);
+        const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
         const first = generic.at(fnt_mains, 0) catch return error.InvalidFnt;
         const res = generic.slice(fnt_mains, 0, first.parent_id.get()) catch return error.InvalidFnt;
         if (res.len > 4096) return error.InvalidFnt;
@@ -194,7 +194,7 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
             continue;
 
         const lenght = type_length & 0x7F;
-        const kind = Kind((type_length & 0x80));
+        const kind = @intToEnum(Kind, type_length & 0x80);
         assert(kind == Kind.File or kind == Kind.Folder);
 
         const name = try utils.stream.allocRead(stream, fs.allocator(), u8, lenght);
@@ -285,7 +285,7 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
         const fnt = try utils.stream.allocRead(stream, tmp_allocator, u8, fnt_size);
         defer tmp_allocator.free(fnt);
 
-        const fnt_mains = generic.widenTrim(fnt, FntMainEntry);
+        const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
         const first_fnt = generic.at(fnt_mains, 0) catch return error.InvalidChunkSize;
 
         const file_data_header = try utils.stream.read(stream, formats.Chunk);
@@ -472,7 +472,7 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
                 .name = formats.Chunk.names.fnt,
                 .size = toLittle(@intCast(u32, file_image_start - fnt_start)),
             }));
-            try stream.write(([]u8)(main_fnt));
+            try stream.write(@sliceToBytes(main_fnt));
             try stream.write(sub_fnt);
             try stream.writeByteNTimes(0xFF, file_image_start - fnt_end);
 

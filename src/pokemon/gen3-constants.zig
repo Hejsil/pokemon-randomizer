@@ -9,7 +9,7 @@ pub const Offset = struct {
     len: usize,
 
     fn getSlice(offset: Offset, comptime Item: type, data: []u8) []Item {
-        return generic.widenTrim(data[offset.start..], Item)[0..offset.len];
+        return generic.bytesToSliceTrim(Item, data[offset.start..])[0..offset.len];
     }
 };
 

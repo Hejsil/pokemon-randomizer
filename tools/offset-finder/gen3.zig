@@ -134,17 +134,17 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         }
 
         const pointers = search.findPattern(u8, data, first_pointers, last_pointers) orelse return error.UnableToFindLevelUpLearnsetOffset;
-        break :blk ([]const Little(u32))(pointers);
+        break :blk @bytesToSlice(Little(u32), pointers);
     };
 
     const hms_start = mem.indexOf(u8, data, constants.hms) orelse return error.UnableToFindHmOffset;
-    const hms = ([]const Little(u16))(data[hms_start..][0..constants.hms.len]);
+    const hms = @bytesToSlice(Little(u16), data[hms_start..][0..constants.hms.len]);
 
     // TODO: Pokémon Emerald have 2 tm tables. I'll figure out some hack for that
     //       if it turns out that both tables are actually used. For now, I'll
     //       assume that the first table is the only one used.
     const tms_start = mem.indexOf(u8, data, constants.tms) orelse return error.UnableToFindTmOffset;
-    const tms = ([]const Little(u16))(data[tms_start..][0..constants.tms.len]);
+    const tms = @bytesToSlice(Little(u16), data[tms_start..][0..constants.tms.len]);
 
     const ignored_item_fields = [][]const u8{ "name", "description_offset", "field_use_func", "battle_use_func" };
     const maybe_items = switch (version) {
