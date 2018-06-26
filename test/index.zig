@@ -6,7 +6,10 @@ const os = std.os;
 const debug = std.debug;
 
 test "Fake rom: Api" {
-    const buf = try heap.DirectAllocator.init().allocator.alloc(u8, 1024 * 1024 * 1024);
+    var direct_alloc = heap.DirectAllocator.init();
+    const buf = try direct_alloc.allocator.alloc(u8, 1024 * 1024 * 1024);
+    defer direct_alloc.allocator.free(buf);
+
     debug.warn("\n");
 
     var generate_buf: [100 * 1024]u8 = undefined;
@@ -20,7 +23,7 @@ test "Fake rom: Api" {
         var fix_buf_alloc = heap.FixedBufferAllocator.init(buf);
         const allocator = &fix_buf_alloc.allocator;
 
-        debug.warn("Testing api for '{}' ({}/{})...", file_name, i + 1, roms_files.len);
+        debug.warn("Testing api ({}/{}): '{}'...", i + 1, roms_files.len, file_name);
         defer debug.warn("Ok\n");
 
         var file = try os.File.openRead(allocator, file_name);
