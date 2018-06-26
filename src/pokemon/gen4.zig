@@ -4,7 +4,6 @@ const little = @import("../little.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
-const constants = @import("gen4-constants.zig");
 
 const mem = std.mem;
 
@@ -12,6 +11,8 @@ const Little = little.Little;
 
 const u9 = @IntType(false, 9);
 const u10 = @IntType(false, 10);
+
+pub const constants = @import("gen4-constants.zig");
 
 pub const BasePokemon = packed struct {
     stats: common.Stats,
@@ -57,9 +58,6 @@ pub const MoveTutor = packed struct {
 ///   the party members moveset.
 /// In HG/SS/Plat, this struct is always padded with a u16 at the end, no matter the party_type
 pub const PartyMember = packed struct {
-    const has_item = 0b10;
-    const has_moves = 0b01;
-
     iv: u8,
     gender: u4,
     ability: u4,
@@ -69,6 +67,9 @@ pub const PartyMember = packed struct {
 };
 
 pub const Trainer = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
@@ -135,7 +136,7 @@ pub const Game = struct {
     hms: []align(1) Little(u16),
 
     pub fn fromRom(rom: nds.Rom) !Game {
-        const info = try getInfo(rom.header.gamecode);
+        const info = try getInfo(rom.header.game_title, rom.header.gamecode);
         const fs = rom.file_system.*;
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, info.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + info.hm_tm_prefix.len;
@@ -163,18 +164,16 @@ pub const Game = struct {
         }
     }
 
-    fn getInfo(gamecode: []const u8) !constants.Info {
-        if (mem.eql(u8, gamecode, "IPGE"))
-            return constants.ss_info;
-        if (mem.eql(u8, gamecode, "IPKE"))
-            return constants.hg_info;
-        if (mem.eql(u8, gamecode, "ADAE"))
-            return constants.diamond_info;
-        if (mem.eql(u8, gamecode, "APAE"))
-            return constants.pearl_info;
-        if (mem.eql(u8, gamecode, "CPUE"))
-            return constants.platinum_info;
+    fn getInfo(game_title: []const u8, gamecode: []const u8) !constants.Info {
+        for (constants.infos) |info| {
+            //if (!mem.eql(u8, info.game_title, game_title))
+            //    continue;
+            if (!mem.eql(u8, info.gamecode, gamecode))
+                continue;
 
-        return error.InvalidGen4GameCode;
+            return info;
+        }
+
+        return error.NotGen4Game;
     }
 };

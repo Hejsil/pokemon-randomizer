@@ -17,29 +17,16 @@ const common = pokemon.common;
 const Little = little.Little;
 const toLittle = little.toLittle;
 
-const Offset = struct {
-    start: usize,
-    len: usize,
-
-    fn fromSlice(start: usize, comptime T: type, slice: []const T) Offset {
-        return Offset{
-            .start = @ptrToInt(slice.ptr) - start,
-            .len = slice.len,
-        };
-    }
-};
-
-const Info = struct {
-    trainers: Offset,
-    moves: Offset,
-    tm_hm_learnset: Offset,
-    base_stats: Offset,
-    evolution_table: Offset,
-    level_up_learnset_pointers: Offset,
-    hms: Offset,
-    tms: Offset,
-    items: Offset,
-};
+const Info = gen3.constants.Info;
+const TrainerSection = gen3.constants.TrainerSection;
+const MoveSection = gen3.constants.MoveSection;
+const MachineLearnsetSection = gen3.constants.MachineLearnsetSection;
+const BaseStatsSection = gen3.constants.BaseStatsSection;
+const EvolutionSection = gen3.constants.EvolutionSection;
+const LevelUpLearnsetPointerSection = gen3.constants.LevelUpLearnsetPointerSection;
+const HmSection = gen3.constants.HmSection;
+const TmSection = gen3.constants.TmSection;
+const ItemSection = gen3.constants.ItemSection;
 
 pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
     const ignored_trainer_fields = [][]const u8{ "party_offset", "name" };
@@ -79,12 +66,12 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         return error.UnableToFindMoveOffset;
     };
 
-    const tm_hm_learnset = search.findStructs(
+    const machine_learnset = search.findStructs(
         Little(u64),
         [][]const u8{},
         data,
-        constants.first_tm_hm_learnsets,
-        constants.last_tm_hm_learnsets,
+        constants.first_machine_learnsets,
+        constants.last_machine_learnsets,
     ) orelse {
         return error.UnableToFindTmHmLearnsetOffset;
     };
@@ -173,16 +160,18 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
     };
     const items = maybe_items orelse return error.UnableToFindItemsOffset;
 
-    const start = @ptrToInt(data.ptr);
     return Info{
-        .trainers = Offset.fromSlice(start, gen3.Trainer, trainers),
-        .moves = Offset.fromSlice(start, gen3.Move, moves),
-        .tm_hm_learnset = Offset.fromSlice(start, Little(u64), tm_hm_learnset),
-        .base_stats = Offset.fromSlice(start, gen3.BasePokemon, base_stats),
-        .evolution_table = Offset.fromSlice(start, [5]common.Evolution, evolution_table),
-        .level_up_learnset_pointers = Offset.fromSlice(start, Little(u32), level_up_learnset_pointers),
-        .hms = Offset.fromSlice(start, Little(u16), hms),
-        .tms = Offset.fromSlice(start, Little(u16), tms),
-        .items = Offset.fromSlice(start, gen3.Item, items),
+        .game_title = undefined,
+        .gamecode = undefined,
+        .version = version,
+        .trainers = TrainerSection.init(data, trainers),
+        .moves = MoveSection.init(data, moves),
+        .machine_learnsets = MachineLearnsetSection.init(data, machine_learnset),
+        .base_stats = BaseStatsSection.init(data, base_stats),
+        .evolutions = EvolutionSection.init(data, evolution_table),
+        .level_up_learnset_pointers = LevelUpLearnsetPointerSection.init(data, level_up_learnset_pointers),
+        .hms = HmSection.init(data, hms),
+        .tms = TmSection.init(data, tms),
+        .items = ItemSection.init(data, items),
     };
 }

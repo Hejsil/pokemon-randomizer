@@ -1,244 +1,286 @@
-const pokemon = @import("index.zig");
+const libpoke = @import("index.zig");
+const little = @import("../little.zig");
 const std = @import("std");
 const fun = @import("fun");
 const mem = std.mem;
+const debug = std.debug;
 const generic = fun.generic;
 
-pub const Offset = struct {
-    start: usize,
-    len: usize,
+const Little = little.Little;
 
-    fn getSlice(offset: Offset, comptime Item: type, data: []u8) []Item {
-        return generic.bytesToSliceTrim(Item, data[offset.start..])[0..offset.len];
-    }
-};
+pub fn Section(comptime Item: type) type {
+    return struct {
+        const Self = this;
+
+        start: usize,
+        len: usize,
+
+        pub fn init(data_slice: []const u8, items: []const Item) Self {
+            const data_ptr = @ptrToInt(data_slice.ptr);
+            const item_ptr = @ptrToInt(items.ptr);
+            debug.assert(data_ptr <= item_ptr);
+            debug.assert(item_ptr + items.len * @sizeOf(Item) <= data_ptr + data_slice.len);
+
+            return Self{
+                .start = item_ptr - data_ptr,
+                .len = items.len,
+            };
+        }
+
+        pub fn end(offset: Self) usize {
+            return offset.start + @sizeOf(Item) * offset.len;
+        }
+
+        pub fn slice(offset: Self, data: []u8) []Item {
+            return @bytesToSlice(Item, data[offset.start..offset.end()]);
+        }
+    };
+}
+
+pub const TrainerSection = Section(libpoke.gen3.Trainer);
+pub const MoveSection = Section(libpoke.gen3.Move);
+pub const MachineLearnsetSection = Section(Little(u64));
+pub const BaseStatsSection = Section(libpoke.gen3.BasePokemon);
+pub const EvolutionSection = Section([5]libpoke.common.Evolution);
+pub const LevelUpLearnsetPointerSection = Section(Little(u32));
+pub const HmSection = Section(Little(u16));
+pub const TmSection = Section(Little(u16));
+pub const ItemSection = Section(libpoke.gen3.Item);
 
 pub const Info = struct {
-    version: pokemon.Version,
+    game_title: [12]u8,
+    gamecode: [4]u8,
+    version: libpoke.Version,
 
-    trainers: Offset,
-    moves: Offset,
-    tm_hm_learnset: Offset,
-    base_stats: Offset,
-    evolution_table: Offset,
-    level_up_learnset_pointers: Offset,
-    hms: Offset,
-    tms: Offset,
-    items: Offset,
+    trainers: TrainerSection,
+    moves: MoveSection,
+    machine_learnsets: MachineLearnsetSection,
+    base_stats: BaseStatsSection,
+    evolutions: EvolutionSection,
+    level_up_learnset_pointers: LevelUpLearnsetPointerSection,
+    hms: HmSection,
+    tms: TmSection,
+    items: ItemSection,
 };
 
-// TODO: When we are able to allocate at comptime, construct a HashMap
-//       that maps struct { game_title: []const u8, gamecode: []const u8, } -> Info
-// game_title: POKEMON EMER
-// gamecode: BPEE
-pub const emerald_us_info = Info{
-    .version = pokemon.Version.Emerald,
+pub const infos = []Info{
+    emerald_us_info,
+    ruby_us_info,
+    sapphire_us_info,
+    fire_us_info,
+    leaf_us_info,
+};
 
-    .trainers = Offset{
+const emerald_us_info = Info{
+    .game_title = "POKEMON EMER",
+    .gamecode = "BPEE",
+    .version = libpoke.Version.Emerald,
+
+    .trainers = TrainerSection{
         .start = 0x0310030,
         .len = 855,
     },
-    .moves = Offset{
+    .moves = MoveSection{
         .start = 0x031C898,
         .len = 355,
     },
-    .tm_hm_learnset = Offset{
+    .machine_learnsets = MachineLearnsetSection{
         .start = 0x031E898,
         .len = 412,
     },
-    .base_stats = Offset{
+    .base_stats = BaseStatsSection{
         .start = 0x03203CC,
         .len = 412,
     },
-    .evolution_table = Offset{
+    .evolutions = EvolutionSection{
         .start = 0x032531C,
         .len = 412,
     },
-    .level_up_learnset_pointers = Offset{
+    .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
         .start = 0x032937C,
         .len = 412,
     },
-    .hms = Offset{
+    .hms = HmSection{
         .start = 0x0329EEA,
         .len = 008,
     },
-    .tms = Offset{
+    .tms = TmSection{
         .start = 0x0615B94,
         .len = 050,
     },
-    .items = Offset{
+    .items = ItemSection{
         .start = 0x05839A0,
         .len = 377,
     },
 };
 
-// game_title: POKEMON RUBY
-// gamecode: AXVE
 pub const ruby_us_info = Info{
-    .version = pokemon.Version.Ruby,
+    .game_title = "POKEMON RUBY",
+    .gamecode = "AXVE",
+    .version = libpoke.Version.Ruby,
 
-    .trainers = Offset{
+    .trainers = TrainerSection{
         .start = 0x01F0514,
         .len = 339,
     },
-    .moves = Offset{
+    .moves = MoveSection{
         .start = 0x01FB144,
         .len = 355,
     },
-    .tm_hm_learnset = Offset{
+    .machine_learnsets = MachineLearnsetSection{
         .start = 0x01FD108,
         .len = 412,
     },
-    .base_stats = Offset{
+    .base_stats = BaseStatsSection{
         .start = 0x01FEC30,
         .len = 412,
     },
-    .evolution_table = Offset{
+    .evolutions = EvolutionSection{
         .start = 0x0203B80,
         .len = 412,
     },
-    .level_up_learnset_pointers = Offset{
+    .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
         .start = 0x0207BE0,
         .len = 412,
     },
-    .hms = Offset{
+    .hms = HmSection{
         .start = 0x0208332,
         .len = 008,
     },
-    .tms = Offset{
+    .tms = TmSection{
         .start = 0x037651C,
         .len = 050,
     },
-    .items = Offset{
+    .items = ItemSection{
         .start = 0x03C5580,
         .len = 349,
     },
 };
 
-// game_title: POKEMON SAPP
-// gamecode: AXPE
 pub const sapphire_us_info = Info{
-    .version = pokemon.Version.Sapphire,
+    .game_title = "POKEMON SAPP",
+    .gamecode = "AXPE",
+    .version = libpoke.Version.Sapphire,
 
-    .trainers = Offset{
+    .trainers = TrainerSection{
         .start = 0x01F04A4,
         .len = 339,
     },
-    .moves = Offset{
+    .moves = MoveSection{
         .start = 0x01FB0D4,
         .len = 355,
     },
-    .tm_hm_learnset = Offset{
+    .machine_learnsets = MachineLearnsetSection{
         .start = 0x01FD098,
         .len = 412,
     },
-    .base_stats = Offset{
+    .base_stats = BaseStatsSection{
         .start = 0x01FEBC0,
         .len = 412,
     },
-    .evolution_table = Offset{
+    .evolutions = EvolutionSection{
         .start = 0x0203B10,
         .len = 412,
     },
-    .level_up_learnset_pointers = Offset{
+    .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
         .start = 0x0207B70,
         .len = 412,
     },
-    .hms = Offset{
+    .hms = HmSection{
         .start = 0x02082C2,
         .len = 008,
     },
-    .tms = Offset{
+    .tms = TmSection{
         .start = 0x03764AC,
         .len = 050,
     },
-    .items = Offset{
+    .items = ItemSection{
         .start = 0x03C55DC,
         .len = 349,
     },
 };
 
-// game_title: POKEMON FIRE
-// gamecode: BPRE
 pub const fire_us_info = Info{
-    .version = pokemon.Version.FireRed,
+    .game_title = "POKEMON FIRE",
+    .gamecode = "BPRE",
+    .version = libpoke.Version.FireRed,
 
-    .trainers = Offset{
+    .trainers = TrainerSection{
         .start = 0x023EB38,
         .len = 439,
     },
-    .moves = Offset{
+    .moves = MoveSection{
         .start = 0x0250C74,
         .len = 355,
     },
-    .tm_hm_learnset = Offset{
+    .machine_learnsets = MachineLearnsetSection{
         .start = 0x0252C38,
         .len = 412,
     },
-    .base_stats = Offset{
+    .base_stats = BaseStatsSection{
         .start = 0x02547F4,
         .len = 412,
     },
-    .evolution_table = Offset{
+    .evolutions = EvolutionSection{
         .start = 0x02597C4,
         .len = 412,
     },
-    .level_up_learnset_pointers = Offset{
+    .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
         .start = 0x025D824,
         .len = 412,
     },
-    .hms = Offset{
+    .hms = HmSection{
         .start = 0x025E084,
         .len = 008,
     },
-    .tms = Offset{
+    .tms = TmSection{
         .start = 0x045A604,
         .len = 050,
     },
-    .items = Offset{
+    .items = ItemSection{
         .start = 0x03DB098,
         .len = 374,
     },
 };
 
-// game_title: POKEMON LEAF
-// gamecode: BPGE
 pub const leaf_us_info = Info{
-    .version = pokemon.Version.LeafGreen,
+    .game_title = "POKEMON LEAF",
+    .gamecode = "BPGE",
+    .version = libpoke.Version.LeafGreen,
 
-    .trainers = Offset{
+    .trainers = TrainerSection{
         .start = 0x023EB14,
         .len = 439,
     },
-    .moves = Offset{
+    .moves = MoveSection{
         .start = 0x0250C50,
         .len = 355,
     },
-    .tm_hm_learnset = Offset{
+    .machine_learnsets = MachineLearnsetSection{
         .start = 0x0252C14,
         .len = 412,
     },
-    .base_stats = Offset{
+    .base_stats = BaseStatsSection{
         .start = 0x02547D0,
         .len = 412,
     },
-    .evolution_table = Offset{
+    .evolutions = EvolutionSection{
         .start = 0x02597A4,
         .len = 412,
     },
-    .level_up_learnset_pointers = Offset{
+    .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
         .start = 0x025D804,
         .len = 412,
     },
-    .hms = Offset{
+    .hms = HmSection{
         .start = 0x025E064,
         .len = 008,
     },
-    .tms = Offset{
+    .tms = TmSection{
         .start = 0x045A034,
         .len = 050,
     },
-    .items = Offset{
+    .items = ItemSection{
         .start = 0x03DAED4,
         .len = 374,
     },

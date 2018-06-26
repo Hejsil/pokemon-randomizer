@@ -187,7 +187,7 @@ gen3.Move{
 }};
 
 // TODO: Fix format
-pub const first_tm_hm_learnsets = []Little(u64){
+pub const first_machine_learnsets = []Little(u64){
     Little(u64){ .bytes = []u8{
         0x00,
         0x00,
@@ -230,7 +230,7 @@ pub const first_tm_hm_learnsets = []Little(u64){
     } }, // Venusaur
 };
 
-pub const last_tm_hm_learnsets = []Little(u64){
+pub const last_machine_learnsets = []Little(u64){
     Little(u64){ .bytes = []u8{
         0x3e,
         0xd6,

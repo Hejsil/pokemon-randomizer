@@ -1,7 +1,10 @@
 const pokemon = @import("index.zig");
 
 pub const Info = struct {
+    game_title: [12]u8,
+    gamecode: [4]u8,
     version: pokemon.Version,
+
     base_stats: []const u8,
     level_up_moves: []const u8,
     moves: []const u8,
@@ -9,8 +12,19 @@ pub const Info = struct {
     trainer_parties: []const u8,
 };
 
-pub const black2_info = Info{
+pub const infos = []Info{
+    black2_info,
+    white2_info,
+    black_info,
+    white_info,
+};
+
+// TODO: Fill out game_titles
+const black2_info = Info{
+    .game_title = undefined,
+    .gamecode = "IREO",
     .version = pokemon.Version.Black2,
+
     .base_stats = "a/0/1/6",
     .level_up_moves = "a/0/1/8",
     .moves = "a/0/2/1",
@@ -18,15 +32,19 @@ pub const black2_info = Info{
     .trainer_parties = "a/0/9/2",
 };
 
-pub const white2_info = blk: {
+const white2_info = blk: {
     var res = black2_info;
+    res.game_title = undefined;
+    res.gamecode = "IRDO";
     res.version = pokemon.Version.White2;
 
     break :blk res;
 };
 
-pub const black_info = blk: {
+const black_info = blk: {
     var res = black2_info;
+    res.game_title = undefined;
+    res.gamecode = "IRBO";
     res.version = pokemon.Version.Black;
     res.trainer_data = "a/0/9/2";
     res.trainer_parties = "a/0/9/3";
@@ -34,8 +52,10 @@ pub const black_info = blk: {
     break :blk res;
 };
 
-pub const white_info = blk: {
+const white_info = blk: {
     var res = black_info;
+    res.game_title = undefined;
+    res.gamecode = "IRAO";
     res.version = pokemon.Version.Black;
 
     break :blk res;

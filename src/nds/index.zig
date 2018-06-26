@@ -1,5 +1,6 @@
 const std = @import("std");
-const blz = @import("blz");
+// TODO: We can't have packages in tests
+const blz = @import("../../lib/blz/blz.zig");
 const common = @import("common.zig");
 const overlay = @import("overlay.zig");
 const little = @import("../little.zig");

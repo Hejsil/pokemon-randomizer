@@ -4,14 +4,14 @@ const little = @import("../little.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
-const constants = @import("gen5-constants.zig");
 
 const mem = std.mem;
 
-const ISlice = utils.slice.ISlice;
 const Little = little.Little;
 const Narc = nds.fs.Narc;
 const Nitro = nds.fs.Nitro;
+
+pub const constants = @import("gen5-constants.zig");
 
 pub const BasePokemon = packed struct {
     stats: common.Stats,
@@ -68,9 +68,6 @@ pub const BasePokemon = packed struct {
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
 pub const PartyMember = packed struct {
-    const has_item = 0b10;
-    const has_moves = 0b01;
-
     iv: u8,
     gender: u4,
     ability: u4,
@@ -81,6 +78,9 @@ pub const PartyMember = packed struct {
 };
 
 pub const Trainer = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
@@ -188,15 +188,15 @@ pub const Game = struct {
     }
 
     fn getInfo(gamecode: []const u8) !constants.Info {
-        if (mem.eql(u8, gamecode, "IREO"))
-            return constants.black2_info;
-        if (mem.eql(u8, gamecode, "IRDO"))
-            return constants.white2_info;
-        if (mem.eql(u8, gamecode, "IRBO"))
-            return constants.black_info;
-        if (mem.eql(u8, gamecode, "IRAO"))
-            return constants.white_info;
+        for (constants.infos) |info| {
+            //if (!mem.eql(u8, info.game_title, game_title))
+            //    continue;
+            if (!mem.eql(u8, info.gamecode, gamecode))
+                continue;
 
-        return error.InvalidGen5GameCode;
+            return info;
+        }
+
+        return error.NotGen5Game;
     }
 };

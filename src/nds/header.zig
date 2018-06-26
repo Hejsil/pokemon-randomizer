@@ -1,5 +1,6 @@
 const std = @import("std");
-const crc = @import("crc");
+// TODO: We can't have packages in tests
+const crc = @import("../../lib/zig-crc/crc.zig");
 const ascii = @import("../ascii.zig");
 const little = @import("../little.zig");
 const utils = @import("../utils/index.zig");

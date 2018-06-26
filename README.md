@@ -49,10 +49,10 @@ development of the randomizer a little simpler.
 
 Here are the different build commands:
 
-* `zig build randomizer` builds the randomizer.
+* `zig build randomizer` builds the randomizer (default).
 * `zig build tools` builds the tools.
 * `zig build test` runs all tests.
-* `zig build` builds everything and runs all tests.
+* `zig build all` builds everything and runs all tests.
 
 ## Resources
 

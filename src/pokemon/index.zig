@@ -5,7 +5,8 @@ pub const gen4 = @import("gen4.zig");
 pub const gen5 = @import("gen5.zig");
 
 const std = @import("std");
-const fun = @import("fun");
+// TODO: We can't have packages in tests
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
 const little = @import("../little.zig");
@@ -779,7 +780,7 @@ pub const Party = extern struct {
         off += @sizeOf(gen.PartyMember);
 
         const item = blk: {
-            const has_item = trainer.party_type & gen.PartyMember.has_item != 0;
+            const has_item = trainer.party_type & gen.Trainer.has_item != 0;
             if (has_item) {
                 const end = off + @sizeOf(u16);
                 defer off = end;
@@ -790,7 +791,7 @@ pub const Party = extern struct {
         };
 
         const moves = blk: {
-            const has_item = trainer.party_type & gen.PartyMember.has_moves != 0;
+            const has_item = trainer.party_type & gen.Trainer.has_moves != 0;
             if (has_item) {
                 const end = off + @sizeOf([4]u16);
                 defer off = end;
@@ -843,10 +844,10 @@ pub const Party = extern struct {
         var res: usize = @sizeOf(gen.PartyMember);
         if (gen == gen3) {
             res += @sizeOf(u16);
-        } else if (trainer.party_type & gen.PartyMember.has_item != 0) {
+        } else if (trainer.party_type & gen.Trainer.has_item != 0) {
             res += @sizeOf(u16);
         }
-        if (trainer.party_type & gen.PartyMember.has_moves != 0)
+        if (trainer.party_type & gen.Trainer.has_moves != 0)
             res += @sizeOf([4]u16);
 
         // In HG/SS/Plat party members are padded with two extra bytes.
@@ -1021,18 +1022,21 @@ pub fn Machines(comptime kind: MachineKind) type {
 
         fn lenHelper(comptime gen: Namespace, machines: Self) usize {
             const game = @fieldParentPtr(gen.Game, "base", machines.game);
+            if (kind == MachineKind.Hidden)
+                return game.hms.len;
+
             return switch (gen) {
                 gen3, gen4 => game.tms.len,
-                gen5 => game.tms1.len + game.tms2,
+                gen5 => game.tms1.len + game.tms2.len,
                 else => @compileError("Gen not supported!"),
             };
         }
 
-        pub fn iterator(machines: Self) Iterator {
-            return Iterator.init(machines);
+        pub fn iterator(machines: Self) Iter {
+            return Iter.init(machines);
         }
 
-        const Iterator = GenerateIterator(Machines, u16);
+        const Iter = Iterator(Self, u16);
     };
 }
 
@@ -1106,11 +1110,11 @@ pub const Moves = extern struct {
         return game.moves.len;
     }
 
-    pub fn iterator(moves: Moves) Iterator {
-        return Iterator.init(moves);
+    pub fn iterator(moves: Moves) Iter {
+        return Iter.init(moves);
     }
 
-    const Iterator = GenerateIterator(Moves, u16);
+    const Iter = Iterator(Moves, Move);
 };
 
 pub const BaseGame = extern struct {

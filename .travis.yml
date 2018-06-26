@@ -7,4 +7,4 @@ install:
 git:
   depth: false
 script:
-  - zig-linux-*/zig build
+  - zig-linux-*/zig build all

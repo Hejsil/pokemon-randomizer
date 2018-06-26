@@ -35,11 +35,17 @@ pub fn build(b: *Builder) void {
     tools_step.dependOn(&offset_finder.step);
     tools_step.dependOn(&nds_util.step);
 
-    const tests = b.addTest("src/test.zig");
+    const src_tests = b.addTest("src/test.zig");
+    const test_tests = b.addTest("test/index.zig");
+
     const test_step = b.step("test", "Run all tests");
-    test_step.dependOn(&tests.step);
+    test_step.dependOn(&src_tests.step);
+    test_step.dependOn(&test_tests.step);
+
+    const all_step = b.step("all", "Build everything and runs all tests");
+    all_step.dependOn(randomizer_step);
+    all_step.dependOn(tools_step);
+    all_step.dependOn(test_step);
 
     b.default_step.dependOn(randomizer_step);
-    b.default_step.dependOn(tools_step);
-    b.default_step.dependOn(test_step);
 }
