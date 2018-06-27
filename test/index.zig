@@ -34,6 +34,8 @@ test "Fake rom: Api" {
 
         {
             const pokemons = game.pokemons();
+            debug.assert(pokemons.len() > 0);
+
             var it = pokemons.iterator();
             while (try it.next()) |pair| {
                 const pokemon = pair.value;
@@ -56,6 +58,9 @@ test "Fake rom: Api" {
 
                 const tms = pokemon.tmLearnset();
                 const hms = pokemon.hmLearnset();
+                debug.assert(tms.len() > 0);
+                debug.assert(hms.len() > 0);
+
                 var tm_it = tms.iterator();
                 var hm_it = hms.iterator();
                 while (tm_it.next()) |can_learn|
@@ -67,12 +72,15 @@ test "Fake rom: Api" {
 
         {
             const trainers = game.trainers();
+            debug.assert(trainers.len() > 0);
+
             var it = trainers.iterator();
             while (try it.next()) |pair| {
                 const trainer = pair.value;
                 const party = trainer.party();
-                var party_it = party.iterator();
+                debug.assert(party.len() > 0);
 
+                var party_it = party.iterator();
                 while (party_it.next()) |party_pair| {
                     const party_member = party_pair.value;
                     debug.assert(party_member.level() == fakes.level);
@@ -93,6 +101,8 @@ test "Fake rom: Api" {
 
         {
             const moves = game.moves();
+            debug.assert(moves.len() > 0);
+
             var it = moves.iterator();
             while (it.next()) |pair| {
                 const move = pair.value;
@@ -107,6 +117,9 @@ test "Fake rom: Api" {
         {
             const tms = game.tms();
             const hms = game.hms();
+            debug.assert(tms.len() > 0);
+            debug.assert(hms.len() > 0);
+
             var tm_it = tms.iterator();
             var hm_it = hms.iterator();
             while (tm_it.next()) |move_id|

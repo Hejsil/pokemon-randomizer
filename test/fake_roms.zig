@@ -263,3 +263,47 @@ fn getGen3FreeSpace(info: libpoke.gen3.constants.Info) usize {
 
     return math.max(res, info.items.end());
 }
+
+fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) ![]u8 {
+    const machine_len = libpoke.gen4.constants.tm_count + libpoke.gen4.constants.hm_count;
+    const machines = []Little(u16){move} ** machine_len;
+    const arm9 = try fmt.allocPrint(allocator, "{}{}", info.hm_tm_prefix, @sliceToBytes(machines[0..])));
+    defer allocator.free(arm9);
+
+    const rom = nds.Rom{
+        .allocator = allocator,
+        .header = nds.Header{
+        },
+        .banner = nds.Banner{
+
+        },
+        .arm9 = arm9,
+        .arm7 = []u8{},
+        .nitro_footer = []Little(u32){ Little(u32).init(0) } ** 3,
+        .arm9_overlay_table = []Overlay{},
+        .arm9_overlay_files = [][]u8{},
+        .arm7_overlay_table = []Overlay{},
+        .arm7_overlay_files = [][]u8{},
+        .file_system = try nds.fs.Nitro.alloc(allocator),
+    };
+    const fs = rom.file_system;
+
+    {
+        // Gen trainers
+    }
+
+    {
+        // Gen moves
+    }
+
+    {
+        // Gen base pokemons
+    }
+
+    {
+        // Gen lvl up learnset
+    }
+
+    const name = try fmt.allocPrint(allocator, "{}/__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
+    errdefer allocator.free(name);
+}

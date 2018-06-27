@@ -32,6 +32,8 @@ test "nds" {
 }
 
 pub const Rom = struct {
+    allocator: *mem.Allocator,
+
     // TODO: Do we actually want to store the header?
     //       Info like offsets, the user of the lib shouldn't touch, but other info, are allowed.
     //       Instead of storing the header. Only store info relevant for customization, and let
@@ -39,7 +41,10 @@ pub const Rom = struct {
     //       Or maybe the user of the lib should be able to set the offsets manually. Maybe they want
     //       to have the rom change as little as possible so they can share small patches.
     header: Header,
+    banner: Banner,
+
     arm9: []u8,
+    arm7: []u8,
 
     // After arm9, there is 12 bytes that might be a nitro footer. If the first
     // 4 bytes are == 0xDEC00621, then it's a nitro_footer.
@@ -48,18 +53,13 @@ pub const Rom = struct {
     //       not seem to have this information anywhere.
     nitro_footer: [3]Little(u32),
 
-    arm7: []u8,
-
     arm9_overlay_table: []Overlay,
     arm9_overlay_files: [][]u8,
 
     arm7_overlay_table: []Overlay,
     arm7_overlay_files: [][]u8,
 
-    banner: Banner,
     file_system: *fs.Nitro,
-
-    allocator: *mem.Allocator,
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Rom {
         var file_stream = io.FileInStream.init(file);
@@ -121,17 +121,17 @@ pub const Rom = struct {
         errdefer overlay.freeFiles(arm7_overlay_files, allocator);
 
         return Rom{
+            .allocator = allocator,
             .header = header,
+            .banner = banner,
             .arm9 = arm9,
-            .nitro_footer = nitro_footer,
             .arm7 = arm7,
+            .nitro_footer = nitro_footer,
             .arm9_overlay_table = arm9_overlay_table,
             .arm9_overlay_files = arm9_overlay_files,
             .arm7_overlay_table = arm7_overlay_table,
             .arm7_overlay_files = arm7_overlay_files,
-            .banner = banner,
             .file_system = file_system,
-            .allocator = allocator,
         };
     }
 
