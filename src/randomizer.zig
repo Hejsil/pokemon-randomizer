@@ -1,14 +1,12 @@
 const std = @import("std");
 const bits = @import("bits.zig");
-const little = @import("little.zig");
+const int = @import("int.zig");
 const libpoke = @import("pokemon/index.zig");
 
 const math = std.math;
 const mem = std.mem;
 const rand = std.rand;
 const debug = std.debug;
-
-const Little = little.Little;
 
 const assert = debug.assert;
 

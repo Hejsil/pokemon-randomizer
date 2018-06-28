@@ -1,16 +1,18 @@
 const std = @import("std");
 const pokemon = @import("index.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
 
 const mem = std.mem;
 
-const Little = little.Little;
-
 const u9 = @IntType(false, 9);
 const u10 = @IntType(false, 10);
+
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu128 = int.lu128;
 
 pub const constants = @import("gen4-constants.zig");
 
@@ -22,7 +24,7 @@ pub const BasePokemon = packed struct {
     base_exp_yield: u8,
 
     evs: common.EvYield,
-    items: [2]Little(u16),
+    items: [2]lu16,
 
     gender_ratio: u8,
     egg_cycles: u8,
@@ -42,11 +44,11 @@ pub const BasePokemon = packed struct {
 
     // Memory layout
     // TMS 01-92, HMS 01-08
-    tm_hm_learnset: Little(u128),
+    tm_hm_learnset: lu128,
 };
 
 pub const MoveTutor = packed struct {
-    move: Little(u16),
+    move: lu16,
     cost: u8,
     tutor: u8,
 };
@@ -61,7 +63,7 @@ pub const PartyMember = packed struct {
     iv: u8,
     gender: u4,
     ability: u4,
-    level: Little(u16),
+    level: lu16,
     species: u10,
     form: u6,
 };
@@ -74,8 +76,8 @@ pub const Trainer = packed struct {
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
     party_size: u8,
-    items: [4]Little(u16),
-    ai: Little(u32),
+    items: [4]lu16,
+    ai: lu32,
     battle_type2: u8,
 };
 
@@ -132,8 +134,8 @@ pub const Game = struct {
     level_up_moves: []const *nds.fs.Narc.File,
     trainers: []const *nds.fs.Narc.File,
     parties: []const *nds.fs.Narc.File,
-    tms: []align(1) Little(u16),
-    hms: []align(1) Little(u16),
+    tms: []align(1) lu16,
+    hms: []align(1) lu16,
 
     pub fn fromRom(rom: nds.Rom) !Game {
         const info = try getInfo(rom.header.game_title, rom.header.gamecode);
@@ -141,7 +143,7 @@ pub const Game = struct {
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, info.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + info.hm_tm_prefix.len;
         const hm_tms_len = (constants.tm_count + constants.hm_count) * @sizeOf(u16);
-        const hm_tms = @bytesToSlice(Little(u16), rom.arm9[hm_tm_index..][0..hm_tms_len]);
+        const hm_tms = @bytesToSlice(lu16, rom.arm9[hm_tm_index..][0..hm_tms_len]);
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },

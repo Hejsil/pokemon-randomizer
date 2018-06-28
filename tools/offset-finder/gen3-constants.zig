@@ -1,5 +1,5 @@
 const pokemon = @import("pokemon");
-const little = @import("little");
+const int = @import("int");
 const std = @import("std");
 
 const math = std.math;
@@ -7,8 +7,9 @@ const math = std.math;
 const gen3 = pokemon.gen3;
 const common = pokemon.common;
 
-const Little = little.Little;
-const toLittle = little.toLittle;
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
 
 pub const em_first_trainers = []gen3.Trainer{
     gen3.Trainer{
@@ -17,10 +18,10 @@ pub const em_first_trainers = []gen3.Trainer{
         .encounter_music = 0,
         .trainer_picture = 0,
         .name = undefined,
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(0)),
-        .party_size = toLittle(u32(0)),
+        .items = []lu16{ lu16.init(0), lu16.init(0), lu16.init(0), lu16.init(0) },
+        .is_double = lu32.init(0),
+        .ai = lu32.init(0),
+        .party_size = lu32.init(0),
         .party_offset = undefined,
     },
     gen3.Trainer{
@@ -29,10 +30,10 @@ pub const em_first_trainers = []gen3.Trainer{
         .encounter_music = 0x0b,
         .trainer_picture = 0,
         .name = undefined,
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(7)),
-        .party_size = toLittle(u32(1)),
+        .items = []lu16{ lu16.init(0), lu16.init(0), lu16.init(0), lu16.init(0) },
+        .is_double = lu32.init(0),
+        .ai = lu32.init(7),
+        .party_size = lu32.init(1),
         .party_offset = undefined,
     },
 };
@@ -43,10 +44,10 @@ pub const em_last_trainers = []gen3.Trainer{gen3.Trainer{
     .encounter_music = 0x80,
     .trainer_picture = 0x5c,
     .name = undefined,
-    .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-    .is_double = toLittle(u32(0)),
-    .ai = toLittle(u32(0)),
-    .party_size = toLittle(u32(1)),
+    .items = []lu16{ lu16.init(0), lu16.init(0), lu16.init(0), lu16.init(0) },
+    .is_double = lu32.init(0),
+    .ai = lu32.init(0),
+    .party_size = lu32.init(1),
     .party_offset = undefined,
 }};
 
@@ -57,10 +58,10 @@ pub const rs_first_trainers = []gen3.Trainer{
         .encounter_music = 0,
         .trainer_picture = 0,
         .name = undefined,
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(0)),
-        .party_size = toLittle(u32(0)),
+        .items = []lu16{ lu16.init(0), lu16.init(0), lu16.init(0), lu16.init(0) },
+        .is_double = lu32.init(0),
+        .ai = lu32.init(0),
+        .party_size = lu32.init(0),
         .party_offset = undefined,
     },
     gen3.Trainer{
@@ -69,10 +70,10 @@ pub const rs_first_trainers = []gen3.Trainer{
         .encounter_music = 0x06,
         .trainer_picture = 0x46,
         .name = undefined,
-        .items = []Little(u16){ toLittle(u16(0x16)), toLittle(u16(0x16)), toLittle(u16(0)), toLittle(u16(0)) },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(7)),
-        .party_size = toLittle(u32(2)),
+        .items = []lu16{ lu16.init(0x16), lu16.init(0x16), lu16.init(0), lu16.init(0) },
+        .is_double = lu32.init(0),
+        .ai = lu32.init(7),
+        .party_size = lu32.init(2),
         .party_offset = undefined,
     },
 };
@@ -83,10 +84,10 @@ pub const rs_last_trainers = []gen3.Trainer{gen3.Trainer{
     .encounter_music = 0x0B,
     .trainer_picture = 0x06,
     .name = undefined,
-    .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)), toLittle(u16(0)) },
-    .is_double = toLittle(u32(0)),
-    .ai = toLittle(u32(1)),
-    .party_size = toLittle(u32(4)),
+    .items = []lu16{ lu16.init(0), lu16.init(0), lu16.init(0), lu16.init(0) },
+    .is_double = lu32.init(0),
+    .ai = lu32.init(1),
+    .party_size = lu32.init(4),
     .party_offset = undefined,
 }};
 
@@ -97,15 +98,15 @@ pub const frls_first_trainers = []gen3.Trainer{
         .encounter_music = 0,
         .trainer_picture = 0,
         .name = undefined,
-        .items = []Little(u16){
-            toLittle(u16(0)),
-            toLittle(u16(0)),
-            toLittle(u16(0)),
-            toLittle(u16(0)),
+        .items = []lu16{
+            lu16.init(0),
+            lu16.init(0),
+            lu16.init(0),
+            lu16.init(0),
         },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(0)),
-        .party_size = toLittle(u32(0)),
+        .is_double = lu32.init(0),
+        .ai = lu32.init(0),
+        .party_size = lu32.init(0),
         .party_offset = undefined,
     },
     gen3.Trainer{
@@ -114,15 +115,15 @@ pub const frls_first_trainers = []gen3.Trainer{
         .encounter_music = 6,
         .trainer_picture = 0,
         .name = undefined,
-        .items = []Little(u16){
-            toLittle(u16(0)),
-            toLittle(u16(0)),
-            toLittle(u16(0)),
-            toLittle(u16(0)),
+        .items = []lu16{
+            lu16.init(0),
+            lu16.init(0),
+            lu16.init(0),
+            lu16.init(0),
         },
-        .is_double = toLittle(u32(0)),
-        .ai = toLittle(u32(1)),
-        .party_size = toLittle(u32(1)),
+        .is_double = lu32.init(0),
+        .ai = lu32.init(1),
+        .party_size = lu32.init(1),
         .party_offset = undefined,
     },
 };
@@ -133,15 +134,15 @@ pub const frls_last_trainers = []gen3.Trainer{gen3.Trainer{
     .encounter_music = 0,
     .trainer_picture = 125,
     .name = undefined,
-    .items = []Little(u16){
-        toLittle(u16(19)),
-        toLittle(u16(19)),
-        toLittle(u16(19)),
-        toLittle(u16(19)),
+    .items = []lu16{
+        lu16.init(19),
+        lu16.init(19),
+        lu16.init(19),
+        lu16.init(19),
     },
-    .is_double = toLittle(u32(0)),
-    .ai = toLittle(u32(7)),
-    .party_size = toLittle(u32(6)),
+    .is_double = lu32.init(0),
+    .ai = lu32.init(7),
+    .party_size = lu32.init(6),
     .party_offset = undefined,
 }};
 
@@ -156,7 +157,7 @@ pub const first_moves = []gen3.Move{
         .side_effect_chance = 0,
         .target = 0,
         .priority = 0,
-        .flags = toLittle(u32(0)),
+        .flags = lu32.init(0),
     },
     // Pound
     gen3.Move{
@@ -168,7 +169,7 @@ pub const first_moves = []gen3.Move{
         .side_effect_chance = 0,
         .target = 0,
         .priority = 0,
-        .flags = toLittle(u32(0x33)),
+        .flags = lu32.init(0x33),
     },
 };
 
@@ -183,12 +184,12 @@ gen3.Move{
     .side_effect_chance = 100,
     .target = 0,
     .priority = 0,
-    .flags = toLittle(u32(0x32)),
+    .flags = lu32.init(0x32),
 }};
 
 // TODO: Fix format
-pub const first_machine_learnsets = []Little(u64){
-    Little(u64){ .bytes = []u8{
+pub const first_machine_learnsets = []lu64{
+    lu64{ .bytes = []u8{
         0x00,
         0x00,
         0x00,
@@ -198,7 +199,7 @@ pub const first_machine_learnsets = []Little(u64){
         0x00,
         0x00,
     } }, // Dummy Pokémon
-    Little(u64){ .bytes = []u8{
+    lu64{ .bytes = []u8{
         0x20,
         0x07,
         0x35,
@@ -208,7 +209,7 @@ pub const first_machine_learnsets = []Little(u64){
         0xe4,
         0x00,
     } }, // Bulbasaur
-    Little(u64){ .bytes = []u8{
+    lu64{ .bytes = []u8{
         0x20,
         0x07,
         0x35,
@@ -218,7 +219,7 @@ pub const first_machine_learnsets = []Little(u64){
         0xe4,
         0x00,
     } }, // Ivysaur
-    Little(u64){ .bytes = []u8{
+    lu64{ .bytes = []u8{
         0x30,
         0x47,
         0x35,
@@ -230,8 +231,8 @@ pub const first_machine_learnsets = []Little(u64){
     } }, // Venusaur
 };
 
-pub const last_machine_learnsets = []Little(u64){
-    Little(u64){ .bytes = []u8{
+pub const last_machine_learnsets = []lu64{
+    lu64{ .bytes = []u8{
         0x3e,
         0xd6,
         0xbb,
@@ -241,7 +242,7 @@ pub const last_machine_learnsets = []Little(u64){
         0x5c,
         0x03,
     } }, // Latios
-    Little(u64){ .bytes = []u8{
+    lu64{ .bytes = []u8{
         0x2c,
         0xc6,
         0x9b,
@@ -251,7 +252,7 @@ pub const last_machine_learnsets = []Little(u64){
         0x40,
         0x00,
     } }, // Jirachi
-    Little(u64){ .bytes = []u8{
+    lu64{ .bytes = []u8{
         0x2d,
         0xde,
         0xbb,
@@ -261,7 +262,7 @@ pub const last_machine_learnsets = []Little(u64){
         0xe5,
         0x00,
     } }, // Deoxys
-    Little(u64){ .bytes = []u8{
+    lu64{ .bytes = []u8{
         0x28,
         0x8e,
         0x1b,
@@ -300,7 +301,7 @@ pub const first_base_stats = []gen3.BasePokemon{
             .padding = 0,
         },
 
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)) },
+        .items = []lu16{ lu16.init(0), lu16.init(0) },
 
         .gender_ratio = 0,
         .egg_cycles = 0,
@@ -347,7 +348,7 @@ pub const first_base_stats = []gen3.BasePokemon{
             .padding = 0,
         },
 
-        .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)) },
+        .items = []lu16{ lu16.init(0), lu16.init(0) },
 
         .gender_ratio = comptime percentFemale(12.5),
         .egg_cycles = 20,
@@ -397,7 +398,7 @@ gen3.BasePokemon{
         .padding = 0,
     },
 
-    .items = []Little(u16){ toLittle(u16(0)), toLittle(u16(0)) },
+    .items = []lu16{ lu16.init(0), lu16.init(0) },
 
     .gender_ratio = comptime percentFemale(50),
     .egg_cycles = 25,
@@ -425,8 +426,8 @@ fn percentFemale(percent: f64) u8 {
 
 const unused_evo = common.Evolution{
     .method = common.Evolution.Method.Unused,
-    .param = toLittle(u16(0)),
-    .target = toLittle(u16(0)),
+    .param = lu16.init(0),
+    .target = lu16.init(0),
     .padding = undefined,
 };
 const unused_evo5 = []common.Evolution{unused_evo} ** 5;
@@ -439,8 +440,8 @@ pub const first_evolutions = [][5]common.Evolution{
     []common.Evolution{
         common.Evolution{
             .method = common.Evolution.Method.LevelUp,
-            .param = toLittle(u16(16)),
-            .target = toLittle(u16(2)),
+            .param = lu16.init(16),
+            .target = lu16.init(2),
             .padding = undefined,
         },
         unused_evo,
@@ -453,8 +454,8 @@ pub const first_evolutions = [][5]common.Evolution{
     []common.Evolution{
         common.Evolution{
             .method = common.Evolution.Method.LevelUp,
-            .param = toLittle(u16(32)),
-            .target = toLittle(u16(3)),
+            .param = lu16.init(32),
+            .target = lu16.init(3),
             .padding = undefined,
         },
         unused_evo,
@@ -469,8 +470,8 @@ pub const last_evolutions = [][5]common.Evolution{
     []common.Evolution{
         common.Evolution{
             .method = common.Evolution.Method.LevelUp,
-            .param = toLittle(u16(20)),
-            .target = toLittle(u16(399)),
+            .param = lu16.init(20),
+            .target = lu16.init(399),
             .padding = undefined,
         },
         unused_evo,
@@ -483,8 +484,8 @@ pub const last_evolutions = [][5]common.Evolution{
     []common.Evolution{
         common.Evolution{
             .method = common.Evolution.Method.LevelUp,
-            .param = toLittle(u16(45)),
-            .target = toLittle(u16(400)),
+            .param = lu16.init(45),
+            .target = lu16.init(400),
             .padding = undefined,
         },
         unused_evo,
@@ -572,8 +573,8 @@ pub const em_first_items = []gen3.Item{
     // ????????
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -582,15 +583,15 @@ pub const em_first_items = []gen3.Item{
         .pocked = 1,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     // MASTER BALL
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(1)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(1),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -599,9 +600,9 @@ pub const em_first_items = []gen3.Item{
         .pocked = 2,
         .@"type" = 0,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(2)),
+        .battle_usage = lu32.init(2),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
 };
 
@@ -609,8 +610,8 @@ pub const em_last_items = []gen3.Item{
     // MAGMA EMBLEM
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0x177)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0x177),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -619,15 +620,15 @@ pub const em_last_items = []gen3.Item{
         .pocked = 5,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     // OLD SEA MAP
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0x178)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0x178),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -636,9 +637,9 @@ pub const em_last_items = []gen3.Item{
         .pocked = 5,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
 };
 
@@ -646,8 +647,8 @@ pub const rs_first_items = []gen3.Item{
     // ????????
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -656,15 +657,15 @@ pub const rs_first_items = []gen3.Item{
         .pocked = 1,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     // MASTER BALL
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(1)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(1),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -673,9 +674,9 @@ pub const rs_first_items = []gen3.Item{
         .pocked = 2,
         .@"type" = 0,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(2)),
+        .battle_usage = lu32.init(2),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
 };
 
@@ -683,8 +684,8 @@ pub const rs_last_items = []gen3.Item{
     // HM08
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0x15A)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0x15A),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -693,15 +694,15 @@ pub const rs_last_items = []gen3.Item{
         .pocked = 3,
         .@"type" = 1,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     // ????????
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -710,15 +711,15 @@ pub const rs_last_items = []gen3.Item{
         .pocked = 1,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     // ????????
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -727,17 +728,17 @@ pub const rs_last_items = []gen3.Item{
         .pocked = 1,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
 };
 
 pub const frlg_first_items = []gen3.Item{
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(0)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(0),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -746,14 +747,14 @@ pub const frlg_first_items = []gen3.Item{
         .pocked = 1,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(1)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(1),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -762,17 +763,17 @@ pub const frlg_first_items = []gen3.Item{
         .pocked = 3,
         .@"type" = 0,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(2)),
+        .battle_usage = lu32.init(2),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
 };
 
 pub const frlg_last_items = []gen3.Item{
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(372)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(372),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -781,14 +782,14 @@ pub const frlg_last_items = []gen3.Item{
         .pocked = 2,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
     gen3.Item{
         .name = undefined,
-        .id = toLittle(u16(373)),
-        .price = toLittle(u16(0)),
+        .id = lu16.init(373),
+        .price = lu16.init(0),
         .hold_effect = 0,
         .hold_effect_param = 0,
         .description_offset = undefined,
@@ -797,8 +798,8 @@ pub const frlg_last_items = []gen3.Item{
         .pocked = 2,
         .@"type" = 4,
         .field_use_func = undefined,
-        .battle_usage = toLittle(u32(0)),
+        .battle_usage = lu32.init(0),
         .battle_use_func = undefined,
-        .secondary_id = toLittle(u32(0)),
+        .secondary_id = lu32.init(0),
     },
 };

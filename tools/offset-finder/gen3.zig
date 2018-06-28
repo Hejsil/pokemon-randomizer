@@ -2,7 +2,7 @@ const pokemon = @import("pokemon");
 const search = @import("search.zig");
 const std = @import("std");
 const utils = @import("utils");
-const little = @import("little");
+const int = @import("int");
 const constants = @import("gen3-constants.zig");
 
 const os = std.os;
@@ -14,8 +14,9 @@ const io = std.io;
 const gen3 = pokemon.gen3;
 const common = pokemon.common;
 
-const Little = little.Little;
-const toLittle = little.toLittle;
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
 
 const Info = gen3.constants.Info;
 const TrainerSection = gen3.constants.TrainerSection;
@@ -67,7 +68,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
     };
 
     const machine_learnset = search.findStructs(
-        Little(u64),
+        lu64,
         [][]const u8{},
         data,
         constants.first_machine_learnsets,
@@ -102,7 +103,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         for (constants.first_levelup_learnsets) |maybe_learnset, i| {
             if (maybe_learnset) |learnset| {
                 const p = mem.indexOf(u8, data, learnset) orelse return error.UnableToFindLevelUpLearnsetOffset;
-                const l = toLittle(@intCast(u32, p) + 0x8000000);
+                const l = lu32.init(@intCast(u32, p) + 0x8000000);
                 for (first_pointers[i * 4 ..][0..4]) |*b, j| {
                     b.* = l.bytes[j];
                 }
@@ -113,7 +114,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         for (constants.last_levelup_learnsets) |maybe_learnset, i| {
             if (maybe_learnset) |learnset| {
                 const p = mem.indexOf(u8, data, learnset) orelse return error.UnableToFindLevelUpLearnsetOffset;
-                const l = toLittle(@intCast(u32, p) + 0x8000000);
+                const l = lu32.init(@intCast(u32, p) + 0x8000000);
                 for (last_pointers[i * 4 ..][0..4]) |*b, j| {
                     b.* = l.bytes[j];
                 }
@@ -121,17 +122,17 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         }
 
         const pointers = search.findPattern(u8, data, first_pointers, last_pointers) orelse return error.UnableToFindLevelUpLearnsetOffset;
-        break :blk @bytesToSlice(Little(u32), pointers);
+        break :blk @bytesToSlice(lu32, pointers);
     };
 
     const hms_start = mem.indexOf(u8, data, constants.hms) orelse return error.UnableToFindHmOffset;
-    const hms = @bytesToSlice(Little(u16), data[hms_start..][0..constants.hms.len]);
+    const hms = @bytesToSlice(lu16, data[hms_start..][0..constants.hms.len]);
 
     // TODO: Pokémon Emerald have 2 tm tables. I'll figure out some hack for that
     //       if it turns out that both tables are actually used. For now, I'll
     //       assume that the first table is the only one used.
     const tms_start = mem.indexOf(u8, data, constants.tms) orelse return error.UnableToFindTmOffset;
-    const tms = @bytesToSlice(Little(u16), data[tms_start..][0..constants.tms.len]);
+    const tms = @bytesToSlice(lu16, data[tms_start..][0..constants.tms.len]);
 
     const ignored_item_fields = [][]const u8{ "name", "description_offset", "field_use_func", "battle_use_func" };
     const maybe_items = switch (version) {

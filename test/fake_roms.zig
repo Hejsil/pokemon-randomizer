@@ -3,7 +3,7 @@ const libpoke = @import("../src/pokemon/index.zig");
 const nds = @import("../src/nds/index.zig");
 const gba = @import("../src/gba.zig");
 const utils = @import("../src/utils/index.zig");
-const little = @import("../src/little.zig");
+const int = @import("../src/int.zig");
 const std = @import("std");
 const mem = std.mem;
 const fmt = std.fmt;
@@ -12,7 +12,9 @@ const math = std.math;
 const debug = std.debug;
 const io = std.io;
 
-const Little = little.Little;
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
 
 const tmp_folder = "__fake_roms__";
 
@@ -101,8 +103,8 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
                 .items = undefined,
                 .is_double = undefined,
                 .ai = undefined,
-                .party_size = Little(u32).init(party_size),
-                .party_offset = Little(u32).init(@intCast(u32, free_space_offset + 0x8000000)),
+                .party_size = lu32.init(party_size),
+                .party_offset = lu32.init(@intCast(u32, free_space_offset + 0x8000000)),
             }));
 
             // Output party
@@ -111,16 +113,16 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
             while (j < party_size) : (j += 1) {
                 try file.write(utils.toBytes(libpoke.gen3.PartyMember, libpoke.gen3.PartyMember{
                     .iv = undefined,
-                    .level = Little(u16).init(level),
-                    .species = Little(u16).init(species),
+                    .level = lu16.init(level),
+                    .species = lu16.init(species),
                 }));
                 if (party_type & libpoke.gen3.Trainer.has_item != 0)
-                    try file.write(Little(u16).init(item).bytes);
+                    try file.write(lu16.init(item).bytes);
                 if (party_type & libpoke.gen3.Trainer.has_moves != 0) {
-                    try file.write(Little(u16).init(move).bytes);
-                    try file.write(Little(u16).init(move).bytes);
-                    try file.write(Little(u16).init(move).bytes);
-                    try file.write(Little(u16).init(move).bytes);
+                    try file.write(lu16.init(move).bytes);
+                    try file.write(lu16.init(move).bytes);
+                    try file.write(lu16.init(move).bytes);
+                    try file.write(lu16.init(move).bytes);
                 }
                 if (party_type & libpoke.gen3.Trainer.has_item == 0)
                     try file.write([]u8{0x00, 0x00});
@@ -152,7 +154,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         try file.seekTo(info.machine_learnsets.start);
         var i: usize = 0;
         while (i < info.machine_learnsets.len) : (i += 1) {
-            try file.write(Little(u64).init(0).bytes);
+            try file.write(lu64.init(0).bytes);
         }
     }
 
@@ -201,8 +203,8 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
     {
         var i: usize = 0;
         while (i < info.level_up_learnset_pointers.len) : (i += 1) {
-            try file.seekTo(info.level_up_learnset_pointers.start + i * @sizeOf(Little(u32)));
-            try file.write(Little(u32).init(@intCast(u32, free_space_offset + 0x8000000)).bytes);
+            try file.seekTo(info.level_up_learnset_pointers.start + i * @sizeOf(lu32));
+            try file.write(lu32.init(@intCast(u32, free_space_offset + 0x8000000)).bytes);
 
             try file.seekTo(free_space_offset);
             try file.write(utils.toBytes(libpoke.gen3.LevelUpMove, libpoke.gen3.LevelUpMove{
@@ -219,7 +221,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         try file.seekTo(info.hms.start);
         var i: usize = 0;
         while (i < info.hms.len) : (i += 1) {
-            try file.write(Little(u16).init(move).bytes);
+            try file.write(lu16.init(move).bytes);
         }
     }
 
@@ -227,7 +229,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         try file.seekTo(info.tms.start);
         var i: usize = 0;
         while (i < info.tms.len) : (i += 1) {
-            try file.write(Little(u16).init(move).bytes);
+            try file.write(lu16.init(move).bytes);
         }
     }
 
@@ -266,8 +268,8 @@ fn getGen3FreeSpace(info: libpoke.gen3.constants.Info) usize {
 
 fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) ![]u8 {
     const machine_len = libpoke.gen4.constants.tm_count + libpoke.gen4.constants.hm_count;
-    const machines = []Little(u16){move} ** machine_len;
-    const arm9 = try fmt.allocPrint(allocator, "{}{}", info.hm_tm_prefix, @sliceToBytes(machines[0..])));
+    const machines = []lu16{move} ** machine_len;
+    const arm9 = try fmt.allocPrint(allocator, "{}{}", info.hm_tm_prefix, @sliceToBytes(machines[0..]));
     defer allocator.free(arm9);
 
     const rom = nds.Rom{
@@ -279,7 +281,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         },
         .arm9 = arm9,
         .arm7 = []u8{},
-        .nitro_footer = []Little(u32){ Little(u32).init(0) } ** 3,
+        .nitro_footer = []lu32{ lu32.init(0) } ** 3,
         .arm9_overlay_table = []Overlay{},
         .arm9_overlay_files = [][]u8{},
         .arm7_overlay_table = []Overlay{},

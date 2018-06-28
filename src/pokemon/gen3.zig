@@ -2,7 +2,7 @@ const std = @import("std");
 const pokemon = @import("index.zig");
 const gba = @import("../gba.zig");
 const bits = @import("../bits.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
 
@@ -14,10 +14,10 @@ const slice = utils.slice;
 
 const assert = debug.assert;
 
-const toLittle = little.toLittle;
-const Little = little.Little;
-
 const u9 = @IntType(false, 9);
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
 
 pub const constants = @import("gen3-constants.zig");
 
@@ -30,7 +30,7 @@ pub const BasePokemon = packed struct {
 
     ev_yield: common.EvYield,
 
-    items: [2]Little(u16),
+    items: [2]lu16,
 
     gender_ratio: u8,
     egg_cycles: u8,
@@ -61,11 +61,11 @@ pub const Trainer = packed struct {
     encounter_music: u8,
     trainer_picture: u8,
     name: [12]u8,
-    items: [4]Little(u16),
-    is_double: Little(u32),
-    ai: Little(u32),
-    party_size: Little(u32),
-    party_offset: Little(u32),
+    items: [4]lu16,
+    is_double: lu32,
+    ai: lu32,
+    party_size: lu32,
+    party_offset: lu32,
 };
 
 /// All party members have this as the base.
@@ -74,9 +74,9 @@ pub const Trainer = packed struct {
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
 pub const PartyMember = packed struct {
-    iv: Little(u16),
-    level: Little(u16),
-    species: Little(u16),
+    iv: lu16,
+    level: lu16,
+    species: lu16,
 };
 
 pub const Move = packed struct {
@@ -88,24 +88,24 @@ pub const Move = packed struct {
     side_effect_chance: u8,
     target: u8,
     priority: u8,
-    flags: Little(u32),
+    flags: lu32,
 };
 
 pub const Item = packed struct {
     name: [14]u8,
-    id: Little(u16),
-    price: Little(u16),
+    id: lu16,
+    price: lu16,
     hold_effect: u8,
     hold_effect_param: u8,
-    description_offset: Little(u32),
+    description_offset: lu32,
     importance: u8,
     unknown: u8,
     pocked: u8,
     @"type": u8,
-    field_use_func: Little(u32),
-    battle_usage: Little(u32),
-    battle_use_func: Little(u32),
-    secondary_id: Little(u32),
+    field_use_func: lu32,
+    battle_usage: lu32,
+    battle_use_func: lu32,
+    secondary_id: lu32,
 };
 
 pub const Type = enum(u8) {
@@ -143,13 +143,13 @@ pub const Game = struct {
     header: *gba.Header,
     trainers: []Trainer,
     moves: []Move,
-    tm_hm_learnset: []Little(u64),
+    tm_hm_learnset: []lu64,
     base_stats: []BasePokemon,
     evolution_table: [][5]common.Evolution,
-    level_up_learnset_pointers: []Little(u32),
+    level_up_learnset_pointers: []lu32,
     items: []Item,
-    hms: []Little(u16),
-    tms: []Little(u16),
+    hms: []lu16,
+    tms: []lu16,
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);

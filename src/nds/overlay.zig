@@ -1,24 +1,23 @@
 const std = @import("std");
 const fs = @import("fs.zig");
 const common = @import("common.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const io = std.io;
 const mem = std.mem;
 const os = std.os;
 
-const toLittle = little.toLittle;
-const Little = little.Little;
+const lu32 = int.lu32;
 
 pub const Overlay = packed struct {
-    overlay_id: Little(u32),
-    ram_address: Little(u32),
-    ram_size: Little(u32),
-    bss_size: Little(u32),
-    static_initialiser_start_address: Little(u32),
-    static_initialiser_end_address: Little(u32),
-    file_id: Little(u32),
+    overlay_id: lu32,
+    ram_address: lu32,
+    ram_size: lu32,
+    bss_size: lu32,
+    static_initialiser_start_address: lu32,
+    static_initialiser_end_address: lu32,
+    file_id: lu32,
     reserved: [4]u8,
 };
 
@@ -34,9 +33,9 @@ pub fn readFiles(file: *os.File, allocator: *mem.Allocator, overlay_table: []Ove
     var stream = &file_stream.stream;
 
     for (overlay_table) |overlay, i| {
-        const id = overlay.file_id.get() & 0x0FFF;
+        const id = overlay.file_id.value() & 0x0FFF;
 
-        const start = fat[id].start.get();
+        const start = fat[id].start.value();
         const size = fat[id].getSize();
 
         try file.seekTo(start);

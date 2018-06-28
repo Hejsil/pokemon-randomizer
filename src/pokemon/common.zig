@@ -1,7 +1,6 @@
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 
-const toLittle = little.toLittle;
-const Little = little.Little;
+const lu16 = int.lu16;
 
 pub const Stats = packed struct {
     hp: u8,
@@ -74,27 +73,27 @@ pub const EvYield = packed struct {
 
 pub const Evolution = packed struct {
     method: Evolution.Method,
-    param: Little(u16),
-    target: Little(u16),
+    param: lu16,
+    target: lu16,
     padding: [2]u8,
 
     pub const Method = enum(u16) {
-        Unused = toLittle(u16(0x00)).get(),
-        FriendShip = toLittle(u16(0x01)).get(),
-        FriendShipDuringDay = toLittle(u16(0x02)).get(),
-        FriendShipDuringNight = toLittle(u16(0x03)).get(),
-        LevelUp = toLittle(u16(0x04)).get(),
-        Trade = toLittle(u16(0x05)).get(),
-        TradeHoldingItem = toLittle(u16(0x06)).get(),
-        UseItem = toLittle(u16(0x07)).get(),
-        AttackGthDefense = toLittle(u16(0x08)).get(),
-        AttackEqlDefense = toLittle(u16(0x09)).get(),
-        AttackLthDefense = toLittle(u16(0x0A)).get(),
-        PersonalityValue1 = toLittle(u16(0x0B)).get(),
-        PersonalityValue2 = toLittle(u16(0x0C)).get(),
-        LevelUpMaySpawnPokemon = toLittle(u16(0x0D)).get(),
-        LevelUpSpawnIfCond = toLittle(u16(0x0E)).get(),
-        Beauty = toLittle(u16(0x0F)).get(),
+        Unused = lu16.init(0x00).value(),
+        FriendShip = lu16.init(0x01).value(),
+        FriendShipDuringDay = lu16.init(0x02).value(),
+        FriendShipDuringNight = lu16.init(0x03).value(),
+        LevelUp = lu16.init(0x04).value(),
+        Trade = lu16.init(0x05).value(),
+        TradeHoldingItem = lu16.init(0x06).value(),
+        UseItem = lu16.init(0x07).value(),
+        AttackGthDefense = lu16.init(0x08).value(),
+        AttackEqlDefense = lu16.init(0x09).value(),
+        AttackLthDefense = lu16.init(0x0A).value(),
+        PersonalityValue1 = lu16.init(0x0B).value(),
+        PersonalityValue2 = lu16.init(0x0C).value(),
+        LevelUpMaySpawnPokemon = lu16.init(0x0D).value(),
+        LevelUpSpawnIfCond = lu16.init(0x0E).value(),
+        Beauty = lu16.init(0x0F).value(),
     };
 };
 

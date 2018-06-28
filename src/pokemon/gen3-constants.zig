@@ -1,12 +1,14 @@
 const libpoke = @import("index.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const std = @import("std");
 const fun = @import("fun");
 const mem = std.mem;
 const debug = std.debug;
 const generic = fun.generic;
 
-const Little = little.Little;
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
 
 pub fn Section(comptime Item: type) type {
     return struct {
@@ -39,12 +41,12 @@ pub fn Section(comptime Item: type) type {
 
 pub const TrainerSection = Section(libpoke.gen3.Trainer);
 pub const MoveSection = Section(libpoke.gen3.Move);
-pub const MachineLearnsetSection = Section(Little(u64));
+pub const MachineLearnsetSection = Section(lu64);
 pub const BaseStatsSection = Section(libpoke.gen3.BasePokemon);
 pub const EvolutionSection = Section([5]libpoke.common.Evolution);
-pub const LevelUpLearnsetPointerSection = Section(Little(u32));
-pub const HmSection = Section(Little(u16));
-pub const TmSection = Section(Little(u16));
+pub const LevelUpLearnsetPointerSection = Section(lu32);
+pub const HmSection = Section(lu16);
+pub const TmSection = Section(lu16);
 pub const ItemSection = Section(libpoke.gen3.Item);
 
 pub const Info = struct {

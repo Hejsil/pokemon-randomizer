@@ -1,8 +1,7 @@
 const common = @import("common.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 
-const toLittle = little.toLittle;
-const Little = little.Little;
+const lu64 = int.lu64;
 
 pub const BasePokemon = packed struct {
     pokedex_number: u8,
@@ -27,7 +26,7 @@ pub const BasePokemon = packed struct {
     egg_group1: common.EggGroup,
     egg_group2: common.EggGroup,
 
-    tm_hm_learnset: Little(u64),
+    tm_hm_learnset: lu64,
 };
 
 pub const Type = enum(u8) {
@@ -56,10 +55,10 @@ pub const Type = enum(u8) {
 pub const Trainer = packed struct {
     items: [2]u8,
     reward: u8,
-    ai: Little(u16),
+    ai: lu16,
 
     // TODO: This seems to have something to do with when trainers should switch, or something
-    unknown: Little(u16),
+    unknown: lu16,
 };
 
 pub const Party = struct {
