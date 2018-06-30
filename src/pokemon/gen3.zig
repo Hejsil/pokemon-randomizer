@@ -2,10 +2,9 @@ const std = @import("std");
 const pokemon = @import("index.zig");
 const gba = @import("../gba.zig");
 const bits = @import("../bits.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
-const constants = @import("gen3-constants.zig");
 
 const mem = std.mem;
 const debug = std.debug;
@@ -15,10 +14,12 @@ const slice = utils.slice;
 
 const assert = debug.assert;
 
-const toLittle = little.toLittle;
-const Little = little.Little;
-
 const u9 = @IntType(false, 9);
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
+
+pub const constants = @import("gen3-constants.zig");
 
 pub const BasePokemon = packed struct {
     stats: common.Stats,
@@ -29,7 +30,7 @@ pub const BasePokemon = packed struct {
 
     ev_yield: common.EvYield,
 
-    items: [2]Little(u16),
+    items: [2]lu16,
 
     gender_ratio: u8,
     egg_cycles: u8,
@@ -52,16 +53,19 @@ pub const BasePokemon = packed struct {
 };
 
 pub const Trainer = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     party_type: u8,
     class: u8,
     encounter_music: u8,
     trainer_picture: u8,
     name: [12]u8,
-    items: [4]Little(u16),
-    is_double: Little(u32),
-    ai: Little(u32),
-    party_size: Little(u32),
-    party_offset: Little(u32),
+    items: [4]lu16,
+    is_double: lu32,
+    ai: lu32,
+    party_size: lu32,
+    party_offset: lu32,
 };
 
 /// All party members have this as the base.
@@ -70,12 +74,9 @@ pub const Trainer = packed struct {
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
 pub const PartyMember = packed struct {
-    const has_item = 0b10;
-    const has_moves = 0b01;
-
-    iv: Little(u16),
-    level: Little(u16),
-    species: Little(u16),
+    iv: lu16,
+    level: lu16,
+    species: lu16,
 };
 
 pub const Move = packed struct {
@@ -87,24 +88,24 @@ pub const Move = packed struct {
     side_effect_chance: u8,
     target: u8,
     priority: u8,
-    flags: Little(u32),
+    flags: lu32,
 };
 
 pub const Item = packed struct {
     name: [14]u8,
-    id: Little(u16),
-    price: Little(u16),
+    id: lu16,
+    price: lu16,
     hold_effect: u8,
     hold_effect_param: u8,
-    description_offset: Little(u32),
+    description_offset: lu32,
     importance: u8,
     unknown: u8,
     pocked: u8,
     @"type": u8,
-    field_use_func: Little(u32),
-    battle_usage: Little(u32),
-    battle_use_func: Little(u32),
-    secondary_id: Little(u32),
+    field_use_func: lu32,
+    battle_usage: lu32,
+    battle_use_func: lu32,
+    secondary_id: lu32,
 };
 
 pub const Type = enum(u8) {
@@ -142,13 +143,13 @@ pub const Game = struct {
     header: *gba.Header,
     trainers: []Trainer,
     moves: []Move,
-    tm_hm_learnset: []Little(u64),
+    tm_hm_learnset: []lu64,
     base_stats: []BasePokemon,
     evolution_table: [][5]common.Evolution,
-    level_up_learnset_pointers: []Little(u32),
+    level_up_learnset_pointers: []lu32,
     items: []Item,
-    hms: []Little(u16),
-    tms: []Little(u16),
+    hms: []lu16,
+    tms: []lu16,
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
@@ -158,27 +159,29 @@ pub const Game = struct {
         try header.validate();
         try file.seekTo(0);
 
-        const info = try getInfo(header.gamecode);
+        const info = try getInfo(header.game_title, header.gamecode);
         const rom = try in_stream.readAllAlloc(allocator, @maxValue(usize));
         errdefer allocator.free(rom);
 
-        if (rom.len % 0x1000000 != 0)
+        if (rom.len % 0x1000000 != 0) {
+            debug.warn("{x}\n", rom.len);
             return error.InvalidRomSize;
+        }
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },
             .allocator = allocator,
             .data = rom,
             .header = @ptrCast(*gba.Header, &rom[0]),
-            .trainers = info.trainers.getSlice(Trainer, rom),
-            .moves = info.moves.getSlice(Move, rom),
-            .tm_hm_learnset = info.tm_hm_learnset.getSlice(Little(u64), rom),
-            .base_stats = info.base_stats.getSlice(BasePokemon, rom),
-            .evolution_table = info.evolution_table.getSlice([5]common.Evolution, rom),
-            .level_up_learnset_pointers = info.level_up_learnset_pointers.getSlice(Little(u32), rom),
-            .items = info.items.getSlice(Item, rom),
-            .hms = info.hms.getSlice(Little(u16), rom),
-            .tms = info.tms.getSlice(Little(u16), rom),
+            .trainers = info.trainers.slice(rom),
+            .moves = info.moves.slice(rom),
+            .tm_hm_learnset = info.machine_learnsets.slice(rom),
+            .base_stats = info.base_stats.slice(rom),
+            .evolution_table = info.evolutions.slice(rom),
+            .level_up_learnset_pointers = info.level_up_learnset_pointers.slice(rom),
+            .items = info.items.slice(rom),
+            .hms = info.hms.slice(rom),
+            .tms = info.tms.slice(rom),
         };
     }
 
@@ -192,13 +195,16 @@ pub const Game = struct {
         game.* = undefined;
     }
 
-    fn getInfo(gamecode: []const u8) !constants.Info {
-        if (mem.eql(u8, gamecode, "BPEE")) return constants.emerald_us_info;
-        if (mem.eql(u8, gamecode, "AXVE")) return constants.ruby_us_info;
-        if (mem.eql(u8, gamecode, "AXPE")) return constants.sapphire_us_info;
-        if (mem.eql(u8, gamecode, "BPRE")) return constants.fire_us_info;
-        if (mem.eql(u8, gamecode, "BPGE")) return constants.leaf_us_info;
+    fn getInfo(game_title: []const u8, gamecode: []const u8) !constants.Info {
+        for (constants.infos) |info| {
+            if (!mem.eql(u8, info.game_title, game_title))
+                continue;
+            if (!mem.eql(u8, info.gamecode, gamecode))
+                continue;
 
-        return error.InvalidGen3GameCode;
+            return info;
+        }
+
+        return error.NotGen3Game;
     }
 };

@@ -3,15 +3,14 @@ const pokemon = @import("pokemon");
 const utils = @import("utils");
 const constants = @import("gen2-constants.zig");
 const search = @import("search.zig");
-const little = @import("little");
+const int = @import("int");
 
 const debug = std.debug;
 const mem = std.mem;
 const common = pokemon.common;
 const gen2 = pokemon.gen2;
 
-const Little = little.Little;
-const toLittle = little.toLittle;
+const lu16 = int.lu16;
 
 const Offset = struct {
     start: usize,
@@ -35,7 +34,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
     // In gen2, trainers are split into groups. Each group have attributes for their items, reward ai and so on.
     // The game does not store the size of each group anywere oviuse, so we have to figure out the size of each
     // group.
-    var trainer_group_pointers: []const Little(u16) = undefined;
+    var trainer_group_pointers: []const lu16 = undefined;
     var trainer_group_lenghts: []u8 = undefined;
     switch (version) {
         pokemon.Version.Crystal => {
@@ -44,10 +43,10 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
             const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) orelse return error.TrainerGroupsNotFound;
 
             // Then, we can find the group pointer table
-            const first_group_pointers = []Little(u16){toLittle(@intCast(u16, first_group_pointer))};
-            const last_group_pointers = []Little(u16){toLittle(@intCast(u16, last_group_pointer))};
+            const first_group_pointers = []lu16{ lu16.init(@intCast(u16, first_group_pointer)) };
+            const last_group_pointers = []lu16{ lu16.init(@intCast(u16, last_group_pointer)) };
             trainer_group_pointers = search.findStructs(
-                Little(u16),
+                lu16,
                 [][]const u8{},
                 data,
                 first_group_pointers,
@@ -57,7 +56,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
             // Ensure that the pointers are in ascending order.
             for (trainer_group_pointers[1..]) |item, i| {
                 const prev = trainer_group_pointers[i - 1];
-                if (prev.get() > item.get())
+                if (prev.value() > item.value())
                     return error.TrainerGroupsNotFound;
             }
 
@@ -69,8 +68,8 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
             // For poiners[pointers.len - 1], we will look until we hit an invalid party.
             for (trainer_group_pointers) |_, i| {
                 const is_last = i + 1 == trainer_group_pointers.len;
-                var curr = trainer_group_pointers[i].get();
-                const next = if (!is_last) trainer_group_pointers[i + 1].get() else @maxValue(u16);
+                var curr = trainer_group_pointers[i].value();
+                const next = if (!is_last) trainer_group_pointers[i + 1].value() else @maxValue(u16);
 
                 group_loop: while (curr < next) : (trainer_group_lenghts[i] += 1) {
                     // Skip, until we find the string terminator for the trainer name
@@ -123,7 +122,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
     const start = @ptrToInt(data.ptr);
     return Info{
         .base_stats = Offset.fromSlice(start, gen2.BasePokemon, base_stats),
-        .trainer_group_pointers = Offset.fromSlice(start, Little(u16), trainer_group_pointers),
+        .trainer_group_pointers = Offset.fromSlice(start, lu16, trainer_group_pointers),
         .trainer_group_lenghts = trainer_group_lenghts,
     };
 }

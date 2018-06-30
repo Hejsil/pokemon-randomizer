@@ -1,9 +1,11 @@
 const pokemon = @import("index.zig");
 
 pub const Info = struct {
+    game_title: [12]u8,
+    gamecode: [4]u8,
     version: pokemon.Version,
-    hm_tm_prefix: []const u8,
 
+    hm_tm_prefix: []const u8,
     base_stats: []const u8,
     level_up_moves: []const u8,
     moves: []const u8,
@@ -12,10 +14,21 @@ pub const Info = struct {
     evolutions: []const u8,
 };
 
-pub const hg_info = Info{
-    .version = pokemon.Version.HeartGold,
-    .hm_tm_prefix = "\x1E\x00\x32\x00",
+pub const infos = []Info{
+    hg_info,
+    ss_info,
+    diamond_info,
+    pearl_info,
+    platinum_info,
+};
 
+// TODO: Fill out game_titles
+const hg_info = Info{
+    .game_title = undefined,
+    .gamecode = "IPKE",
+    .version = pokemon.Version.HeartGold,
+
+    .hm_tm_prefix = "\x1E\x00\x32\x00",
     .base_stats = "/a/0/0/2",
     .level_up_moves = "/a/0/3/3",
     .moves = "/a/0/1/1",
@@ -24,14 +37,18 @@ pub const hg_info = Info{
     .evolutions = "/a/0/3/4",
 };
 
-pub const ss_info = blk: {
+const ss_info = blk: {
     var res = hg_info;
+    res.game_title = undefined;
+    res.gamecode = "IPGE";
     res.version = pokemon.Version.SoulSilver;
 
     break :blk res;
 };
 
-pub const diamond_info = Info{
+const diamond_info = Info{
+    .game_title = undefined,
+    .gamecode = "ADAE",
     .version = pokemon.Version.Diamond,
     .hm_tm_prefix = "\xD1\x00\xD2\x00\xD3\x00\xD4\x00",
 
@@ -43,15 +60,19 @@ pub const diamond_info = Info{
     .evolutions = "/poketool/personal/evo.narc",
 };
 
-pub const pearl_info = blk: {
+const pearl_info = blk: {
     var res = diamond_info;
+    res.game_title = undefined;
+    res.gamecode = "APAE";
     res.version = pokemon.Version.Pearl;
     res.base_stats = "/poketool/personal_pearl/personal.narc";
     break :blk res;
 };
 
-pub const platinum_info = blk: {
+const platinum_info = blk: {
     var res = diamond_info;
+    res.game_title = undefined;
+    res.gamecode = "CPUE";
     res.version = pokemon.Version.Platinum;
     res.base_stats = "/poketool/personal/pl_personal.narc";
     res.moves = "/poketool/waza/pl_waza_tbl.narc";

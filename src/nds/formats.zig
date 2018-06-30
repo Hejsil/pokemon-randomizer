@@ -1,30 +1,31 @@
-const little = @import("../little.zig");
-const Little = little.Little;
-const toLittle = little.toLittle;
+const int = @import("../int.zig");
+
+const lu16 = int.lu16;
+const lu32 = int.lu32;
 
 pub const Header = packed struct {
     chunk_name: [4]u8,
-    byte_order: Little(u16),
-    version: Little(u16),
-    file_size: Little(u32),
-    chunk_size: Little(u16),
-    following_chunks: Little(u16),
+    byte_order: lu16,
+    version: lu16,
+    file_size: lu32,
+    chunk_size: lu16,
+    following_chunks: lu16,
 
     pub fn narc(file_size: u32) Header {
         return Header{
             .chunk_name = Chunk.names.narc,
-            .byte_order = toLittle(u16(0xFFFE)),
-            .version = toLittle(u16(0x0100)),
-            .file_size = toLittle(file_size),
-            .chunk_size = toLittle(u16(@sizeOf(Header))),
-            .following_chunks = toLittle(u16(0x0003)),
+            .byte_order = lu16.init(0xFFFE),
+            .version = lu16.init(0x0100),
+            .file_size = lu32.init(file_size),
+            .chunk_size = lu16.init(@sizeOf(Header)),
+            .following_chunks = lu16.init(0x0003),
         };
     }
 };
 
 pub const Chunk = packed struct {
     name: [4]u8,
-    size: Little(u32),
+    size: lu32,
 
     const names = struct {
         const narc = "NARC";
@@ -36,6 +37,6 @@ pub const Chunk = packed struct {
 
 pub const FatChunk = packed struct {
     header: Chunk,
-    file_count: Little(u16),
-    reserved: Little(u16),
+    file_count: lu16,
+    reserved: lu16,
 };

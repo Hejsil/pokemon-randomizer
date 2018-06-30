@@ -1,9 +1,8 @@
 const ascii = @import("../ascii.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
-const toLittle = little.toLittle;
-const Little = little.Little;
+const lu16 = int.lu16;
 
 pub const Banner = packed struct {
     pub const Version = enum(u2) {
@@ -18,10 +17,10 @@ pub const Banner = packed struct {
     has_animated_dsi_icon: bool,
     has_animated_dsi_icon_padding: u7,
 
-    crc16_across_0020h_083Fh: Little(u16),
-    crc16_across_0020h_093Fh: Little(u16),
-    crc16_across_0020h_0A3Fh: Little(u16),
-    crc16_across_1240h_23BFh: Little(u16),
+    crc16_across_0020h_083Fh: lu16,
+    crc16_across_0020h_093Fh: lu16,
+    crc16_across_0020h_0A3Fh: lu16,
+    crc16_across_1240h_23BFh: lu16,
 
     reserved1: [0x16]u8,
 
@@ -45,7 +44,7 @@ pub const Banner = packed struct {
     //// animated DSi icons only
     //icon_animation_bitmap: [0x1000]u8,
     //icon_animation_palette: [0x100]u8,
-    //icon_animation_sequence: [0x80]u8, // Should be [0x40]Little(u16)?
+    //icon_animation_sequence: [0x80]u8, // Should be [0x40]lu16?
 
     pub fn validate(banner: Banner) !void {
         if (@enumToInt(banner.version) == 0)

@@ -1,17 +1,20 @@
 const std = @import("std");
 const pokemon = @import("index.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
-const constants = @import("gen5-constants.zig");
 
 const mem = std.mem;
 
-const ISlice = utils.slice.ISlice;
-const Little = little.Little;
 const Narc = nds.fs.Narc;
 const Nitro = nds.fs.Nitro;
+
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu128 = int.lu128;
+
+pub const constants = @import("gen5-constants.zig");
 
 pub const BasePokemon = packed struct {
     stats: common.Stats,
@@ -20,7 +23,7 @@ pub const BasePokemon = packed struct {
     catch_rate: u8,
 
     evs: [3]u8, // TODO: Figure out if common.EvYield fits in these 3 bytes
-    items: [3]Little(u16),
+    items: [3]lu16,
 
     gender_ratio: u8,
     egg_cycles: u8,
@@ -47,19 +50,19 @@ pub const BasePokemon = packed struct {
 
     base_exp_yield: u8,
 
-    height: Little(u16),
-    weight: Little(u16),
+    height: lu16,
+    weight: lu16,
 
     // Memory layout
     // TMS 01-92, HMS 01-06, TMS 93-95
-    tm_hm_learnset: Little(u128),
+    tm_hm_learnset: lu128,
 
     // TODO: Tutor data only exists in BW2
-    //special_tutors: Little(u32),
-    //driftveil_tutor: Little(u32),
-    //lentimas_tutor: Little(u32),
-    //humilau_tutor: Little(u32),
-    //nacrene_tutor: Little(u32),
+    //special_tutors: lu32,
+    //driftveil_tutor: lu32,
+    //lentimas_tutor: lu32,
+    //humilau_tutor: lu32,
+    //nacrene_tutor: lu32,
 };
 
 /// All party members have this as the base.
@@ -68,29 +71,29 @@ pub const BasePokemon = packed struct {
 /// * If trainer.party_type & 0b01 then there is an additional 4 * u16 after the base, which are
 ///   the party members moveset.
 pub const PartyMember = packed struct {
-    const has_item = 0b10;
-    const has_moves = 0b01;
-
     iv: u8,
     gender: u4,
     ability: u4,
     level: u8,
     padding: u8,
-    species: Little(u16),
-    form: Little(u16),
+    species: lu16,
+    form: lu16,
 };
 
 pub const Trainer = packed struct {
+    const has_item = 0b10;
+    const has_moves = 0b01;
+
     party_type: u8,
     class: u8,
     battle_type: u8, // TODO: This should probably be an enum
     party_size: u8,
-    items: [4]Little(u16),
-    ai: Little(u32),
+    items: [4]lu16,
+    ai: lu32,
     healer: bool,
     healer_padding: u7,
     cash: u8,
-    post_battle_item: Little(u16),
+    post_battle_item: lu16,
 };
 
 pub const Move = packed struct {
@@ -106,7 +109,7 @@ pub const Move = packed struct {
     max_hits: u4,
     crit_chance: u8,
     flinch: u8,
-    effect: Little(u16),
+    effect: lu16,
     target_hp: u8,
     user_hp: u8,
     target: u8,
@@ -116,12 +119,12 @@ pub const Move = packed struct {
 
     // TODO: Figure out if this is actually how the last fields are layed out.
     padding: [2]u8,
-    flags: Little(u16),
+    flags: lu16,
 };
 
 pub const LevelUpMove = packed struct {
-    move_id: Little(u16),
-    level: Little(u16),
+    move_id: lu16,
+    level: lu16,
 };
 
 pub const Type = enum(u8) {
@@ -153,9 +156,9 @@ pub const Game = struct {
     level_up_moves: []const *Narc.File,
     trainers: []const *Narc.File,
     parties: []const *Narc.File,
-    tms1: []Little(u16),
-    hms: []Little(u16),
-    tms2: []Little(u16),
+    tms1: []lu16,
+    hms: []lu16,
+    tms2: []lu16,
 
     pub fn fromRom(rom: nds.Rom) !Game {
         const info = try getInfo(rom.header.gamecode);
@@ -163,7 +166,7 @@ pub const Game = struct {
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, constants.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + constants.hm_tm_prefix.len;
         const hm_tm_len = (constants.tm_count + constants.hm_count) * @sizeOf(u16);
-        const hm_tms = @bytesToSlice(Little(u16), rom.arm9[hm_tm_index..][0..hm_tm_len]);
+        const hm_tms = @bytesToSlice(lu16, rom.arm9[hm_tm_index..][0..hm_tm_len]);
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },
@@ -188,15 +191,15 @@ pub const Game = struct {
     }
 
     fn getInfo(gamecode: []const u8) !constants.Info {
-        if (mem.eql(u8, gamecode, "IREO"))
-            return constants.black2_info;
-        if (mem.eql(u8, gamecode, "IRDO"))
-            return constants.white2_info;
-        if (mem.eql(u8, gamecode, "IRBO"))
-            return constants.black_info;
-        if (mem.eql(u8, gamecode, "IRAO"))
-            return constants.white_info;
+        for (constants.infos) |info| {
+            //if (!mem.eql(u8, info.game_title, game_title))
+            //    continue;
+            if (!mem.eql(u8, info.gamecode, gamecode))
+                continue;
 
-        return error.InvalidGen5GameCode;
+            return info;
+        }
+
+        return error.NotGen5Game;
     }
 };

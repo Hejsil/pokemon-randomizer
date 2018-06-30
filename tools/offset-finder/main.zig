@@ -77,19 +77,35 @@ pub fn main() !void {
             3 => {
                 const info = try gen3.findInfoInFile(data, version);
 
-                debug.warn(".trainers                   = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.trainers.start, info.trainers.len);
-                debug.warn(".moves                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.moves.start, info.moves.len);
-                debug.warn(".tm_hm_learnset             = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tm_hm_learnset.start, info.tm_hm_learnset.len);
-                debug.warn(".base_stats                 = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.base_stats.start, info.base_stats.len);
-                debug.warn(".evolution_table            = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.evolution_table.start, info.evolution_table.len);
-                debug.warn(".level_up_learnset_pointers = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.level_up_learnset_pointers.start, info.level_up_learnset_pointers.len);
-                debug.warn(".hms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.hms.start, info.hms.len);
-                debug.warn(".tms                        = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.tms.start, info.tms.len);
-                debug.warn(".items                      = Offset {{ .start = 0x{X7}, .len = {d3}, }},\n", info.items.start, info.items.len);
+                debug.warn(".trainers = TrainerSection");
+                dumpSection(info.trainers);
+                debug.warn(".moves = MoveSection");
+                dumpSection(info.moves);
+                debug.warn(".machine_learnsets = MachineLearnsetSection");
+                dumpSection(info.machine_learnsets);
+                debug.warn(".base_stats = BaseStatsSection");
+                dumpSection(info.base_stats);
+                debug.warn(".evolutions = EvolutionSection");
+                dumpSection(info.evolutions);
+                debug.warn(".level_up_learnset_pointers = LevelUpLearnsetPointerSection");
+                dumpSection(info.level_up_learnset_pointers);
+                debug.warn(".hms = HmSection");
+                dumpSection(info.hms);
+                debug.warn(".tms = TmSection");
+                dumpSection(info.tms);
+                debug.warn(".items = ItemSection");
+                dumpSection(info.items);
             },
             else => unreachable,
         }
     }
+}
+
+fn dumpSection(sec: var) void {
+    debug.warn("{{\n");
+    debug.warn("    .start = 0x{X8},\n", sec.start);
+    debug.warn("    .len = {},\n", sec.len);
+    debug.warn("}},\n");
 }
 
 fn getVersion(gamecode: []const u8) !pokemon.Version {

@@ -1,7 +1,8 @@
 const std = @import("std");
-const crc = @import("crc");
+// TODO: We can't have packages in tests
+const crc = @import("../../lib/zig-crc/crc.zig");
 const ascii = @import("../ascii.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const debug = std.debug;
@@ -11,8 +12,9 @@ const slice = utils.slice;
 
 const assert = debug.assert;
 
-const toLittle = little.toLittle;
-const Little = little.Little;
+const lu16 = int.lu16;
+const lu32 = int.lu32;
+const lu64 = int.lu64;
 
 pub const crc_modbus = comptime blk: {
     @setEvalBranchQuota(crc.crcspec_init_backward_cycles);
@@ -40,54 +42,54 @@ pub const Header = packed struct {
     rom_version: u8,
     autostart: u8,
 
-    arm9_rom_offset: Little(u32),
-    arm9_entry_address: Little(u32),
-    arm9_ram_address: Little(u32),
-    arm9_size: Little(u32),
+    arm9_rom_offset: lu32,
+    arm9_entry_address: lu32,
+    arm9_ram_address: lu32,
+    arm9_size: lu32,
 
-    arm7_rom_offset: Little(u32),
-    arm7_entry_address: Little(u32),
-    arm7_ram_address: Little(u32),
-    arm7_size: Little(u32),
+    arm7_rom_offset: lu32,
+    arm7_entry_address: lu32,
+    arm7_ram_address: lu32,
+    arm7_size: lu32,
 
-    fnt_offset: Little(u32),
-    fnt_size: Little(u32),
+    fnt_offset: lu32,
+    fnt_size: lu32,
 
-    fat_offset: Little(u32),
-    fat_size: Little(u32),
+    fat_offset: lu32,
+    fat_size: lu32,
 
-    arm9_overlay_offset: Little(u32),
-    arm9_overlay_size: Little(u32),
+    arm9_overlay_offset: lu32,
+    arm9_overlay_size: lu32,
 
-    arm7_overlay_offset: Little(u32),
-    arm7_overlay_size: Little(u32),
+    arm7_overlay_offset: lu32,
+    arm7_overlay_size: lu32,
 
     // TODO: Rename when I know exactly what his means.
     port_40001A4h_setting_for_normal_commands: [4]u8,
     port_40001A4h_setting_for_key1_commands: [4]u8,
 
-    banner_offset: Little(u32),
+    banner_offset: lu32,
 
-    secure_area_checksum: Little(u16),
-    secure_area_delay: Little(u16),
+    secure_area_checksum: lu16,
+    secure_area_delay: lu16,
 
-    arm9_auto_load_list_ram_address: Little(u32),
-    arm7_auto_load_list_ram_address: Little(u32),
+    arm9_auto_load_list_ram_address: lu32,
+    arm7_auto_load_list_ram_address: lu32,
 
-    secure_area_disable: Little(u64),
-    total_used_rom_size: Little(u32),
-    rom_header_size: Little(u32),
+    secure_area_disable: lu64,
+    total_used_rom_size: lu32,
+    rom_header_size: lu32,
 
     reserved3: [0x38]u8,
 
     nintendo_logo: [0x9C]u8,
-    nintendo_logo_checksum: Little(u16),
+    nintendo_logo_checksum: lu16,
 
-    header_checksum: Little(u16),
+    header_checksum: lu16,
 
-    debug_rom_offset: Little(u32),
-    debug_size: Little(u32),
-    debug_ram_address: Little(u32),
+    debug_rom_offset: lu32,
+    debug_size: lu32,
+    debug_ram_address: lu32,
 
     reserved4: [4]u8,
     reserved5: [0x10]u8,
@@ -115,44 +117,44 @@ pub const Header = packed struct {
     //         bit2: Custom Icon  (0=No/Normal, 1=Use banner.sav)
     unknown_flags: u8,
 
-    arm9i_rom_offset: Little(u32),
+    arm9i_rom_offset: lu32,
 
     reserved7: [4]u8,
 
-    arm9i_ram_load_address: Little(u32),
-    arm9i_size: Little(u32),
-    arm7i_rom_offset: Little(u32),
+    arm9i_ram_load_address: lu32,
+    arm9i_size: lu32,
+    arm7i_rom_offset: lu32,
 
-    device_list_arm7_ram_addr: Little(u32),
+    device_list_arm7_ram_addr: lu32,
 
-    arm7i_ram_load_address: Little(u32),
-    arm7i_size: Little(u32),
+    arm7i_ram_load_address: lu32,
+    arm7i_size: lu32,
 
-    digest_ntr_region_offset: Little(u32),
-    digest_ntr_region_length: Little(u32),
-    digest_twl_region_offset: Little(u32),
-    digest_twl_region_length: Little(u32),
-    digest_sector_hashtable_offset: Little(u32),
-    digest_sector_hashtable_length: Little(u32),
-    digest_block_hashtable_offset: Little(u32),
-    digest_block_hashtable_length: Little(u32),
-    digest_sector_size: Little(u32),
-    digest_block_sectorcount: Little(u32),
+    digest_ntr_region_offset: lu32,
+    digest_ntr_region_length: lu32,
+    digest_twl_region_offset: lu32,
+    digest_twl_region_length: lu32,
+    digest_sector_hashtable_offset: lu32,
+    digest_sector_hashtable_length: lu32,
+    digest_block_hashtable_offset: lu32,
+    digest_block_hashtable_length: lu32,
+    digest_sector_size: lu32,
+    digest_block_sectorcount: lu32,
 
-    banner_size: Little(u32),
+    banner_size: lu32,
 
     reserved8: [4]u8,
 
-    total_used_rom_size_including_dsi_area: Little(u32),
+    total_used_rom_size_including_dsi_area: lu32,
 
     reserved9: [4]u8,
     reserved10: [4]u8,
     reserved11: [4]u8,
 
-    modcrypt_area_1_offset: Little(u32),
-    modcrypt_area_1_size: Little(u32),
-    modcrypt_area_2_offset: Little(u32),
-    modcrypt_area_2_size: Little(u32),
+    modcrypt_area_1_offset: lu32,
+    modcrypt_area_1_size: lu32,
+    modcrypt_area_2_offset: lu32,
+    modcrypt_area_2_size: lu32,
 
     title_id_emagcode: [4]u8,
     title_id_filetype: u8,
@@ -162,8 +164,8 @@ pub const Header = packed struct {
     // 237h 1    Title ID, Zero     (00h=Normal)
     title_id_rest: [3]u8,
 
-    public_sav_filesize: Little(u32),
-    private_sav_filesize: Little(u32),
+    public_sav_filesize: lu32,
+    private_sav_filesize: lu32,
 
     reserved12: [176]u8,
 
@@ -211,7 +213,7 @@ pub const Header = packed struct {
     }
 
     pub fn validate(header: Header) !void {
-        if (header.header_checksum.get() != header.calcChecksum())
+        if (header.header_checksum.value() != header.calcChecksum())
             return error.InvalidHeaderChecksum;
 
         if (!slice.all(header.game_title[0..], isUpperAsciiOrZero))
@@ -230,33 +232,33 @@ pub const Header = packed struct {
 
         // It seems that arm9 (secure area) is always at 0x4000
         // http://problemkaputt.de/gbatek.htm#dscartridgesecurearea
-        if (header.arm9_rom_offset.get() != 0x4000)
+        if (header.arm9_rom_offset.value() != 0x4000)
             return error.InvalidArm9RomOffset;
-        if (!(0x2000000 <= header.arm9_entry_address.get() and header.arm9_entry_address.get() <= 0x23BFE00))
+        if (!(0x2000000 <= header.arm9_entry_address.value() and header.arm9_entry_address.value() <= 0x23BFE00))
             return error.InvalidArm9EntryAddress;
-        if (!(0x2000000 <= header.arm9_ram_address.get() and header.arm9_ram_address.get() <= 0x23BFE00))
+        if (!(0x2000000 <= header.arm9_ram_address.value() and header.arm9_ram_address.value() <= 0x23BFE00))
             return error.InvalidArm9RamAddress;
-        if (header.arm9_size.get() > 0x3BFE00)
+        if (header.arm9_size.value() > 0x3BFE00)
             return error.InvalidArm9Size;
 
-        if (header.arm7_rom_offset.get() < 0x8000)
+        if (header.arm7_rom_offset.value() < 0x8000)
             return error.InvalidArm7RomOffset;
-        if (!(0x2000000 <= header.arm7_entry_address.get() and header.arm7_entry_address.get() <= 0x23BFE00) and
-            !(0x37F8000 <= header.arm7_entry_address.get() and header.arm7_entry_address.get() <= 0x3807E00))
+        if (!(0x2000000 <= header.arm7_entry_address.value() and header.arm7_entry_address.value() <= 0x23BFE00) and
+            !(0x37F8000 <= header.arm7_entry_address.value() and header.arm7_entry_address.value() <= 0x3807E00))
             return error.InvalidArm7EntryAddress;
-        if (!(0x2000000 <= header.arm7_ram_address.get() and header.arm7_ram_address.get() <= 0x23BFE00) and
-            !(0x37F8000 <= header.arm7_ram_address.get() and header.arm7_ram_address.get() <= 0x3807E00))
+        if (!(0x2000000 <= header.arm7_ram_address.value() and header.arm7_ram_address.value() <= 0x23BFE00) and
+            !(0x37F8000 <= header.arm7_ram_address.value() and header.arm7_ram_address.value() <= 0x3807E00))
             return error.InvalidArm7RamAddress;
-        if (header.arm7_size.get() > 0x3BFE00)
+        if (header.arm7_size.value() > 0x3BFE00)
             return error.InvalidArm7Size;
 
-        if ((0x1 <= header.banner_offset.get() and header.banner_offset.get() <= 0x7FFF))
+        if ((0x1 <= header.banner_offset.value() and header.banner_offset.value() <= 0x7FFF))
             return error.InvalidIconTitleOffset;
 
-        if (header.secure_area_delay.get() != 0x051E and header.secure_area_delay.get() != 0x0D7E)
+        if (header.secure_area_delay.value() != 0x051E and header.secure_area_delay.value() != 0x0D7E)
             return error.InvalidSecureAreaDelay;
 
-        if (header.rom_header_size.get() != 0x4000)
+        if (header.rom_header_size.value() != 0x4000)
             return error.InvalidRomHeaderSize;
 
         if (!slice.all(header.reserved3[12..], ascii.isZero))
@@ -275,7 +277,7 @@ pub const Header = packed struct {
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
             //       Does that mean that it also always 0x4000?
-            if (header.digest_ntr_region_offset.get() != 0x4000)
+            if (header.digest_ntr_region_offset.value() != 0x4000)
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, header.reserved8, []u8{ 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;

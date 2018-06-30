@@ -1,8 +1,10 @@
 const std = @import("std");
-const fun = @import("fun");
+
+// TODO: We can't have packages in tests, so we have to import the fun-with-zig lib manually
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const common = @import("common.zig");
 const formats = @import("formats.zig");
-const little = @import("../little.zig");
+const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const generic = fun.generic;
@@ -17,8 +19,8 @@ const fmt = std.fmt;
 
 const assert = debug.assert;
 
-const toLittle = little.toLittle;
-const Little = little.Little;
+const lu16 = int.lu16;
+const lu32 = int.lu32;
 
 fn FileSystem(comptime FileType: type) type {
     return struct {
@@ -30,9 +32,9 @@ fn FileSystem(comptime FileType: type) type {
 
         // TODO: When we have https://github.com/zig-lang/zig/issues/287, then we don't need to
         //       allocate the fs anymore.
-        pub fn alloc(allocator: *mem.Allocator) !*Self {
-            const res = try allocator.create(Self{
-                .arena = std.heap.ArenaAllocator.init(allocator),
+        pub fn alloc(a: *mem.Allocator) !*Self {
+            const res = try a.create(Self{
+                .arena = std.heap.ArenaAllocator.init(a),
                 .root = undefined,
             });
             res.root = try res.createFolder("");
@@ -40,6 +42,12 @@ fn FileSystem(comptime FileType: type) type {
             return res;
         }
 
+        pub fn allocator(fs: *Self) *mem.Allocator {
+            return &fs.arena.allocator;
+        }
+
+        // TODO: We should probably have a way of ensuring that a folder doesn't have duplicate
+        //       names
         pub const Folder = struct {
             name: []u8,
             files: std.ArrayList(*FileType),
@@ -106,28 +114,28 @@ pub const Nitro = FileSystem(struct {
 });
 
 pub const FntMainEntry = packed struct {
-    offset_to_subtable: Little(u32),
-    first_file_id_in_subtable: Little(u16),
+    offset_to_subtable: lu32,
+    first_file_id_in_subtable: lu16,
 
     // For the first entry in main-table, the parent id is actually,
     // the total number of directories (See FNT Directory Main-Table):
     // http://problemkaputt.de/gbatek.htm#dscartridgenitroromandnitroarcfilesystems
-    parent_id: Little(u16),
+    parent_id: lu16,
 };
 
 pub const FatEntry = packed struct {
-    start: Little(u32),
-    end: Little(u32),
+    start: lu32,
+    end: lu32,
 
     fn init(offset: u32, size: u32) FatEntry {
         return FatEntry{
-            .start = toLittle(offset),
-            .end = toLittle(offset + size),
+            .start = lu32.init(offset),
+            .end = lu32.init(offset + size),
         };
     }
 
     fn getSize(entry: FatEntry) usize {
-        return entry.end.get() - entry.start.get();
+        return entry.end.value() - entry.start.value();
     }
 };
 
@@ -143,7 +151,7 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
     const fnt_main_table = blk: {
         const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
         const first = generic.at(fnt_mains, 0) catch return error.InvalidFnt;
-        const res = generic.slice(fnt_mains, 0, first.parent_id.get()) catch return error.InvalidFnt;
+        const res = generic.slice(fnt_mains, 0, first.parent_id.value()) catch return error.InvalidFnt;
         if (res.len > 4096) return error.InvalidFnt;
 
         break :blk res;
@@ -164,8 +172,8 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
     const fnt_first = fnt_main_table[0];
     try stack.append(State{
         .folder = fs.root,
-        .file_id = fnt_first.first_file_id_in_subtable.get(),
-        .fnt_sub_table = generic.slice(fnt, fnt_first.offset_to_subtable.get(), fnt.len) catch return error.InvalidFnt,
+        .file_id = fnt_first.first_file_id_in_subtable.value(),
+        .fnt_sub_table = generic.slice(fnt, fnt_first.offset_to_subtable.value(), fnt.len) catch return error.InvalidFnt,
     });
 
     while (stack.popOrNull()) |state| {
@@ -191,7 +199,7 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
         const kind = @intToEnum(Kind, type_length & 0x80);
         assert(kind == Kind.File or kind == Kind.Folder);
 
-        const name = try utils.stream.allocRead(stream, &fs.arena.allocator, u8, lenght);
+        const name = try utils.stream.allocRead(stream, fs.allocator(), u8, lenght);
         switch (kind) {
             Kind.File => {
                 const fat_entry = generic.at(fat, file_id) catch return error.InvalidFileId;
@@ -208,11 +216,11 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
                 }) catch unreachable;
             },
             Kind.Folder => {
-                const id = try utils.stream.read(stream, Little(u16));
-                if (id.get() < 0xF001 or id.get() > 0xFFFF)
+                const id = try utils.stream.read(stream, lu16);
+                if (id.value() < 0xF001 or id.value() > 0xFFFF)
                     return error.InvalidSubDirectoryId;
 
-                const fnt_entry = generic.at(fnt_main_table, id.get() & 0x0FFF) catch return error.InvalidSubDirectoryId;
+                const fnt_entry = generic.at(fnt_main_table, id.value() & 0x0FFF) catch return error.InvalidSubDirectoryId;
                 const sub_folder = try fs.createFolder(name);
 
                 try folder.folders.append(sub_folder);
@@ -224,8 +232,8 @@ fn readHelper(comptime Fs: type, file: *os.File, allocator: *mem.Allocator, fnt:
                 }) catch unreachable;
                 try stack.append(State{
                     .folder = sub_folder,
-                    .file_id = fnt_entry.first_file_id_in_subtable.get(),
-                    .fnt_sub_table = generic.slice(fnt, fnt_entry.offset_to_subtable.get(), fnt.len) catch return error.InvalidFnt,
+                    .file_id = fnt_entry.first_file_id_in_subtable.value(),
+                    .fnt_sub_table = generic.slice(fnt, fnt_entry.offset_to_subtable.value(), fnt.len) catch return error.InvalidFnt,
                 });
             },
         }
@@ -240,7 +248,7 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
     narc_read: {
         const names = formats.Chunk.names;
 
-        try file.seekTo(fat_entry.start.get() + img_base);
+        try file.seekTo(fat_entry.start.value() + img_base);
         const file_start = try file.getPos();
 
         var buffered_in_stream = io.BufferedInStream(io.FileInStream.Error).init(&file_in_stream.stream);
@@ -249,30 +257,30 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
         const header = utils.stream.read(stream, formats.Header) catch break :narc_read;
         if (!mem.eql(u8, header.chunk_name, names.narc))
             break :narc_read;
-        if (header.byte_order.get() != 0xFFFE)
+        if (header.byte_order.value() != 0xFFFE)
             break :narc_read;
-        if (header.chunk_size.get() != 0x0010)
+        if (header.chunk_size.value() != 0x0010)
             break :narc_read;
-        if (header.following_chunks.get() != 0x0003)
+        if (header.following_chunks.value() != 0x0003)
             break :narc_read;
 
         // If we have a valid narc header, then we assume we are reading a narc
         // file. All error from here, are therefore bubbled up.
         const fat_header = try utils.stream.read(stream, formats.FatChunk);
-        const fat_size = math.sub(u32, fat_header.header.size.get(), @sizeOf(formats.FatChunk)) catch return error.InvalidChunkSize;
+        const fat_size = math.sub(u32, fat_header.header.size.value(), @sizeOf(formats.FatChunk)) catch return error.InvalidChunkSize;
 
         if (!mem.eql(u8, fat_header.header.name, names.fat))
             return error.InvalidChunkName;
         if (fat_size % @sizeOf(FatEntry) != 0)
             return error.InvalidChunkSize;
-        if (fat_size / @sizeOf(FatEntry) != fat_header.file_count.get())
+        if (fat_size / @sizeOf(FatEntry) != fat_header.file_count.value())
             return error.InvalidChunkSize;
 
-        const fat = try utils.stream.allocRead(stream, tmp_allocator, FatEntry, fat_header.file_count.get());
+        const fat = try utils.stream.allocRead(stream, tmp_allocator, FatEntry, fat_header.file_count.value());
         defer tmp_allocator.free(fat);
 
         const fnt_header = try utils.stream.read(stream, formats.Chunk);
-        const fnt_size = math.sub(u32, fnt_header.size.get(), @sizeOf(formats.Chunk)) catch return error.InvalidChunkSize;
+        const fnt_size = math.sub(u32, fnt_header.size.value(), @sizeOf(formats.Chunk)) catch return error.InvalidChunkSize;
 
         if (!mem.eql(u8, fnt_header.name, names.fnt)) return error.InvalidChunkName;
 
@@ -288,19 +296,19 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
 
         // Since we are using buffered input, be have to seek back to the narc_img_base,
         // when we start reading the file system
-        const narc_img_base = file_start + @sizeOf(formats.Header) + fat_header.header.size.get() + fnt_header.size.get() + @sizeOf(formats.Chunk);
+        const narc_img_base = file_start + @sizeOf(formats.Header) + fat_header.header.size.value() + fnt_header.size.value() + @sizeOf(formats.Chunk);
         try file.seekTo(narc_img_base);
 
         // If the first_fnt's offset points into it self, then there doesn't exist an
         // fnt sub table and files don't have names. We therefore can't use our normal
         // read function, as it relies on the fnt sub table to build the file system.
-        if (first_fnt.offset_to_subtable.get() < @sizeOf(FntMainEntry)) {
-            const sub_fs = try Narc.alloc(&fs.arena.allocator);
+        if (first_fnt.offset_to_subtable.value() < @sizeOf(FntMainEntry)) {
+            const sub_fs = try Narc.alloc(fs.allocator());
             const files = &sub_fs.root.files;
-            try files.ensureCapacity(fat_header.file_count.get());
+            try files.ensureCapacity(fat_header.file_count.value());
 
             for (fat) |entry, i| {
-                const sub_file_name = try fmt.allocPrint(&sub_fs.arena.allocator, "{}", i);
+                const sub_file_name = try fmt.allocPrint(sub_fs.allocator(), "{}", i);
                 const sub_file = try readNarcFile(sub_fs, file, tmp_allocator, entry, narc_img_base, sub_file_name);
                 files.append(sub_file) catch unreachable;
             }
@@ -310,7 +318,7 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
                 .@"type" = Nitro.File.Type{ .Narc = sub_fs },
             });
         } else {
-            const sub_fs = try readNarc(file, &fs.arena.allocator, fnt, fat, narc_img_base);
+            const sub_fs = try readNarc(file, fs.allocator(), fnt, fat, narc_img_base);
             return fs.createFile(Nitro.File{
                 .name = name,
                 .@"type" = Nitro.File.Type{ .Narc = sub_fs },
@@ -318,8 +326,8 @@ pub fn readNitroFile(fs: *Nitro, file: *os.File, tmp_allocator: *mem.Allocator, 
         }
     }
 
-    try file.seekTo(fat_entry.start.get() + img_base);
-    const data = try utils.stream.allocRead(&file_in_stream.stream, &fs.arena.allocator, u8, fat_entry.getSize());
+    try file.seekTo(fat_entry.start.value() + img_base);
+    const data = try utils.stream.allocRead(&file_in_stream.stream, fs.allocator(), u8, fat_entry.getSize());
     return fs.createFile(Nitro.File{
         .name = name,
         .@"type" = Nitro.File.Type{ .Binary = data },
@@ -330,8 +338,8 @@ pub fn readNarcFile(fs: *Narc, file: *os.File, tmp_allocator: *mem.Allocator, fa
     var file_in_stream = io.FileInStream.init(file);
     const stream = &file_in_stream.stream;
 
-    try file.seekTo(fat_entry.start.get() + img_base);
-    const data = try utils.stream.allocRead(&file_in_stream.stream, &fs.arena.allocator, u8, fat_entry.getSize());
+    try file.seekTo(fat_entry.start.value() + img_base);
+    const data = try utils.stream.allocRead(&file_in_stream.stream, fs.allocator(), u8, fat_entry.getSize());
     return fs.createFile(Narc.File{
         .name = name,
         .data = data,
@@ -370,9 +378,9 @@ pub fn getFntAndFiles(comptime Fs: type, fs: Fs, allocator: *mem.Allocator) !Fnt
         const state = states.toSliceConst()[current_state];
 
         try main_fnt.append(FntMainEntry{
-            .offset_to_subtable = toLittle(@intCast(u32, sub_fnt.len())),
-            .first_file_id_in_subtable = toLittle(@intCast(u16, files.len)),
-            .parent_id = toLittle(u16(state.parent_id)),
+            .offset_to_subtable = lu32.init(@intCast(u32, sub_fnt.len())),
+            .first_file_id_in_subtable = lu16.init(@intCast(u16, files.len)),
+            .parent_id = lu16.init(state.parent_id),
         });
 
         for (state.folder.files.toSliceConst()) |f| {
@@ -385,7 +393,7 @@ pub fn getFntAndFiles(comptime Fs: type, fs: Fs, allocator: *mem.Allocator) !Fnt
         for (state.folder.folders.toSliceConst()) |folder| {
             try sub_fnt.appendByte(@intCast(u8, folder.name.len + 0x80));
             try sub_fnt.append(folder.name);
-            try sub_fnt.append(toLittle(@intCast(u16, states.len + 0xF000)).bytes);
+            try sub_fnt.append(lu16.init(@intCast(u16, states.len + 0xF000)).bytes);
 
             try states.append(State{
                 .folder = folder,
@@ -397,9 +405,9 @@ pub fn getFntAndFiles(comptime Fs: type, fs: Fs, allocator: *mem.Allocator) !Fnt
     }
 
     // Filling in root parent id!
-    main_fnt.items[0].parent_id = toLittle(@intCast(u16, main_fnt.len));
+    main_fnt.items[0].parent_id = lu16.init(@intCast(u16, main_fnt.len));
     for (main_fnt.toSlice()) |*entry| {
-        entry.offset_to_subtable = toLittle(@intCast(u32, main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.get()));
+        entry.offset_to_subtable = lu32.init(@intCast(u32, main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.value()));
     }
 
     return FntAndFiles(Fs.File){
@@ -449,10 +457,10 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
             try stream.write(utils.toBytes(formats.FatChunk, formats.FatChunk{
                 .header = formats.Chunk{
                     .name = formats.Chunk.names.fat,
-                    .size = toLittle(@intCast(u32, fnt_start - fat_start)),
+                    .size = lu32.init(@intCast(u32, fnt_start - fat_start)),
                 },
-                .file_count = toLittle(@intCast(u16, files.len)),
-                .reserved = toLittle(u16(0x00)),
+                .file_count = lu16.init(@intCast(u16, files.len)),
+                .reserved = lu16.init(0x00),
             }));
 
             var start: u32 = 0;
@@ -464,7 +472,7 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
 
             try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
                 .name = formats.Chunk.names.fnt,
-                .size = toLittle(@intCast(u32, file_image_start - fnt_start)),
+                .size = lu32.init(@intCast(u32, file_image_start - fnt_start)),
             }));
             try stream.write(@sliceToBytes(main_fnt));
             try stream.write(sub_fnt);
@@ -472,7 +480,7 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
 
             try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
                 .name = formats.Chunk.names.file_data,
-                .size = toLittle(@intCast(u32, file_end - file_image_start)),
+                .size = lu32.init(@intCast(u32, file_end - file_image_start)),
             }));
             for (files) |f| {
                 try stream.write(f.data);
@@ -481,4 +489,150 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
             try buffered_out_stream.flush();
         },
     }
+}
+
+fn fsEqual(allocator: *mem.Allocator, comptime Fs: type, fs1: *const Fs, fs2: *const Fs) !bool {
+    comptime assert(Fs == Nitro or Fs == Narc);
+
+    const FolderPair = struct {
+        f1: *Fs.Folder,
+        f2: *Fs.Folder,
+    };
+
+    var folders_to_compare = std.ArrayList(FolderPair).init(allocator);
+    defer folders_to_compare.deinit();
+    try folders_to_compare.append(FolderPair {
+        .f1 = fs1.root,
+        .f2 = fs2.root,
+    });
+
+    while (folders_to_compare.popOrNull()) |pair| {
+        for (pair.f1.folders.toSliceConst()) |f1| {
+            for (pair.f2.folders.toSliceConst()) |f2| {
+                if (mem.eql(u8, f1.name, f2.name)) {
+                    try folders_to_compare.append(FolderPair {
+                        .f1 = f1,
+                        .f2 = f2,
+                    });
+                    break;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        for (pair.f1.files.toSliceConst()) |f1| {
+            for (pair.f2.files.toSliceConst()) |f2| {
+                if (mem.eql(u8, f1.name, f2.name)) {
+                    switch (Fs) {
+                        Nitro => {
+                            switch (f1.@"type") {
+                                Nitro.File.Type.Binary => {
+                                    if (f2.@"type" != Nitro.File.Type.Binary)
+                                        return false;
+                                    if (!mem.eql(u8, f1.@"type".Binary, f2.@"type".Binary))
+                                        return false;
+                                },
+                                Nitro.File.Type.Narc => {
+                                    if (f2.@"type" != Nitro.File.Type.Narc)
+                                        return false;
+                                    if (!try fsEqual(allocator, Narc, f1.@"type".Narc, f2.@"type".Narc))
+                                        return false;
+                                }
+                            }
+                        },
+                        Narc => {
+                            if (!mem.eql(u8, f1.data, f2.data))
+                                return false;
+                        },
+                        else => comptime unreachable,
+                    }
+                    break;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+test "nds.fs: Nitro.File read/write" {
+    var buf: [100 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const fs = try Nitro.alloc(allocator);
+    const root = fs.root;
+    try root.files.append(try fs.createFile(Nitro.File{
+        .name = try mem.dupe(fs.allocator(), u8, "hello.world"),
+        .@"type" = Nitro.File.Type{
+            .Binary = try mem.dupe(fs.allocator(), u8, "Hello World!"),
+        },
+    }));
+    try root.files.append(try fs.createFile(Nitro.File{
+        .name = try mem.dupe(fs.allocator(), u8, "hello.dupe"),
+        .@"type" = Nitro.File.Type{
+            .Binary = try mem.dupe(fs.allocator(), u8, "Hello Dupe!"),
+        },
+    }));
+
+    const folder = try fs.createFolder(try mem.dupe(fs.allocator(), u8, "hello.folder"));
+    try root.folders.append(folder);
+
+    try folder.files.append(try fs.createFile(Nitro.File{
+        .name = try mem.dupe(fs.allocator(), u8, "good.bye"),
+        .@"type" = Nitro.File.Type{
+            .Binary = try mem.dupe(fs.allocator(), u8, "Cya!"),
+        },
+    }));
+
+    const narc = try Narc.alloc(fs.allocator());
+    try folder.files.append(try fs.createFile(Nitro.File{
+        .name = try mem.dupe(fs.allocator(), u8, "good.narc"),
+        .@"type" = Nitro.File.Type{
+            .Narc = narc,
+        },
+    }));
+
+    const n_root = narc.root;
+
+    try n_root.files.append(try narc.createFile(Narc.File{
+        .name = try mem.dupe(narc.allocator(), u8, "good"),
+        .data = try mem.dupe(narc.allocator(), u8, "Good is good!"),
+    }));
+    try n_root.folders.append(try narc.createFolder(try mem.dupe(narc.allocator(), u8, "empty")));
+
+    const fntAndFiles = try getFntAndFiles(Nitro, fs.*, allocator);
+    const files = fntAndFiles.files;
+    const main_fnt = fntAndFiles.main_fnt;
+    const sub_fnt = fntAndFiles.sub_fnt;
+
+    const fnt_buff_size = @sliceToBytes(main_fnt).len + sub_fnt.len;
+    const fnt_buff = try allocator.alloc(u8, fnt_buff_size);
+    const fnt = try fmt.bufPrint(fnt_buff, "{}{}", @sliceToBytes(main_fnt), sub_fnt);
+    var fat = std.ArrayList(FatEntry).init(allocator);
+
+    const test_file = "__nds.fs.test.read.write__";
+    defer os.deleteFile(allocator, test_file) catch unreachable;
+
+    {
+        var file = try os.File.openWrite(allocator, test_file);
+        defer file.close();
+
+        for (files) |f| {
+            const pos = @intCast(u32, try file.getPos());
+            try writeNitroFile(&file, allocator, f.*);
+            fat.append(FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
+        }
+    }
+
+    const fs2 = blk: {
+        var file = try os.File.openRead(allocator, test_file);
+        defer file.close();
+        break :blk try readNitro(&file, allocator, fnt, fat.toSlice());
+    };
+
+    assert(try fsEqual(allocator, Nitro, fs, fs2));
 }
