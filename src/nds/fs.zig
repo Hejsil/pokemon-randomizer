@@ -125,7 +125,7 @@ fn Folder(comptime TFile: type) type {
                         const entry = tmp.indexs.get(name) orelse return null;
                         const index = entry.value;
                         res = tmp.nodes.toSlice()[index].kind;
-                    }
+                    },
                 }
             }
 
@@ -138,9 +138,7 @@ fn Folder(comptime TFile: type) type {
 
         pub fn createFile(folder: *Self, name: []const u8, file: File) !*File {
             const res = try folder.createNode(name);
-            res.kind = Node.Kind{
-                .File = try folder.allocator().create(file),
-            };
+            res.kind = Node.Kind{ .File = try folder.allocator().create(file) };
 
             return res.kind.File;
         }
@@ -149,9 +147,7 @@ fn Folder(comptime TFile: type) type {
             const res = try folder.createNode(name);
             const fold = try Self.create(folder.allocator());
             fold.parent = folder;
-            res.kind = Node.Kind{
-                .Folder = fold,
-            };
+            res.kind = Node.Kind{ .Folder = fold };
 
             return res.kind.Folder;
         }
@@ -415,9 +411,7 @@ pub fn readNitroFile(file: *os.File, allocator: *mem.Allocator, fat_entry: FatEn
 
             return Nitro.File{ .Narc = narc };
         } else {
-            return Nitro.File{
-                .Narc = try readNarc(file, allocator, fnt, fat, narc_img_base),
-            };
+            return Nitro.File{ .Narc = try readNarc(file, allocator, fnt, fat, narc_img_base) };
         }
     }
 
@@ -497,7 +491,7 @@ pub fn getFntAndFiles(comptime F: type, root: *F, allocator: *mem.Allocator) !Fn
                     try sub_fnt.appendByte(@intCast(u8, node.name.len));
                     try sub_fnt.append(node.name);
                     try files.append(f);
-                }
+                },
             }
         }
 
@@ -602,7 +596,7 @@ fn fsEqual(allocator: *mem.Allocator, comptime Fs: type, fs1: *Fs, fs2: *Fs) !bo
 
     var folders_to_compare = std.ArrayList(FolderPair).init(allocator);
     defer folders_to_compare.deinit();
-    try folders_to_compare.append(FolderPair {
+    try folders_to_compare.append(FolderPair{
         .f1 = fs1,
         .f2 = fs2,
     });
@@ -627,7 +621,7 @@ fn fsEqual(allocator: *mem.Allocator, comptime Fs: type, fs1: *Fs, fs2: *Fs) !bo
                                         return false;
                                     if (!try fsEqual(allocator, Narc, f1.Narc, f2.Narc))
                                         return false;
-                                }
+                                },
                             }
                         },
                         Narc => {
@@ -639,7 +633,7 @@ fn fsEqual(allocator: *mem.Allocator, comptime Fs: type, fs1: *Fs, fs2: *Fs) !bo
                 },
                 Fs.Node.Kind.Folder => |f1| {
                     const f2 = pair.f2.getFolder(n1.name) orelse return false;
-                    try folders_to_compare.append(FolderPair {
+                    try folders_to_compare.append(FolderPair{
                         .f1 = f1,
                         .f2 = f2,
                     });
@@ -661,13 +655,13 @@ test "nds.fs: Nitro.File read/write" {
         .Binary = Nitro.File.Binary{
             .allocator = allocator,
             .data = try mem.dupe(allocator, u8, "Hello World!"),
-        }
+        },
     });
     _ = try root.createFile("hello.dupe", Nitro.File{
         .Binary = Nitro.File.Binary{
             .allocator = allocator,
             .data = try mem.dupe(allocator, u8, "Hello Dupe!"),
-        }
+        },
     });
 
     const folder = try root.createFolder("hello.folder");
@@ -675,11 +669,9 @@ test "nds.fs: Nitro.File read/write" {
         .Binary = Nitro.File.Binary{
             .allocator = allocator,
             .data = try mem.dupe(allocator, u8, "Cya!"),
-        }
+        },
     });
-    const narc_file = try folder.createFile("good.narc", Nitro.File{
-        .Narc = try Narc.create(allocator),
-    });
+    const narc_file = try folder.createFile("good.narc", Nitro.File{ .Narc = try Narc.create(allocator) });
     const narc = narc_file.Narc;
 
     _ = try narc.createFile("good", Narc.File{

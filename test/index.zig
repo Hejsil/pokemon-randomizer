@@ -130,7 +130,4 @@ test "Fake rom: Api" {
     }
 }
 
-
-test "Fake rom: Randomizer" {
-
-}
+test "Fake rom: Randomizer" {}

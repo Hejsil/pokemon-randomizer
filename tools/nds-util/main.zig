@@ -104,7 +104,7 @@ fn writeFs(p: []const u8, folder: *nds.fs.Nitro, allocator: *mem.Allocator) !voi
                         .path = folder_path,
                         .folder = f,
                     });
-                }
+                },
             }
         }
     }

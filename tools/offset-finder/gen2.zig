@@ -43,8 +43,8 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
             const last_group_pointer = indexOfTrainer(data, first_group_pointer, constants.last_trainers) orelse return error.TrainerGroupsNotFound;
 
             // Then, we can find the group pointer table
-            const first_group_pointers = []lu16{ lu16.init(@intCast(u16, first_group_pointer)) };
-            const last_group_pointers = []lu16{ lu16.init(@intCast(u16, last_group_pointer)) };
+            const first_group_pointers = []lu16{lu16.init(@intCast(u16, first_group_pointer))};
+            const last_group_pointers = []lu16{lu16.init(@intCast(u16, last_group_pointer))};
             trainer_group_pointers = search.findStructs(
                 lu16,
                 [][]const u8{},
