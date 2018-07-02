@@ -104,7 +104,7 @@ test "Fake rom: Api" {
             debug.assert(moves.len() > 0);
 
             var it = moves.iterator();
-            while (it.next()) |pair| {
+            while (try it.next()) |pair| {
                 const move = pair.value;
                 debug.assert(move.power().* == fakes.power);
                 debug.assert(move.pp().* == fakes.pp);

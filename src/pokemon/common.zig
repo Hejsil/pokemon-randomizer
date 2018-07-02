@@ -1,4 +1,5 @@
 const int = @import("../int.zig");
+const nds = @import("../nds/index.zig");
 
 const lu16 = int.lu16;
 
@@ -118,3 +119,13 @@ pub const legendaries = []u16{
     716, 717, 718, // Xerneas, Yveltal, Zygarde
     719, 720, 721, // Diancie, Hoopa, Volcanion
 };
+
+pub fn getNarc(file_system: *nds.fs.Nitro, path: []const u8) !*const nds.fs.Narc {
+    const file = file_system.getFile(path) orelse return error.FileNotFound;
+
+    const Tag = @TagType(nds.fs.Nitro.File);
+    switch (file.*) {
+        Tag.Binary => return error.FileNotNarc,
+        Tag.Narc => |res| return res,
+    }
+}

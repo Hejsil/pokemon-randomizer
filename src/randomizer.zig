@@ -303,7 +303,7 @@ pub const Randomizer = struct {
             Options.Trainer.Moves.Random => {
                 var i: usize = 0;
                 while (i < member_moves.len()) : (i += 1) {
-                    member_moves.atSet(i, randomizer.randomMoveId());
+                    member_moves.atSet(i, try randomizer.randomMoveId());
                 }
             },
             Options.Trainer.Moves.RandomWithinLearnset => {
@@ -329,7 +329,7 @@ pub const Randomizer = struct {
                 }
 
                 for (learned_moves) |learned| {
-                    const learned_move = moves.at(learned);
+                    const learned_move = try moves.at(learned);
 
                     const p_t1 = pokemon.types()[0];
                     const p_t2 = pokemon.types()[1];
@@ -342,7 +342,7 @@ pub const Randomizer = struct {
                     var i: usize = 0;
                     while (i < member_moves.len()) : (i += 1) {
                         const move_id = member_moves.at(i);
-                        const move = moves.at(move_id);
+                        const move = try moves.at(move_id);
                         const m_t = move.types()[0];
 
                         // TODO: Rewrite to work with Pokémons that can have N types
@@ -377,12 +377,12 @@ pub const Randomizer = struct {
         unreachable;
     }
 
-    fn randomMoveId(randomizer: *Randomizer) u16 {
+    fn randomMoveId(randomizer: *Randomizer) !u16 {
         const game = randomizer.game;
         const moves = game.moves();
         while (true) {
             const move_id = randomizer.random.range(u16, 0, @intCast(u16, moves.len()));
-            const move = moves.at(move_id);
+            const move = try moves.at(move_id);
 
             // A move with 0 pp is useless, so we will assume it's a dummy move.
             if (move.pp().* == 0) continue;
