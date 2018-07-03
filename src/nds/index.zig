@@ -23,11 +23,12 @@ pub const Banner = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
 test "nds" {
+    _ = @import("test.zig");
     _ = @import("banner.zig");
     _ = @import("common.zig");
     _ = @import("formats.zig");
     _ = @import("fs.zig");
-    //_ = @import("header.zig");
+    _ = @import("header.zig");
     _ = @import("overlay.zig");
 }
 

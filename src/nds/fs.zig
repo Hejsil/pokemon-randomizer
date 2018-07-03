@@ -48,8 +48,9 @@ fn Folder(comptime TFile: type) type {
         }
 
         pub fn destroy(folder: *Self) void {
+            const a = folder.allocator();
             folder.deinit();
-            folder.allocator().destroy(folder);
+            a.destroy(folder);
         }
 
         pub fn init(a: *mem.Allocator) Self {
@@ -154,7 +155,7 @@ fn Folder(comptime TFile: type) type {
 
         fn createNode(folder: *Self, name: []const u8) !*Node {
             if (folder.exists(name))
-                return error.FileExists;
+                return error.NameExists;
 
             const a = folder.allocator();
             const index = folder.nodes.len;
@@ -163,7 +164,7 @@ fn Folder(comptime TFile: type) type {
 
             const res = try folder.nodes.addOne();
             errdefer _ = folder.nodes.pop();
-            _ = try folder.indexs.put(name, index);
+            _ = try folder.indexs.put(owned_name, index);
 
             res.name = owned_name;
             return res;
@@ -584,131 +585,4 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
             try buffered_out_stream.flush();
         },
     }
-}
-
-fn fsEqual(allocator: *mem.Allocator, comptime Fs: type, fs1: *Fs, fs2: *Fs) !bool {
-    comptime assert(Fs == Nitro or Fs == Narc);
-
-    const FolderPair = struct {
-        f1: *Fs,
-        f2: *Fs,
-    };
-
-    var folders_to_compare = std.ArrayList(FolderPair).init(allocator);
-    defer folders_to_compare.deinit();
-    try folders_to_compare.append(FolderPair{
-        .f1 = fs1,
-        .f2 = fs2,
-    });
-
-    while (folders_to_compare.popOrNull()) |pair| {
-        for (pair.f1.nodes.toSliceConst()) |n1| {
-            switch (n1.kind) {
-                Fs.Node.Kind.File => |f1| {
-                    const f2 = pair.f2.getFile(n1.name) orelse return false;
-                    switch (Fs) {
-                        Nitro => {
-                            const Tag = @TagType(Nitro.File);
-                            switch (f1.*) {
-                                Tag.Binary => {
-                                    if (f2.* != Tag.Binary)
-                                        return false;
-                                    if (!mem.eql(u8, f1.Binary.data, f2.Binary.data))
-                                        return false;
-                                },
-                                Tag.Narc => {
-                                    if (f2.* != Tag.Narc)
-                                        return false;
-                                    if (!try fsEqual(allocator, Narc, f1.Narc, f2.Narc))
-                                        return false;
-                                },
-                            }
-                        },
-                        Narc => {
-                            if (!mem.eql(u8, f1.data, f2.data))
-                                return false;
-                        },
-                        else => comptime unreachable,
-                    }
-                },
-                Fs.Node.Kind.Folder => |f1| {
-                    const f2 = pair.f2.getFolder(n1.name) orelse return false;
-                    try folders_to_compare.append(FolderPair{
-                        .f1 = f1,
-                        .f2 = f2,
-                    });
-                },
-            }
-        }
-    }
-
-    return true;
-}
-
-test "nds.fs: Nitro.File read/write" {
-    var buf: [100 * 1024]u8 = undefined;
-    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
-    const allocator = &fix_buf_alloc.allocator;
-
-    const root = try Nitro.create(allocator);
-    _ = try root.createFile("hello.world", Nitro.File{
-        .Binary = Nitro.File.Binary{
-            .allocator = allocator,
-            .data = try mem.dupe(allocator, u8, "Hello World!"),
-        },
-    });
-    _ = try root.createFile("hello.dupe", Nitro.File{
-        .Binary = Nitro.File.Binary{
-            .allocator = allocator,
-            .data = try mem.dupe(allocator, u8, "Hello Dupe!"),
-        },
-    });
-
-    const folder = try root.createFolder("hello.folder");
-    _ = try folder.createFile("good.bye", Nitro.File{
-        .Binary = Nitro.File.Binary{
-            .allocator = allocator,
-            .data = try mem.dupe(allocator, u8, "Cya!"),
-        },
-    });
-    const narc_file = try folder.createFile("good.narc", Nitro.File{ .Narc = try Narc.create(allocator) });
-    const narc = narc_file.Narc;
-
-    _ = try narc.createFile("good", Narc.File{
-        .allocator = allocator,
-        .data = try mem.dupe(allocator, u8, "Good is good!"),
-    });
-    _ = try narc.createFolder("empty");
-
-    const fntAndFiles = try getFntAndFiles(Nitro, root, allocator);
-    const files = fntAndFiles.files;
-    const main_fnt = fntAndFiles.main_fnt;
-    const sub_fnt = fntAndFiles.sub_fnt;
-
-    const fnt_buff_size = @sliceToBytes(main_fnt).len + sub_fnt.len;
-    const fnt_buff = try allocator.alloc(u8, fnt_buff_size);
-    const fnt = try fmt.bufPrint(fnt_buff, "{}{}", @sliceToBytes(main_fnt), sub_fnt);
-    var fat = std.ArrayList(FatEntry).init(allocator);
-
-    const test_file = "__nds.fs.test.read.write__";
-    defer os.deleteFile(allocator, test_file) catch unreachable;
-
-    {
-        var file = try os.File.openWrite(allocator, test_file);
-        defer file.close();
-
-        for (files) |f| {
-            const pos = @intCast(u32, try file.getPos());
-            try writeNitroFile(&file, allocator, f.*);
-            fat.append(FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
-        }
-    }
-
-    const fs2 = blk: {
-        var file = try os.File.openRead(allocator, test_file);
-        defer file.close();
-        break :blk try readNitro(&file, allocator, fnt, fat.toSlice());
-    };
-
-    assert(try fsEqual(allocator, Nitro, root, fs2));
 }
