@@ -8,8 +8,8 @@ pub const Info = struct {
     base_stats: []const u8,
     level_up_moves: []const u8,
     moves: []const u8,
-    trainer_data: []const u8,
-    trainer_parties: []const u8,
+    trainers: []const u8,
+    parties: []const u8,
 };
 
 pub const infos = []Info{
@@ -28,8 +28,8 @@ const black2_info = Info{
     .base_stats = "a/0/1/6",
     .level_up_moves = "a/0/1/8",
     .moves = "a/0/2/1",
-    .trainer_data = "a/0/9/1",
-    .trainer_parties = "a/0/9/2",
+    .trainers = "a/0/9/1",
+    .parties = "a/0/9/2",
 };
 
 const white2_info = blk: {
@@ -46,8 +46,8 @@ const black_info = blk: {
     res.game_title = undefined;
     res.gamecode = "IRBO";
     res.version = pokemon.Version.Black;
-    res.trainer_data = "a/0/9/2";
-    res.trainer_parties = "a/0/9/3";
+    res.trainers = "a/0/9/2";
+    res.parties = "a/0/9/3";
 
     break :blk res;
 };

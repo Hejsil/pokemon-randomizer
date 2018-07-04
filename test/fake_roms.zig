@@ -125,7 +125,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
                     try file.write(lu16.init(move).bytes);
                 }
                 if (party_type & libpoke.gen3.Trainer.has_item == 0)
-                    try file.write([]u8{0x00, 0x00});
+                    try file.write([]u8{ 0x00, 0x00 });
             }
 
             free_space_offset = try file.getPos();
@@ -173,7 +173,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
                 },
                 .types = [2]libpoke.gen3.Type{
                     @intToEnum(libpoke.gen3.Type, ptype),
-                    @intToEnum(libpoke.gen3.Type, ptype)
+                    @intToEnum(libpoke.gen3.Type, ptype),
                 },
                 .catch_rate = undefined,
                 .base_exp_yield = undefined,
@@ -211,7 +211,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
                 .move_id = move,
                 .level = level,
             }));
-            try file.write([]u8{0xFF, 0xFF});
+            try file.write([]u8{ 0xFF, 0xFF });
 
             free_space_offset = try file.getPos();
         }
@@ -274,14 +274,11 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
     const rom = nds.Rom{
         .allocator = allocator,
-        .header = nds.Header{
-        },
-        .banner = nds.Banner{
-
-        },
+        .header = nds.Header{},
+        .banner = nds.Banner{},
         .arm9 = arm9,
         .arm7 = []u8{},
-        .nitro_footer = []lu32{ lu32.init(0) } ** 3,
+        .nitro_footer = []lu32{lu32.init(0)} ** 3,
         .arm9_overlay_table = []Overlay{},
         .arm9_overlay_files = [][]u8{},
         .arm7_overlay_table = []Overlay{},

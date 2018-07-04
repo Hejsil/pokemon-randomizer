@@ -23,11 +23,12 @@ pub const Banner = @import("banner.zig").Banner;
 pub const Overlay = overlay.Overlay;
 
 test "nds" {
+    _ = @import("test.zig");
     _ = @import("banner.zig");
     _ = @import("common.zig");
     _ = @import("formats.zig");
     _ = @import("fs.zig");
-    //_ = @import("header.zig");
+    _ = @import("header.zig");
     _ = @import("overlay.zig");
 }
 
@@ -59,7 +60,7 @@ pub const Rom = struct {
     arm7_overlay_table: []Overlay,
     arm7_overlay_files: [][]u8,
 
-    file_system: *fs.Nitro,
+    root: *fs.Nitro,
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Rom {
         var file_stream = io.FileInStream.init(file);
@@ -95,8 +96,8 @@ pub const Rom = struct {
         try file.seekTo(header.fat_offset.value());
         const fat = try utils.stream.allocRead(stream, allocator, fs.FatEntry, header.fat_size.value() / @sizeOf(fs.FatEntry));
 
-        const file_system = try fs.readNitro(file, allocator, fnt, fat);
-        errdefer file_system.deinit();
+        const root = try fs.readNitro(file, allocator, fnt, fat);
+        errdefer root.destroy();
 
         try file.seekTo(header.arm9_overlay_offset.value());
         const arm9_overlay_table = try utils.stream.allocRead(
@@ -131,7 +132,7 @@ pub const Rom = struct {
             .arm9_overlay_files = arm9_overlay_files,
             .arm7_overlay_table = arm7_overlay_table,
             .arm7_overlay_files = arm7_overlay_files,
-            .file_system = file_system,
+            .root = root,
         };
     }
 
@@ -165,7 +166,7 @@ pub const Rom = struct {
         header.banner_offset = lu32.init(@intCast(u32, banner_pos));
         header.banner_size = lu32.init(@sizeOf(Banner));
 
-        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.file_system.*, allocator);
+        const fntAndFiles = try fs.getFntAndFiles(fs.Nitro, rom.root, allocator);
         const files = fntAndFiles.files;
         const main_fnt = fntAndFiles.main_fnt;
         const sub_fnt = fntAndFiles.sub_fnt;
@@ -256,6 +257,7 @@ pub const Rom = struct {
         rom.allocator.free(rom.arm7_overlay_table);
         overlay.freeFiles(rom.arm9_overlay_files, rom.allocator);
         overlay.freeFiles(rom.arm7_overlay_files, rom.allocator);
-        rom.file_system.deinit();
+        rom.root.destroy();
+        rom.* = undefined;
     }
 };

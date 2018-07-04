@@ -65,44 +65,47 @@ pub fn main() !void {
     try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files, allocator);
     try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files, allocator);
 
-    try writeFs(root_folder, rom.file_system.*, allocator);
+    try writeFs(root_folder, rom.root, allocator);
 }
 
-fn writeFs(folder: []const u8, fs: nds.fs.Nitro, allocator: *mem.Allocator) !void {
+fn writeFs(p: []const u8, folder: *nds.fs.Nitro, allocator: *mem.Allocator) !void {
     const State = struct {
         path: []const u8,
-        folder: *nds.fs.Nitro.Folder,
+        folder: *nds.fs.Nitro,
     };
 
     var stack = std.ArrayList(State).init(allocator);
     defer stack.deinit();
 
     try stack.append(State{
-        .path = try mem.dupe(allocator, u8, folder),
-        .folder = fs.root,
+        .path = try mem.dupe(allocator, u8, p),
+        .folder = folder,
     });
 
     while (stack.popOrNull()) |state| {
         defer allocator.free(state.path);
 
-        for (state.folder.files.toSliceConst()) |f| {
-            const file_path = try path.join(allocator, state.path, f.name);
-            defer allocator.free(file_path);
+        for (state.folder.nodes.toSliceConst()) |node| {
+            switch (node.kind) {
+                nds.fs.Nitro.Node.Kind.File => |f| {
+                    const file_path = try path.join(allocator, state.path, node.name);
+                    defer allocator.free(file_path);
 
-            var file = try os.File.openWrite(allocator, file_path);
-            defer file.close();
+                    var file = try os.File.openWrite(allocator, file_path);
+                    defer file.close();
 
-            try nds.fs.writeNitroFile(&file, allocator, f.*);
-        }
+                    try nds.fs.writeNitroFile(&file, allocator, f.*);
+                },
+                nds.fs.Nitro.Node.Kind.Folder => |f| {
+                    const folder_path = try path.join(allocator, state.path, node.name);
 
-        for (state.folder.folders.toSliceConst()) |f| {
-            const folder_path = try path.join(allocator, state.path, f.name);
-
-            try os.makePath(allocator, folder_path);
-            try stack.append(State{
-                .path = folder_path,
-                .folder = f,
-            });
+                    try os.makePath(allocator, folder_path);
+                    try stack.append(State{
+                        .path = folder_path,
+                        .folder = f,
+                    });
+                },
+            }
         }
     }
 }

@@ -518,8 +518,10 @@ pub const Pokemons = extern struct {
     }
 
     const AtErrs = error{
-        InvalidOffset,
         FileToSmall,
+        NotFile,
+        InvalidOffset,
+        NodeIsFolder,
     };
 
     const atC = struct {
@@ -557,7 +559,7 @@ pub const Pokemons = extern struct {
                 },
                 gen4, gen5 => {
                     start = 0;
-                    data = game.level_up_moves[index].data;
+                    data = (try getFile(game.level_up_moves, index)).data;
                 },
                 else => @compileError("Gen not supported!"),
             }
@@ -590,18 +592,19 @@ pub const Pokemons = extern struct {
 
     fn lenHelper(comptime gen: Namespace, pokemons: Pokemons) usize {
         const game = @fieldParentPtr(gen.Game, "base", pokemons.game);
-
-        var min = game.base_stats.len;
-        if (gen == gen3) {
-            min = math.min(min, game.tm_hm_learnset.len);
-            min = math.min(min, game.evolution_table.len);
-            min = math.min(min, game.level_up_learnset_pointers.len);
+        switch (gen) {
+            gen3 => {
+                var min = game.base_stats.len;
+                min = math.min(min, game.tm_hm_learnset.len);
+                min = math.min(min, game.evolution_table.len);
+                return math.min(min, game.level_up_learnset_pointers.len);
+            },
+            gen4, gen5 => {
+                var min = game.base_stats.nodes.len;
+                return math.min(min, game.level_up_moves.nodes.len);
+            },
+            else => @compileError("Gen not supported!"),
         }
-        if (gen == gen4 or gen == gen5) {
-            min = math.min(min, game.level_up_moves.len);
-        }
-
-        return min;
     }
 
     pub fn iterator(pokemons: Pokemons) Iter {
@@ -891,8 +894,9 @@ pub const Trainers = extern struct {
     }
 
     const AtErr = error{
-        InvalidOffset,
         FileToSmall,
+        NotFile,
+        InvalidOffset,
         InvalidPartySize,
     };
 
@@ -921,12 +925,12 @@ pub const Trainers = extern struct {
                 break :blk party.ptr;
             },
             gen4, gen5 => blk: {
-                const party_data = game.parties[index].data;
+                const party = try getFile(game.parties, index);
                 const min_size = trainer.party_size * res.party().memberSize();
-                if (party_data.len < min_size)
+                if (party.data.len < min_size)
                     return error.InvalidPartySize;
 
-                break :blk party_data.ptr;
+                break :blk party.data.ptr;
             },
             else => @compileError("Gen not supported!"),
         };
@@ -940,11 +944,13 @@ pub const Trainers = extern struct {
 
     fn lenHelper(comptime gen: Namespace, trainers: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", trainers.game);
-        var min = game.trainers.len;
-        if (gen == gen4 or gen == gen5)
-            min = math.min(min, game.parties.len);
-
-        return min;
+        switch (gen) {
+            gen3 => return game.trainers.len,
+            gen4, gen5 => {
+                return math.min(game.trainers.nodes.len, game.parties.nodes.len);
+            },
+            else => @compileError("Gen not supported!"),
+        }
     }
 
     pub fn iterator(trainers: Trainers) Iter {
@@ -1076,8 +1082,8 @@ pub const Move = extern struct {
 pub const Moves = extern struct {
     game: *const BaseGame,
 
-    pub fn at(moves: Moves, index: usize) Move {
-        return moves.game.version.dispatch(Move, AtC{
+    pub fn at(moves: Moves, index: usize) AtErr!Move {
+        return moves.game.version.dispatch(AtErr!Move, AtC{
             .moves = moves,
             .index = index,
         }, atHelper);
@@ -1088,13 +1094,18 @@ pub const Moves = extern struct {
         index: usize,
     };
 
-    fn atHelper(comptime gen: Namespace, c: AtC) Move {
+    const AtErr = error{
+        NotFile,
+        FileToSmall,
+    };
+
+    fn atHelper(comptime gen: Namespace, c: AtC) AtErr!Move {
         const index = c.index;
         const moves = c.moves;
         const game = @fieldParentPtr(gen.Game, "base", moves.game);
         const move = switch (gen) {
             gen3 => &game.moves[index],
-            gen4, gen5 => game.moves[index],
+            gen4, gen5 => try getFileAsType(gen.Move, game.moves, index),
             else => @compileError("Gen not supported!"),
         };
 
@@ -1110,14 +1121,18 @@ pub const Moves = extern struct {
 
     fn lenHelper(comptime gen: Namespace, moves: var) usize {
         const game = @fieldParentPtr(gen.Game, "base", moves.game);
-        return game.moves.len;
+        return switch (gen) {
+            gen3 => game.moves.len,
+            gen4, gen5 => game.moves.nodes.len,
+            else => @compileError("Gen not supported!"),
+        };
     }
 
     pub fn iterator(moves: Moves) Iter {
         return Iter.init(moves);
     }
 
-    const Iter = Iterator(Moves, Move);
+    const Iter = ErrIterator(Moves, Move);
 };
 
 pub const BaseGame = extern struct {
@@ -1301,7 +1316,15 @@ fn ErrIterator(comptime Items: type, comptime Result: type) type {
     };
 }
 
-fn getFileAsType(comptime T: type, files: []const *nds.fs.Narc.File, index: usize) !*T {
-    const data = generic.bytesToSliceTrim(T, files[index].data);
+fn getFile(narc: *const nds.fs.Narc, index: usize) !*nds.fs.Narc.File {
+    switch (narc.nodes.toSliceConst()[index].kind) {
+        nds.fs.Narc.Node.Kind.File => |file| return file,
+        nds.fs.Narc.Node.Kind.Folder => return error.NotFile,
+    }
+}
+
+fn getFileAsType(comptime T: type, narc: *const nds.fs.Narc, index: usize) !*T {
+    const file = try getFile(narc, index);
+    const data = generic.bytesToSliceTrim(T, file.data);
     return generic.at(data, 0) catch error.FileToSmall;
 }

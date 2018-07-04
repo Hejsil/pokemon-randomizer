@@ -129,17 +129,16 @@ pub const LevelUpMove = packed struct {
 
 pub const Game = struct {
     base: pokemon.BaseGame,
-    base_stats: []const *nds.fs.Narc.File,
-    moves: []const *nds.fs.Narc.File,
-    level_up_moves: []const *nds.fs.Narc.File,
-    trainers: []const *nds.fs.Narc.File,
-    parties: []const *nds.fs.Narc.File,
+    base_stats: *const nds.fs.Narc,
+    moves: *const nds.fs.Narc,
+    level_up_moves: *const nds.fs.Narc,
+    trainers: *const nds.fs.Narc,
+    parties: *const nds.fs.Narc,
     tms: []align(1) lu16,
     hms: []align(1) lu16,
 
     pub fn fromRom(rom: nds.Rom) !Game {
         const info = try getInfo(rom.header.game_title, rom.header.gamecode);
-        const fs = rom.file_system.*;
         const hm_tm_prefix_index = mem.indexOf(u8, rom.arm9, info.hm_tm_prefix) orelse return error.CouldNotFindTmsOrHms;
         const hm_tm_index = hm_tm_prefix_index + info.hm_tm_prefix.len;
         const hm_tms_len = (constants.tm_count + constants.hm_count) * @sizeOf(u16);
@@ -147,23 +146,14 @@ pub const Game = struct {
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },
-            .base_stats = try getNarcFiles(fs, info.base_stats),
-            .level_up_moves = try getNarcFiles(fs, info.level_up_moves),
-            .moves = try getNarcFiles(fs, info.moves),
-            .trainers = try getNarcFiles(fs, info.trainers),
-            .parties = try getNarcFiles(fs, info.parties),
+            .base_stats = try common.getNarc(rom.root, info.base_stats),
+            .level_up_moves = try common.getNarc(rom.root, info.level_up_moves),
+            .moves = try common.getNarc(rom.root, info.moves),
+            .trainers = try common.getNarc(rom.root, info.trainers),
+            .parties = try common.getNarc(rom.root, info.parties),
             .tms = hm_tms[0..92],
             .hms = hm_tms[92..],
         };
-    }
-
-    fn getNarcFiles(file_system: nds.fs.Nitro, path: []const u8) ![]const *nds.fs.Narc.File {
-        const file = file_system.getFile(path) orelse return error.CouldntFindFile;
-
-        switch (file.@"type") {
-            nds.fs.Nitro.File.Type.Binary => return error.InvalidFileType,
-            nds.fs.Nitro.File.Type.Narc => |f| return f.root.files.toSliceConst(),
-        }
     }
 
     fn getInfo(game_title: []const u8, gamecode: []const u8) !constants.Info {
