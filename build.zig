@@ -43,9 +43,9 @@ pub fn build(b: *Builder) void {
     test_step.dependOn(&test_tests.step);
 
     const all_step = b.step("all", "Build everything and runs all tests");
+    all_step.dependOn(test_step);
     all_step.dependOn(randomizer_step);
     all_step.dependOn(tools_step);
-    all_step.dependOn(test_step);
 
     b.default_step.dependOn(randomizer_step);
 }

@@ -10,10 +10,12 @@ test "Fake rom: Api" {
     const buf = try direct_alloc.allocator.alloc(u8, 1024 * 1024 * 1024);
     defer direct_alloc.allocator.free(buf);
 
+    const generate_buf = try direct_alloc.allocator.alloc(u8, 1024 * 1024);
+    defer direct_alloc.allocator.free(generate_buf);
+
     debug.warn("\n");
 
-    var generate_buf: [100 * 1024]u8 = undefined;
-    var generate_fix_buf_alloc = heap.FixedBufferAllocator.init(generate_buf[0..]);
+    var generate_fix_buf_alloc = heap.FixedBufferAllocator.init(generate_buf);
     const generate_allocator = &generate_fix_buf_alloc.allocator;
 
     const roms_files = try fakes.generateFakeRoms(generate_allocator);

@@ -216,6 +216,15 @@ pub fn Folder(comptime TFile: type) type {
             return res;
         }
 
+        /// Create all none existing folders in `path` and creates a file at the path location.
+        pub fn createPathAndFile(folder: *Self, path: []const u8, file: File) !*File {
+            var res_folder = folder;
+            if (std.os.path.dirnamePosix(path)) |dirname|
+                res_folder = try folder.createPath(dirname);
+
+            return try res_folder.createFile(std.os.path.basenamePosix(path), file);
+        }
+
         fn createNode(folder: *Self, name: []const u8) !*Node {
             try validateName(name);
             if (folder.indexs.contains(name))
