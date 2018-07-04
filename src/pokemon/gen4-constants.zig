@@ -24,7 +24,7 @@ pub const infos = []Info{
 
 // TODO: Fill out game_titles
 const hg_info = Info{
-    .game_title = undefined,
+    .game_title = "POKEMON HG\x00\x00",
     .gamecode = "IPKE",
     .version = pokemon.Version.HeartGold,
 
@@ -39,7 +39,7 @@ const hg_info = Info{
 
 const ss_info = blk: {
     var res = hg_info;
-    res.game_title = undefined;
+    res.game_title = "POKEMON SS\x00\x00";
     res.gamecode = "IPGE";
     res.version = pokemon.Version.SoulSilver;
 
@@ -47,7 +47,7 @@ const ss_info = blk: {
 };
 
 const diamond_info = Info{
-    .game_title = undefined,
+    .game_title = "POKEMON D\x00\x00\x00",
     .gamecode = "ADAE",
     .version = pokemon.Version.Diamond,
     .hm_tm_prefix = "\xD1\x00\xD2\x00\xD3\x00\xD4\x00",
@@ -62,7 +62,7 @@ const diamond_info = Info{
 
 const pearl_info = blk: {
     var res = diamond_info;
-    res.game_title = undefined;
+    res.game_title = "POKEMON P\x00\x00\x00";
     res.gamecode = "APAE";
     res.version = pokemon.Version.Pearl;
     res.base_stats = "/poketool/personal_pearl/personal.narc";
@@ -71,7 +71,7 @@ const pearl_info = blk: {
 
 const platinum_info = blk: {
     var res = diamond_info;
-    res.game_title = undefined;
+    res.game_title = "POKEMON PL\x00\x00";
     res.gamecode = "CPUE";
     res.version = pokemon.Version.Platinum;
     res.base_stats = "/poketool/personal/pl_personal.narc";

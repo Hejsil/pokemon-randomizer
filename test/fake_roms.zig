@@ -9,6 +9,7 @@ const mem = std.mem;
 const fmt = std.fmt;
 const os = std.os;
 const math = std.math;
+const heap = std.heap;
 const debug = std.debug;
 const io = std.io;
 const path = os.path;
@@ -18,7 +19,7 @@ const lu32 = int.lu32;
 const lu64 = int.lu64;
 const lu128 = int.lu128;
 
-const tmp_folder = "__fake_roms__";
+const tmp_folder = "zig-cache/__fake_roms__";
 
 pub const level = 1;
 pub const party_size = 2;
@@ -38,9 +39,15 @@ pub const has_moves = 0b01;
 pub const has_item = 0b10;
 
 pub fn generateFakeRoms(allocator: *mem.Allocator) ![][]u8 {
-    deleteFakeRoms(allocator);
-    try os.makeDir(allocator, tmp_folder);
-    errdefer deleteFakeRoms(allocator);
+    const tmp = try allocator.alloc(u8, 200 * 1024);
+    var tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
+    const tmp_allocator = &tmp_fix_buf_alloc.allocator;
+
+    deleteFakeRoms(tmp_allocator);
+    try os.makeDir(tmp_allocator, tmp_folder);
+    errdefer deleteFakeRoms(tmp_allocator);
+
+    tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
 
     var rom_names = std.ArrayList([]u8).init(allocator);
     errdefer {
@@ -50,11 +57,15 @@ pub fn generateFakeRoms(allocator: *mem.Allocator) ![][]u8 {
     }
 
     for (libpoke.gen3.constants.infos) |info| {
-        try rom_names.append(try genGen3FakeRom(allocator, info));
+        const name = try genGen3FakeRom(tmp_allocator, info);
+        try rom_names.append(try mem.dupe(allocator, u8, name));
+        tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
     }
 
     for (libpoke.gen4.constants.infos) |info| {
-        try rom_names.append(try genGen4FakeRom(allocator, info));
+        const name = try genGen4FakeRom(tmp_allocator, info);
+        try rom_names.append(try mem.dupe(allocator, u8, name));
+        tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
     }
 
     return rom_names.toOwnedSlice();
@@ -409,6 +420,30 @@ const ndsBanner = nds.Banner{
     .title_spanish = []u8{0x00} ** 0x100,
 };
 
+fn repeat(allocator: *mem.Allocator, comptime T: type, m: []const T, n: usize) ![]T {
+    const to_alloc = math.mul(usize, m.len, n) catch return mem.Allocator.Error.OutOfMemory;
+    const res = try allocator.alloc(T, to_alloc);
+
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        const off = i * m.len;
+        mem.copy(T, res[off..], m);
+    }
+
+    return res;
+}
+
+test "repeat" {
+    var buf: [10 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    debug.assert(mem.eql(u8, try repeat(allocator, u8, "ab", 0), ""));
+    debug.assert(mem.eql(u8, try repeat(allocator, u8, "ab", 1), "ab"));
+    debug.assert(mem.eql(u8, try repeat(allocator, u8, "ab", 2), "abab"));
+    debug.assert(mem.eql(u8, try repeat(allocator, u8, "ab", 4), "abababab"));
+}
+
 fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) ![]u8 {
     const machine_len = libpoke.gen4.constants.tm_count + libpoke.gen4.constants.hm_count;
     const machines = []lu16{comptime lu16.init(move)} ** machine_len;
@@ -465,6 +500,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 .data = utils.asBytes(libpoke.gen4.Trainer, trainer)[0..],
             });
 
+            var tmp_buf: [100]u8 = undefined;
             const party_member = libpoke.gen4.PartyMember{
                 .iv = undefined,
                 .gender = undefined,
@@ -475,15 +511,23 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             };
             const held_item_bytes = lu16.init(item).bytes;
             const moves_bytes = utils.toBytes([4]lu16, []lu16{comptime lu16.init(move)} ** 4);
+            const padding = switch (info.version) {
+                libpoke.Version.HeartGold, libpoke.Version.SoulSilver, libpoke.Version.Platinum => usize(2),
+                else => usize(0),
+            };
+
+            const full_party_member_bytes = try fmt.bufPrint(
+                tmp_buf[0..],
+                "{}{}{}{}",
+                utils.toBytes(libpoke.gen4.PartyMember, party_member)[0..],
+                held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
+                moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
+                ([]u8{0x00} ** 2)[0..padding],
+            );
+
             _ = try party_narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = try fmt.allocPrint(
-                    allocator,
-                    "{}{}{}",
-                    utils.toBytes(libpoke.gen4.PartyMember, party_member)[0..],
-                    held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
-                    moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
-                ),
+                .data = try repeat(allocator, u8, full_party_member_bytes, party_size),
             });
         }
     }

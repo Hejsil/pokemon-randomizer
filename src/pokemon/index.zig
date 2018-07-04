@@ -927,8 +927,10 @@ pub const Trainers = extern struct {
             gen4, gen5 => blk: {
                 const party = try getFile(game.parties, index);
                 const min_size = trainer.party_size * res.party().memberSize();
-                if (party.data.len < min_size)
+                if (party.data.len < min_size) {
+                    @breakpoint();
                     return error.InvalidPartySize;
+                }
 
                 break :blk party.data.ptr;
             },

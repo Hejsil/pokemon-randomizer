@@ -6,21 +6,18 @@ const os = std.os;
 const debug = std.debug;
 
 test "Fake rom: Api" {
-    var direct_alloc = heap.DirectAllocator.init();
-    const buf = try direct_alloc.allocator.alloc(u8, 1024 * 1024 * 1024);
-    defer direct_alloc.allocator.free(buf);
-
-    const generate_buf = try direct_alloc.allocator.alloc(u8, 1024 * 1024);
-    defer direct_alloc.allocator.free(generate_buf);
-
-    debug.warn("\n");
-
-    var generate_fix_buf_alloc = heap.FixedBufferAllocator.init(generate_buf);
+    var generate_buf: [250 * 1024]u8 = undefined;
+    var generate_fix_buf_alloc = heap.FixedBufferAllocator.init(generate_buf[0..]);
     const generate_allocator = &generate_fix_buf_alloc.allocator;
 
     const roms_files = try fakes.generateFakeRoms(generate_allocator);
     defer fakes.deleteFakeRoms(generate_allocator);
 
+    var direct_alloc = heap.DirectAllocator.init();
+    const buf = try direct_alloc.allocator.alloc(u8, 100 * 1024 * 1024);
+    defer direct_alloc.allocator.free(buf);
+
+    debug.warn("\n");
     for (roms_files) |file_name, i| {
         var fix_buf_alloc = heap.FixedBufferAllocator.init(buf);
         const allocator = &fix_buf_alloc.allocator;
