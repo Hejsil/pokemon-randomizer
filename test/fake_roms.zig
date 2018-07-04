@@ -68,6 +68,12 @@ pub fn generateFakeRoms(allocator: *mem.Allocator) ![][]u8 {
         tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
     }
 
+    for (libpoke.gen5.constants.infos) |info| {
+        const name = try genGen5FakeRom(tmp_allocator, info);
+        try rom_names.append(try mem.dupe(allocator, u8, name));
+        tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
+    }
+
     return rom_names.toOwnedSlice();
 }
 
@@ -639,6 +645,227 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                     "{}{}",
                     utils.toBytes(libpoke.gen4.LevelUpMove, lvlup_learnset)[0..],
                     []u8{0xFF} ** @sizeOf(libpoke.gen4.LevelUpMove),
+                ),
+            });
+        }
+    }
+
+    const name = try fmt.allocPrint(allocator, "{}/__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
+    errdefer allocator.free(name);
+
+    var file = try os.File.openWrite(allocator, name);
+    errdefer os.deleteFile(allocator, name) catch {};
+    defer file.close();
+
+    try rom.writeToFile(&file, allocator);
+
+    return name;
+}
+
+fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) ![]u8 {
+    const machine_len = libpoke.gen5.constants.tm_count + libpoke.gen5.constants.hm_count;
+    const machines = []lu16{comptime lu16.init(move)} ** machine_len;
+    const arm9 = try fmt.allocPrint(allocator, "{}{}", libpoke.gen5.constants.hm_tm_prefix, @sliceToBytes(machines[0..]));
+    defer allocator.free(arm9);
+
+    const rom = nds.Rom{
+        .allocator = allocator,
+        .header = ndsHeader(info.game_title, info.gamecode),
+        .banner = ndsBanner,
+        .arm9 = arm9,
+        .arm7 = []u8{},
+        .nitro_footer = []lu32{comptime lu32.init(0)} ** 3,
+        .arm9_overlay_table = []nds.Overlay{},
+        .arm9_overlay_files = [][]u8{},
+        .arm7_overlay_table = []nds.Overlay{},
+        .arm7_overlay_files = [][]u8{},
+        .root = try nds.fs.Nitro.create(allocator),
+    };
+    const root = rom.root;
+
+    {
+        const trainer_narc = try nds.fs.Narc.create(allocator);
+        const party_narc = try nds.fs.Narc.create(allocator);
+        _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{
+            .Narc = trainer_narc,
+        });
+        _ = try root.createPathAndFile(info.parties, nds.fs.Nitro.File{
+            .Narc = party_narc,
+        });
+
+        var i: usize = 0;
+        while (i < 100) : (i += 1) {
+            var name_buf: [10]u8 = undefined;
+            const name = try fmt.bufPrint(name_buf[0..], "{}", i);
+
+            var party_type: u8 = 0;
+            if (i & has_moves != 0)
+                party_type |= libpoke.gen5.Trainer.has_moves;
+            if (i & has_item != 0)
+                party_type |= libpoke.gen5.Trainer.has_item;
+
+            const trainer = try allocator.create(libpoke.gen5.Trainer{
+                .party_type = party_type,
+                .class = undefined,
+                .battle_type = undefined,
+                .party_size = party_size,
+                .items = []lu16{comptime lu16.init(item)} ** 4,
+                .ai = undefined,
+                .healer = undefined,
+                .healer_padding = undefined,
+                .cash = undefined,
+                .post_battle_item = undefined,
+            });
+            _ = try trainer_narc.createFile(name, nds.fs.Narc.File{
+                .allocator = allocator,
+                .data = utils.asBytes(libpoke.gen5.Trainer, trainer)[0..],
+            });
+
+            var tmp_buf: [100]u8 = undefined;
+            const party_member = libpoke.gen5.PartyMember{
+                .iv = undefined,
+                .gender = undefined,
+                .ability = undefined,
+                .level = level,
+                .padding = undefined,
+                .species = lu16.init(species),
+                .form = undefined,
+            };
+            const held_item_bytes = lu16.init(item).bytes;
+            const moves_bytes = utils.toBytes([4]lu16, []lu16{comptime lu16.init(move)} ** 4);
+
+            const full_party_member_bytes = try fmt.bufPrint(
+                tmp_buf[0..],
+                "{}{}{}",
+                utils.toBytes(libpoke.gen5.PartyMember, party_member)[0..],
+                held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
+                moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
+            );
+
+            _ = try party_narc.createFile(name, nds.fs.Narc.File{
+                .allocator = allocator,
+                .data = try repeat(allocator, u8, full_party_member_bytes, party_size),
+            });
+        }
+    }
+
+    {
+        const narc = try nds.fs.Narc.create(allocator);
+        _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
+            .Narc = narc,
+        });
+
+        var i: usize = 0;
+        while (i < 100) : (i += 1) {
+            var name_buf: [10]u8 = undefined;
+            const name = try fmt.bufPrint(name_buf[0..], "{}", i);
+
+            const gen5_move = try allocator.create(libpoke.gen5.Move{
+                .@"type" = @intToEnum(libpoke.gen5.Type, ptype),
+                .effect_category = undefined,
+                .category = undefined,
+                .power = power,
+                .accuracy = undefined,
+                .pp = pp,
+                .priority = undefined,
+                .hits = undefined,
+                .min_hits = undefined,
+                .max_hits = undefined,
+                .crit_chance = undefined,
+                .flinch = undefined,
+                .effect = undefined,
+                .target_hp = undefined,
+                .user_hp = undefined,
+                .target = undefined,
+                .stats_affected = undefined,
+                .stats_affected_magnetude = undefined,
+                .stats_affected_chance = undefined,
+                .padding = undefined,
+                .flags = undefined,
+            });
+            _ = try narc.createFile(name, nds.fs.Narc.File{
+                .allocator = allocator,
+                .data = utils.asBytes(libpoke.gen5.Move, gen5_move),
+            });
+        }
+    }
+
+    {
+        const narc = try nds.fs.Narc.create(allocator);
+        _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
+            .Narc = narc,
+        });
+
+        var i: usize = 0;
+        while (i < 100) : (i += 1) {
+            var name_buf: [10]u8 = undefined;
+            const name = try fmt.bufPrint(name_buf[0..], "{}", i);
+
+            const base_stats = try allocator.create(libpoke.gen5.BasePokemon{
+                .stats = libpoke.common.Stats{
+                    .hp = hp,
+                    .attack = attack,
+                    .defense = defense,
+                    .speed = speed,
+                    .sp_attack = sp_attack,
+                    .sp_defense = sp_defense,
+                },
+                .types = [2]libpoke.gen5.Type{
+                    @intToEnum(libpoke.gen5.Type, ptype),
+                    @intToEnum(libpoke.gen5.Type, ptype),
+                },
+                .catch_rate = undefined,
+                .evs = undefined,
+                .items = []lu16{comptime lu16.init(item)} ** 3,
+                .gender_ratio = undefined,
+                .egg_cycles = undefined,
+                .base_friendship = undefined,
+                .growth_rate = undefined,
+                .egg_group1 = undefined,
+                .egg_group1_pad = undefined,
+                .egg_group2 = undefined,
+                .egg_group2_pad = undefined,
+                .abilities = undefined,
+                .flee_rate = undefined,
+                .form_stats_start = undefined,
+                .form_sprites_start = undefined,
+                .form_count = undefined,
+                .color = undefined,
+                .color_padding = undefined,
+                .base_exp_yield = undefined,
+                .height = undefined,
+                .weight = undefined,
+                .tm_hm_learnset = undefined,
+            });
+            _ = try narc.createFile(name, nds.fs.Narc.File{
+                .allocator = allocator,
+                .data = utils.asBytes(libpoke.gen5.BasePokemon, base_stats),
+            });
+        }
+    }
+
+    {
+        const narc = try nds.fs.Narc.create(allocator);
+        _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
+            .Narc = narc,
+        });
+
+        var i: usize = 0;
+        while (i < 100) : (i += 1) {
+            var name_buf: [10]u8 = undefined;
+            const name = try fmt.bufPrint(name_buf[0..], "{}", i);
+
+            const lvlup_learnset = libpoke.gen5.LevelUpMove{
+                .move_id = lu16.init(move),
+                .level = lu16.init(level),
+            };
+            _ = try narc.createFile(name, nds.fs.Narc.File{
+                .allocator = allocator,
+                .data = try fmt.allocPrint(
+                    allocator,
+                    "{}{}",
+                    utils.toBytes(libpoke.gen5.LevelUpMove, lvlup_learnset)[0..],
+                    []u8{0xFF} ** @sizeOf(libpoke.gen5.LevelUpMove),
                 ),
             });
         }
