@@ -137,6 +137,142 @@ fn fsEqual(allocator: *mem.Allocator, comptime Folder: type, fs1: *Folder, fs2: 
     return true;
 }
 
+const TestFolder = fs.Folder(struct{
+    // TODO: We cannot compare pointers to zero sized types, so this field have to exist.
+    a: u8,
+
+    fn deinit(file: *this) void { }
+});
+
+fn assertError(res: var, expected: error) void {
+    if (res) |_| {
+        unreachable;
+    } else |actual| {
+        debug.assert(expected == actual);
+    }
+}
+
+test "nds.fs.Folder.deinit" {
+    // TODO: To test deinit, we need a leak detector.
+}
+
+test "nds.fs.Folder.createFile" {
+    var buf: [2 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+
+    const a = try root.createFile("a", undefined);
+    const b = root.getFile("a") orelse unreachable;
+    debug.assert(@ptrToInt(a) == @ptrToInt(b));
+
+    assertError(root.createFile("a", undefined), error.NameExists);
+    assertError(root.createFile("/", undefined), error.InvalidName);
+}
+
+test "nds.fs.Folder.createFolder" {
+    var buf: [2 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+
+    const a = try root.createFolder("a");
+    const b = root.getFolder("a") orelse unreachable;
+    debug.assert(@ptrToInt(a) == @ptrToInt(b));
+
+    assertError(root.createFolder("a"), error.NameExists);
+    assertError(root.createFolder("/"), error.InvalidName);
+}
+
+test "nds.fs.Folder.createPath" {
+    var buf: [3 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+    const a = try root.createPath("b/a");
+    const b = root.getFolder("b/a") orelse unreachable;
+    debug.assert(@ptrToInt(a) == @ptrToInt(b));
+
+    _ = try root.createFile("a", undefined);
+    assertError(root.createPath("a"), error.FileInPath);
+}
+
+test "nds.fs.Folder.getFile" {
+    var buf: [2 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+    const a = try root.createFolder("a");
+    _ = try root.createFile("a1", undefined);
+    _ = try a.createFile("a2", undefined);
+
+    const a1 = root.getFile("a1") orelse unreachable;
+    const a2 = a.getFile("a2") orelse unreachable;
+    const a1_root = a.getFile("/a1") orelse unreachable;
+    debug.assert(root.getFile("a2") == null);
+    debug.assert(a.getFile("a1") == null);
+
+    const a2_path = root.getFile("a/a2") orelse unreachable;
+    debug.assert(@ptrToInt(a1) == @ptrToInt(a1_root));
+    debug.assert(@ptrToInt(a2) == @ptrToInt(a2_path));
+}
+
+test "nds.fs.Folder.getFolder" {
+    var buf: [3 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+    const a = try root.createFolder("a");
+    _ = try root.createFolder("a1");
+    _ = try a.createFolder("a2");
+
+    const a1 = root.getFolder("a1") orelse unreachable;
+    const a2 = a.getFolder("a2") orelse unreachable;
+    const a1_root = a.getFolder("/a1") orelse unreachable;
+    debug.assert(root.getFolder("a2") == null);
+    debug.assert(a.getFolder("a1") == null);
+
+    const a2_path = root.getFolder("a/a2") orelse unreachable;
+    debug.assert(@ptrToInt(a1) == @ptrToInt(a1_root));
+    debug.assert(@ptrToInt(a2) == @ptrToInt(a2_path));
+}
+
+test "nds.fs.Folder.exists" {
+    var buf: [2 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+    _ = try root.createFolder("a");
+    _ = try root.createFile("b", undefined);
+
+    debug.assert(root.exists("a"));
+    debug.assert(root.exists("b"));
+    debug.assert(!root.exists("c"));
+}
+
+test "nds.fs.Folder.root" {
+    var buf: [7 * 1024]u8 = undefined;
+    var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
+    const allocator = &fix_buf_alloc.allocator;
+
+    const root = try TestFolder.create(allocator);
+    const a = try root.createPath("a");
+    const b = try root.createPath("a/b");
+    const c = try root.createPath("a/b/c");
+    const d = try root.createPath("c/b/d");
+    debug.assert(@ptrToInt(root) == @ptrToInt(root.root()));
+    debug.assert(@ptrToInt(root) == @ptrToInt(a.root()));
+    debug.assert(@ptrToInt(root) == @ptrToInt(b.root()));
+    debug.assert(@ptrToInt(root) == @ptrToInt(c.root()));
+    debug.assert(@ptrToInt(root) == @ptrToInt(d.root()));
+}
+
 test "nds.fs.read/writeNitro" {
     var buf: [1024 * 1024]u8 = undefined;
     var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);

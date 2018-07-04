@@ -22,7 +22,18 @@ const assert = debug.assert;
 const lu16 = int.lu16;
 const lu32 = int.lu32;
 
-fn Folder(comptime TFile: type) type {
+/// An in memory filesystem used as an abstraction over the filesystems found in the nintendo ds.
+/// The filesystem have the following properties:
+///   * Peserves the order files and folders where added to the file system.
+///     * This is required, as certain nds games use indexs to fat entries when accessing data,
+///       instead of path lookup.
+///   * Uses posix paths for accessing files and folders.
+///     * `/` is the root folder.
+///     * TODO: `..` is the parent folder.
+///     * TODO: `.` is the current folder.
+///   * It is not `ArenaAllocator` friendly, as it uses `ArrayList` and `HashMap` as containers.
+///   * TODO: We can't delete files or folders yet
+pub fn Folder(comptime TFile: type) type {
     return struct {
         const Self = this;
         const IndexMap = std.HashMap([]const u8, usize, mem.hash_slice_u8, mem.eql_slice_u8);
@@ -30,6 +41,8 @@ fn Folder(comptime TFile: type) type {
 
         pub const File = TFile;
         pub const Node = struct {
+            // We both store names in `indexs` and here, so that we have access to the names
+            // when doing ordered iteration.
             name: []const u8,
             kind: Kind,
 
@@ -39,14 +52,21 @@ fn Folder(comptime TFile: type) type {
             };
         };
 
+        // The parent folder. If we are root, then this is `null`
         parent: ?*Self,
+
+        // Maps names -> indexs in `nodes`. Used for fast lookup.
         indexs: IndexMap,
+
+        // Stores our nodes. We use an arraylist to preserve the order of created nodes.
         nodes: Nodes,
 
+        /// Allocate and initialize a new filesystem.
         pub fn create(a: *mem.Allocator) !*Self {
             return try a.create(Self.init(a));
         }
 
+        /// Deinitialize and free the filesystem.
         pub fn destroy(folder: *Self) void {
             const a = folder.allocator();
             folder.deinit();
@@ -88,10 +108,12 @@ fn Folder(comptime TFile: type) type {
             }
         }
 
+        /// Get the allocator the filesystem uses for allocating files and folders.
         pub fn allocator(folder: Self) *mem.Allocator {
             return folder.nodes.allocator;
         }
 
+        /// Get the filesystesm root.
         pub fn root(folder: *Self) *Self {
             var res = folder;
             while (res.parent) |next|
@@ -100,6 +122,18 @@ fn Folder(comptime TFile: type) type {
             return res;
         }
 
+        /// Given a posix path, return the file at the path location.
+        /// Return null if no file exists and the path location.
+        pub fn getFile(folder: *Self, path: []const u8) ?*File {
+            const node = folder.get(path) orelse return null;
+            switch (node) {
+                Node.Kind.File => |res| return res,
+                Node.Kind.Folder => return null,
+            }
+        }
+
+        /// Given a posix path, return the folder at the path location.
+        /// Return null if no file exists and the path location.
         pub fn getFolder(folder: *Self, path: []const u8) ?*Self {
             const node = folder.get(path) orelse return null;
             switch (node) {
@@ -108,12 +142,9 @@ fn Folder(comptime TFile: type) type {
             }
         }
 
-        pub fn getFile(folder: *Self, path: []const u8) ?*File {
-            const node = folder.get(path) orelse return null;
-            switch (node) {
-                Node.Kind.File => |res| return res,
-                Node.Kind.Folder => return null,
-            }
+        /// Check if a file or folder exists at the path location.
+        pub fn exists(folder: *Self, path: []const u8) bool {
+            return folder.get(path) != null;
         }
 
         fn get(folder: *Self, path: []const u8) ?Node.Kind {
@@ -133,10 +164,14 @@ fn Folder(comptime TFile: type) type {
             return res;
         }
 
-        pub fn exists(folder: *Self, name: []const u8) bool {
-            return folder.indexs.contains(name);
+        fn startFolder(folder: *Self, path: []const u8) *Self {
+            if (path.len == 0 or path[0] != '/')
+                return folder;
+
+            return folder.root();
         }
 
+        /// Create a file in the current folder.
         pub fn createFile(folder: *Self, name: []const u8, file: File) !*File {
             const res = try folder.createNode(name);
             res.kind = Node.Kind{ .File = try folder.allocator().create(file) };
@@ -144,6 +179,7 @@ fn Folder(comptime TFile: type) type {
             return res.kind.File;
         }
 
+        /// Create a folder in the current folder.
         pub fn createFolder(folder: *Self, name: []const u8) !*Self {
             const res = try folder.createNode(name);
             const fold = try Self.create(folder.allocator());
@@ -153,8 +189,36 @@ fn Folder(comptime TFile: type) type {
             return res.kind.Folder;
         }
 
+        /// Create all none existing folders in `path`.
+        pub fn createPath(folder: *Self, path: []const u8) !*Self {
+            var res = folder.startFolder(path);
+            var it = mem.split(path, "/");
+            while (it.next()) |name| {
+                if (res.indexs.get(name)) |entry| {
+                    const node = res.nodes.toSliceConst()[entry.value];
+                    switch (node.kind) {
+                        Node.Kind.File => return error.FileInPath,
+                        Node.Kind.Folder => |sub_folder| res = sub_folder,
+                    }
+                } else {
+                    res = res.createFolder(name) catch |err| {
+                        // TODO: https://github.com/ziglang/zig/issues/769
+                        switch (err) {
+                            // We just checked that the folder doesn't exist, so this error
+                            // should never happen.
+                            error.NameExists => unreachable,
+                            else => return err,
+                        }
+                    };
+                }
+            }
+
+            return res;
+        }
+
         fn createNode(folder: *Self, name: []const u8) !*Node {
-            if (folder.exists(name))
+            try validateName(name);
+            if (folder.indexs.contains(name))
                 return error.NameExists;
 
             const a = folder.allocator();
@@ -170,11 +234,14 @@ fn Folder(comptime TFile: type) type {
             return res;
         }
 
-        fn startFolder(folder: *Self, path: []const u8) *Self {
-            if (path.len == 0 or path[0] != '/')
-                return folder;
+        fn validateName(name: []const u8) !void {
+            if (name.len == 0)
+                return error.InvalidName;
 
-            return folder.root();
+            for (name) |char| {
+                if (char == '/')
+                    return error.InvalidName;
+            }
         }
     };
 }
@@ -470,12 +537,18 @@ pub fn getFntAndFiles(comptime F: type, root: *F, allocator: *mem.Allocator) !Fn
         const state = states.toSliceConst()[current_state];
 
         try main_fnt.append(FntMainEntry{
+            // We don't know the exect offset yet, but we can save the offset from the sub tables
+            // base, and then calculate the real offset later.
             .offset_to_subtable = lu32.init(@intCast(u32, sub_fnt.len())),
             .first_file_id_in_subtable = lu16.init(@intCast(u16, files.len)),
             .parent_id = lu16.init(state.parent_id),
         });
 
         for (state.folder.nodes.toSliceConst()) |node| {
+            // The filesystem should uphold the invariant that nodes have names that are not
+            // zero length.
+            debug.assert(node.name.len != 0x00);
+
             switch (node.kind) {
                 F.Node.Kind.Folder => |folder| {
                     try sub_fnt.appendByte(@intCast(u8, node.name.len + 0x80));
@@ -488,7 +561,6 @@ pub fn getFntAndFiles(comptime F: type, root: *F, allocator: *mem.Allocator) !Fn
                     });
                 },
                 F.Node.Kind.File => |f| {
-                    debug.assert(node.name.len != 0x00); // TODO: We should probably return an error here instead of asserting
                     try sub_fnt.appendByte(@intCast(u8, node.name.len));
                     try sub_fnt.append(node.name);
                     try files.append(f);
@@ -499,10 +571,14 @@ pub fn getFntAndFiles(comptime F: type, root: *F, allocator: *mem.Allocator) !Fn
         try sub_fnt.appendByte(0x00);
     }
 
-    // Filling in root parent id!
+    // Filling in root parent id
     main_fnt.items[0].parent_id = lu16.init(@intCast(u16, main_fnt.len));
+
+    // We now know the real offset_to_subtable, and can therefore fill it out.
     for (main_fnt.toSlice()) |*entry| {
-        entry.offset_to_subtable = lu32.init(@intCast(u32, main_fnt.len * @sizeOf(FntMainEntry) + entry.offset_to_subtable.value()));
+        const main_fnt_len = main_fnt.len * @sizeOf(FntMainEntry);
+        const offset_from_subtable_base = entry.offset_to_subtable.value();
+        entry.offset_to_subtable = lu32.init(@intCast(u32, offset_from_subtable_base + main_fnt_len));
     }
 
     return FntAndFiles(F.File){
@@ -561,9 +637,10 @@ pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.
 
             var start: u32 = 0;
             for (files) |f| {
-                const fat_entry = FatEntry.init(start, @intCast(u32, f.data.len));
+                const len = @intCast(u32, f.data.len);
+                const fat_entry = FatEntry.init(start, len);
                 try stream.write(utils.toBytes(FatEntry, fat_entry));
-                start += @intCast(u32, f.data.len);
+                start += len;
             }
 
             try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
