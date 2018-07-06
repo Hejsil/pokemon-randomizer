@@ -176,7 +176,8 @@ test "Fake rom: Randomizer" {
         var max_time: u64 = 0;
         var random = &rand.DefaultPrng.init(0).random;
 
-        for ([]u8{0} ** 20) |_| {
+        for ([]void{{}} ** 20) |_| {
+            debug.warn(".");
             var options = Options{
                 .trainer = Options.Trainer{
                     .pokemon = randomEnum(random, Options.Trainer.Pokemon),
@@ -197,6 +198,7 @@ test "Fake rom: Randomizer" {
             max_mem = math.max(max_mem, rand_alloc.end_index);
         }
 
+        debug.warn("\n");
         debug.warn("* Max mem allocated: {B}\n", max_mem);
         debug.warn("* Max time taken: {}ms\n", max_time / 1000000);
     }
