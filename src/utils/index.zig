@@ -4,6 +4,7 @@ const debug = std.debug;
 
 pub const slice = @import("slice.zig");
 pub const stream = @import("stream.zig");
+pub const loop = @import("loop.zig");
 
 test "utils" {
     _ = @import("slice.zig");

@@ -1,4 +1,5 @@
 const libpoke = @import("../src/pokemon/index.zig");
+const utils = @import("../src/utils/index.zig");
 const fakes = @import("fake_roms.zig");
 const std = @import("std");
 const heap = std.heap;
@@ -7,6 +8,7 @@ const debug = std.debug;
 const rand = std.rand;
 const math = std.math;
 const time = os.time;
+const loop = utils.loop;
 
 const max_alloc = 100 * 1024 * 1024;
 
@@ -176,7 +178,7 @@ test "Fake rom: Randomizer" {
         var max_time: u64 = 0;
         var random = &rand.DefaultPrng.init(0).random;
 
-        for ([]void{{}} ** 20) |_| {
+        for (loop.to(20)) |_| {
             debug.warn(".");
             var options = Options{
                 .trainer = Options.Trainer{

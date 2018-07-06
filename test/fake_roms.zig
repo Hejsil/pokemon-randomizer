@@ -13,6 +13,7 @@ const heap = std.heap;
 const debug = std.debug;
 const io = std.io;
 const path = os.path;
+const loop = utils.loop;
 
 const lu16 = int.lu16;
 const lu32 = int.lu32;
@@ -113,158 +114,128 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
     };
     try file.write(utils.toBytes(gba.Header, header));
 
-    {
-        var i: usize = 0;
-        while (i < info.trainers.len) : (i += 1) {
-            var party_type: u8 = 0;
-            if (i & has_moves != 0)
-                party_type |= libpoke.gen3.Trainer.has_moves;
-            if (i & has_item != 0)
-                party_type |= libpoke.gen3.Trainer.has_item;
+    for (loop.to(info.trainers.len)) |_, i| {
+        var party_type: u8 = 0;
+        if (i & has_moves != 0)
+            party_type |= libpoke.gen3.Trainer.has_moves;
+        if (i & has_item != 0)
+            party_type |= libpoke.gen3.Trainer.has_item;
 
-            // Output trainer
-            try file.seekTo(info.trainers.start + i * @sizeOf(libpoke.gen3.Trainer));
-            try file.write(utils.toBytes(libpoke.gen3.Trainer, libpoke.gen3.Trainer{
-                .party_type = party_type,
-                .class = undefined,
-                .encounter_music = undefined,
-                .trainer_picture = undefined,
-                .name = undefined,
-                .items = undefined,
-                .is_double = undefined,
-                .ai = undefined,
-                .party_size = lu32.init(party_size),
-                .party_offset = lu32.init(@intCast(u32, free_space_offset + 0x8000000)),
+        // Output trainer
+        try file.seekTo(info.trainers.start + i * @sizeOf(libpoke.gen3.Trainer));
+        try file.write(utils.toBytes(libpoke.gen3.Trainer, libpoke.gen3.Trainer{
+            .party_type = party_type,
+            .class = undefined,
+            .encounter_music = undefined,
+            .trainer_picture = undefined,
+            .name = undefined,
+            .items = undefined,
+            .is_double = undefined,
+            .ai = undefined,
+            .party_size = lu32.init(party_size),
+            .party_offset = lu32.init(@intCast(u32, free_space_offset + 0x8000000)),
+        }));
+
+        // Output party
+        try file.seekTo(free_space_offset);
+        for (loop.to(party_size)) |_2, j| {
+            try file.write(utils.toBytes(libpoke.gen3.PartyMember, libpoke.gen3.PartyMember{
+                .iv = undefined,
+                .level = lu16.init(level),
+                .species = lu16.init(species),
             }));
-
-            // Output party
-            try file.seekTo(free_space_offset);
-            var j: usize = 0;
-            while (j < party_size) : (j += 1) {
-                try file.write(utils.toBytes(libpoke.gen3.PartyMember, libpoke.gen3.PartyMember{
-                    .iv = undefined,
-                    .level = lu16.init(level),
-                    .species = lu16.init(species),
-                }));
-                if (party_type & libpoke.gen3.Trainer.has_item != 0)
-                    try file.write(lu16.init(item).bytes);
-                if (party_type & libpoke.gen3.Trainer.has_moves != 0) {
-                    try file.write(lu16.init(move).bytes);
-                    try file.write(lu16.init(move).bytes);
-                    try file.write(lu16.init(move).bytes);
-                    try file.write(lu16.init(move).bytes);
-                }
-                if (party_type & libpoke.gen3.Trainer.has_item == 0)
-                    try file.write([]u8{ 0x00, 0x00 });
+            if (party_type & libpoke.gen3.Trainer.has_item != 0)
+                try file.write(lu16.init(item).bytes);
+            if (party_type & libpoke.gen3.Trainer.has_moves != 0) {
+                try file.write(lu16.init(move).bytes);
+                try file.write(lu16.init(move).bytes);
+                try file.write(lu16.init(move).bytes);
+                try file.write(lu16.init(move).bytes);
             }
-
-            free_space_offset = try file.getPos();
+            if (party_type & libpoke.gen3.Trainer.has_item == 0)
+                try file.write([]u8{ 0x00, 0x00 });
         }
+
+        free_space_offset = try file.getPos();
     }
 
-    {
-        try file.seekTo(info.moves.start);
-        var i: usize = 0;
-        while (i < info.moves.len) : (i += 1) {
-            try file.write(utils.toBytes(libpoke.gen3.Move, libpoke.gen3.Move{
-                .effect = undefined,
-                .power = power,
-                .@"type" = @intToEnum(libpoke.gen3.Type, ptype),
-                .accuracy = undefined,
-                .pp = pp,
-                .side_effect_chance = undefined,
-                .target = undefined,
-                .priority = undefined,
-                .flags = undefined,
-            }));
-        }
+    try file.seekTo(info.moves.start);
+    for (loop.to(info.moves.len)) |_, i| {
+        try file.write(utils.toBytes(libpoke.gen3.Move, libpoke.gen3.Move{
+            .effect = undefined,
+            .power = power,
+            .@"type" = @intToEnum(libpoke.gen3.Type, ptype),
+            .accuracy = undefined,
+            .pp = pp,
+            .side_effect_chance = undefined,
+            .target = undefined,
+            .priority = undefined,
+            .flags = undefined,
+        }));
     }
 
-    {
-        try file.seekTo(info.machine_learnsets.start);
-        var i: usize = 0;
-        while (i < info.machine_learnsets.len) : (i += 1) {
-            try file.write(lu64.init(0).bytes);
-        }
+    try file.seekTo(info.machine_learnsets.start);
+    for (loop.to(info.machine_learnsets.len)) |_, i| {
+        try file.write(lu64.init(0).bytes);
     }
 
-    {
-        try file.seekTo(info.base_stats.start);
-        var i: usize = 0;
-        while (i < info.base_stats.len) : (i += 1) {
-            try file.write(utils.toBytes(libpoke.gen3.BasePokemon, libpoke.gen3.BasePokemon{
-                .stats = libpoke.common.Stats{
-                    .hp = hp,
-                    .attack = attack,
-                    .defense = defense,
-                    .speed = speed,
-                    .sp_attack = sp_attack,
-                    .sp_defense = sp_defense,
-                },
-                .types = [2]libpoke.gen3.Type{
-                    @intToEnum(libpoke.gen3.Type, ptype),
-                    @intToEnum(libpoke.gen3.Type, ptype),
-                },
-                .catch_rate = undefined,
-                .base_exp_yield = undefined,
-                .ev_yield = undefined,
-                .items = undefined,
-                .gender_ratio = undefined,
-                .egg_cycles = undefined,
-                .base_friendship = undefined,
-                .growth_rate = undefined,
-                .egg_group1 = undefined,
-                .egg_group1_pad = undefined,
-                .egg_group2 = undefined,
-                .egg_group2_pad = undefined,
-                .abilities = undefined,
-                .safari_zone_rate = undefined,
-                .color = undefined,
-                .flip = undefined,
-                .padding = undefined,
-            }));
-        }
+    try file.seekTo(info.base_stats.start);
+    for (loop.to(info.base_stats.len)) |_, i| {
+        try file.write(utils.toBytes(libpoke.gen3.BasePokemon, libpoke.gen3.BasePokemon{
+            .stats = libpoke.common.Stats{
+                .hp = hp,
+                .attack = attack,
+                .defense = defense,
+                .speed = speed,
+                .sp_attack = sp_attack,
+                .sp_defense = sp_defense,
+            },
+            .types = [2]libpoke.gen3.Type{
+                @intToEnum(libpoke.gen3.Type, ptype),
+                @intToEnum(libpoke.gen3.Type, ptype),
+            },
+            .catch_rate = undefined,
+            .base_exp_yield = undefined,
+            .ev_yield = undefined,
+            .items = undefined,
+            .gender_ratio = undefined,
+            .egg_cycles = undefined,
+            .base_friendship = undefined,
+            .growth_rate = undefined,
+            .egg_group1 = undefined,
+            .egg_group1_pad = undefined,
+            .egg_group2 = undefined,
+            .egg_group2_pad = undefined,
+            .abilities = undefined,
+            .safari_zone_rate = undefined,
+            .color = undefined,
+            .flip = undefined,
+            .padding = undefined,
+        }));
     }
 
-    {
-        // TODO: We don't expose evolutions through the api yet, so lets not output it yet.
+    for (loop.to(info.level_up_learnset_pointers.len)) |_, i| {
+        try file.seekTo(info.level_up_learnset_pointers.start + i * @sizeOf(lu32));
+        try file.write(lu32.init(@intCast(u32, free_space_offset + 0x8000000)).bytes);
+
+        try file.seekTo(free_space_offset);
+        try file.write(utils.toBytes(libpoke.gen3.LevelUpMove, libpoke.gen3.LevelUpMove{
+            .move_id = move,
+            .level = level,
+        }));
+        try file.write([]u8{ 0xFF, 0xFF });
+
+        free_space_offset = try file.getPos();
     }
 
-    {
-        var i: usize = 0;
-        while (i < info.level_up_learnset_pointers.len) : (i += 1) {
-            try file.seekTo(info.level_up_learnset_pointers.start + i * @sizeOf(lu32));
-            try file.write(lu32.init(@intCast(u32, free_space_offset + 0x8000000)).bytes);
-
-            try file.seekTo(free_space_offset);
-            try file.write(utils.toBytes(libpoke.gen3.LevelUpMove, libpoke.gen3.LevelUpMove{
-                .move_id = move,
-                .level = level,
-            }));
-            try file.write([]u8{ 0xFF, 0xFF });
-
-            free_space_offset = try file.getPos();
-        }
+    try file.seekTo(info.hms.start);
+    for (loop.to(info.hms.len)) |_, i| {
+        try file.write(lu16.init(move).bytes);
     }
 
-    {
-        try file.seekTo(info.hms.start);
-        var i: usize = 0;
-        while (i < info.hms.len) : (i += 1) {
-            try file.write(lu16.init(move).bytes);
-        }
-    }
-
-    {
-        try file.seekTo(info.tms.start);
-        var i: usize = 0;
-        while (i < info.tms.len) : (i += 1) {
-            try file.write(lu16.init(move).bytes);
-        }
-    }
-
-    {
-        // TODO: We don't expose items through the api yet, so lets not output it yet.
+    try file.seekTo(info.tms.start);
+    for (loop.to(info.tms.len)) |_, i| {
+        try file.write(lu16.init(move).bytes);
     }
 
     const end = try file.getEndPos();
@@ -437,8 +408,7 @@ fn repeat(allocator: *mem.Allocator, comptime T: type, m: []const T, n: usize) !
     const to_alloc = math.mul(usize, m.len, n) catch return mem.Allocator.Error.OutOfMemory;
     const res = try allocator.alloc(T, to_alloc);
 
-    var i: usize = 0;
-    while (i < n) : (i += 1) {
+    for (loop.to(n)) |_, i| {
         const off = i * m.len;
         mem.copy(T, res[off..], m);
     }
@@ -490,8 +460,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             .Narc = party_narc,
         });
 
-        var i: usize = 0;
-        while (i < trainer_count) : (i += 1) {
+        for (loop.to(trainer_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -554,8 +523,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             .Narc = narc,
         });
 
-        var i: usize = 0;
-        while (i < move_count) : (i += 1) {
+        for (loop.to(move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -591,8 +559,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             .Narc = narc,
         });
 
-        var i: usize = 0;
-        while (i < pokemon_count) : (i += 1) {
+        for (loop.to(pokemon_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -641,8 +608,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             .Narc = narc,
         });
 
-        var i: usize = 0;
-        while (i < level_up_move_count) : (i += 1) {
+        for (loop.to(level_up_move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -707,8 +673,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             .Narc = party_narc,
         });
 
-        var i: usize = 0;
-        while (i < trainer_count) : (i += 1) {
+        for (loop.to(trainer_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -770,8 +735,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             .Narc = narc,
         });
 
-        var i: usize = 0;
-        while (i < move_count) : (i += 1) {
+        for (loop.to(move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -812,8 +776,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             .Narc = narc,
         });
 
-        var i: usize = 0;
-        while (i < pokemon_count) : (i += 1) {
+        for (loop.to(pokemon_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -867,8 +830,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             .Narc = narc,
         });
 
-        var i: usize = 0;
-        while (i < level_up_move_count) : (i += 1) {
+        for (loop.to(level_up_move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
