@@ -4,32 +4,45 @@ const std = @import("std");
 const heap = std.heap;
 const os = std.os;
 const debug = std.debug;
+const rand = std.rand;
+const math = std.math;
+const time = os.time;
+
+const max_alloc = 100 * 1024 * 1024;
+
+const Randomizer = @import("../src/randomizer.zig").Randomizer;
+const Options = @import("../src/randomizer.zig").Options;
 
 test "Fake rom: Api" {
-    var generate_buf: [250 * 1024]u8 = undefined;
-    var generate_fix_buf_alloc = heap.FixedBufferAllocator.init(generate_buf[0..]);
-    const generate_allocator = &generate_fix_buf_alloc.allocator;
-
-    const roms_files = try fakes.generateFakeRoms(generate_allocator);
-    defer fakes.deleteFakeRoms(generate_allocator);
-
     var direct_alloc = heap.DirectAllocator.init();
-    const buf = try direct_alloc.allocator.alloc(u8, 100 * 1024 * 1024);
+    const buf = try direct_alloc.allocator.alloc(u8, max_alloc);
     defer direct_alloc.allocator.free(buf);
+
+    var gen_alloc = heap.FixedBufferAllocator.init(buf);
+    const roms_files = try fakes.generateFakeRoms(&gen_alloc.allocator);
+    defer fakes.deleteFakeRoms(&gen_alloc.allocator);
+
+    var timer = try time.Timer.start();
 
     debug.warn("\n");
     for (roms_files) |file_name, i| {
-        var fix_buf_alloc = heap.FixedBufferAllocator.init(buf);
+        var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[gen_alloc.end_index..]);
         const allocator = &fix_buf_alloc.allocator;
 
-        debug.warn("Testing api ({}/{}): '{}'...", i + 1, roms_files.len, file_name);
+        debug.warn("Testing api ({}/{}): '{}':\n", i + 1, roms_files.len, file_name);
         defer debug.warn("Ok\n");
 
         var file = try os.File.openRead(allocator, file_name);
         defer file.close();
 
+        timer.reset();
         var game = try libpoke.Game.load(&file, allocator);
         defer game.deinit();
+        const time_to_load = timer.read();
+
+        debug.warn("* Rom size: {B}\n", file.getEndPos());
+        debug.warn("* Mem allocated: {B}\n", fix_buf_alloc.end_index);
+        debug.warn("* Time taken: {}ms\n", time_to_load / 1000000);
 
         {
             const pokemons = game.pokemons();
@@ -129,4 +142,62 @@ test "Fake rom: Api" {
     }
 }
 
-test "Fake rom: Randomizer" {}
+fn randomEnum(random: *rand.Random, comptime Enum: type) Enum {
+    const info = @typeInfo(Enum).Enum;
+    const f = info.fields[random.range(usize, 0, info.fields.len)];
+    return @intToEnum(Enum, @intCast(info.tag_type, f.value));
+}
+
+test "Fake rom: Randomizer" {
+    var direct_alloc = heap.DirectAllocator.init();
+    const buf = try direct_alloc.allocator.alloc(u8, max_alloc);
+    defer direct_alloc.allocator.free(buf);
+
+    var gen_alloc = heap.FixedBufferAllocator.init(buf);
+    const roms_files = try fakes.generateFakeRoms(&gen_alloc.allocator);
+    defer fakes.deleteFakeRoms(&gen_alloc.allocator);
+
+    var timer = try time.Timer.start();
+
+    debug.warn("\n");
+    for (roms_files) |file_name, i| {
+        debug.warn("Testing randomizer ({}/{}): '{}':\n", i + 1, roms_files.len, file_name);
+        defer debug.warn("Ok\n");
+
+        const game_buf = buf[gen_alloc.end_index..];
+        var game_alloc = heap.FixedBufferAllocator.init(game_buf);
+        var file = try os.File.openRead(&game_alloc.allocator, file_name);
+        defer file.close();
+
+        var game = try libpoke.Game.load(&file, &game_alloc.allocator);
+        defer game.deinit();
+
+        var max_mem: usize = 0;
+        var max_time: u64 = 0;
+        var random = &rand.DefaultPrng.init(0).random;
+
+        for ([]u8{0} ** 20) |_| {
+            var options = Options{
+                .trainer = Options.Trainer{
+                    .pokemon = randomEnum(random, Options.Trainer.Pokemon),
+                    .same_total_stats = random.scalar(bool),
+                    .held_items = randomEnum(random, Options.Trainer.HeldItems),
+                    .moves = randomEnum(random, Options.Trainer.Moves),
+                    .level_modifier = random.float(f64) * 2,
+                },
+            };
+
+            var rand_alloc = heap.FixedBufferAllocator.init(game_buf[game_alloc.end_index..]);
+            var r = Randomizer.init(&game, random, &rand_alloc.allocator);
+
+            timer.reset();
+            try r.randomize(options);
+
+            max_time = math.max(max_time, timer.read());
+            max_mem = math.max(max_mem, rand_alloc.end_index);
+        }
+
+        debug.warn("* Max mem allocated: {B}\n", max_mem);
+        debug.warn("* Max time taken: {}ms\n", max_time / 1000000);
+    }
+}

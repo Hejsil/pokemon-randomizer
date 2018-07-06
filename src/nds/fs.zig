@@ -108,8 +108,13 @@ pub fn Folder(comptime TFile: type) type {
             }
         }
 
+        // TODO: ensureCapacity for HashMap?
+        pub fn ensureCapacity(folder: *Self, new_capacity: usize) !void {
+            try folder.nodes.ensureCapacity(new_capacity);
+        }
+
         /// Get the allocator the filesystem uses for allocating files and folders.
-        pub fn allocator(folder: Self) *mem.Allocator {
+        pub fn allocator(folder: *Self) *mem.Allocator {
             return folder.nodes.allocator;
         }
 

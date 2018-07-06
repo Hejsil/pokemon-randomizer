@@ -38,8 +38,15 @@ pub const sp_defense = 15;
 pub const has_moves = 0b01;
 pub const has_item = 0b10;
 
+const trainer_count = 800;
+const move_count = 200;
+const pokemon_count = 800;
+const level_up_move_count = pokemon_count;
+
 pub fn generateFakeRoms(allocator: *mem.Allocator) ![][]u8 {
-    const tmp = try allocator.alloc(u8, 200 * 1024);
+    const tmp = try allocator.alloc(u8, 2 * 1024 * 1024);
+    defer allocator.free(tmp);
+
     var tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
     const tmp_allocator = &tmp_fix_buf_alloc.allocator;
 
@@ -474,6 +481,8 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
     {
         const trainer_narc = try nds.fs.Narc.create(allocator);
         const party_narc = try nds.fs.Narc.create(allocator);
+        try trainer_narc.ensureCapacity(trainer_count);
+        try party_narc.ensureCapacity(trainer_count);
         _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{
             .Narc = trainer_narc,
         });
@@ -482,7 +491,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < trainer_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -540,12 +549,13 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
     {
         const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(move_count);
         _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
             .Narc = narc,
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < move_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -576,12 +586,13 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
     {
         const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(pokemon_count);
         _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
             .Narc = narc,
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < pokemon_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -625,12 +636,13 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
     {
         const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(level_up_move_count);
         _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
             .Narc = narc,
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < level_up_move_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -686,6 +698,8 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
     {
         const trainer_narc = try nds.fs.Narc.create(allocator);
         const party_narc = try nds.fs.Narc.create(allocator);
+        try trainer_narc.ensureCapacity(trainer_count);
+        try party_narc.ensureCapacity(trainer_count);
         _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{
             .Narc = trainer_narc,
         });
@@ -694,7 +708,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < trainer_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -751,12 +765,13 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
 
     {
         const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(move_count);
         _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
             .Narc = narc,
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < move_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -792,12 +807,13 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
 
     {
         const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(pokemon_count);
         _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
             .Narc = narc,
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < pokemon_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
@@ -846,12 +862,13 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
 
     {
         const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(level_up_move_count);
         _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
             .Narc = narc,
         });
 
         var i: usize = 0;
-        while (i < 100) : (i += 1) {
+        while (i < level_up_move_count) : (i += 1) {
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
