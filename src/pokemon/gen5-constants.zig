@@ -21,7 +21,7 @@ pub const infos = []Info{
 
 // TODO: Fill out game_titles
 const black2_info = Info{
-    .game_title = undefined,
+    .game_title = "POKEMON B2\x00\x00",
     .gamecode = "IREO",
     .version = pokemon.Version.Black2,
 
@@ -34,7 +34,7 @@ const black2_info = Info{
 
 const white2_info = blk: {
     var res = black2_info;
-    res.game_title = undefined;
+    res.game_title = "POKEMON W2\x00\x00";
     res.gamecode = "IRDO";
     res.version = pokemon.Version.White2;
 
@@ -43,7 +43,7 @@ const white2_info = blk: {
 
 const black_info = blk: {
     var res = black2_info;
-    res.game_title = undefined;
+    res.game_title = "POKEMON B\x00\x00\x00";
     res.gamecode = "IRBO";
     res.version = pokemon.Version.Black;
     res.trainers = "a/0/9/2";
@@ -54,7 +54,7 @@ const black_info = blk: {
 
 const white_info = blk: {
     var res = black_info;
-    res.game_title = undefined;
+    res.game_title = "POKEMON W\x00\x00\x00";
     res.gamecode = "IRAO";
     res.version = pokemon.Version.Black;
 

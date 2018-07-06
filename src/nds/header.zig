@@ -234,25 +234,25 @@ pub const Header = packed struct {
         // http://problemkaputt.de/gbatek.htm#dscartridgesecurearea
         if (header.arm9_rom_offset.value() != 0x4000)
             return error.InvalidArm9RomOffset;
-        if (!(0x2000000 <= header.arm9_entry_address.value() and header.arm9_entry_address.value() <= 0x23BFE00))
+        if (header.arm9_entry_address.value() < 0x2000000 or 0x23BFE00 < header.arm9_entry_address.value())
             return error.InvalidArm9EntryAddress;
-        if (!(0x2000000 <= header.arm9_ram_address.value() and header.arm9_ram_address.value() <= 0x23BFE00))
+        if (header.arm9_ram_address.value() < 0x2000000 or 0x23BFE00 < header.arm9_ram_address.value())
             return error.InvalidArm9RamAddress;
         if (header.arm9_size.value() > 0x3BFE00)
             return error.InvalidArm9Size;
 
         if (header.arm7_rom_offset.value() < 0x8000)
             return error.InvalidArm7RomOffset;
-        if (!(0x2000000 <= header.arm7_entry_address.value() and header.arm7_entry_address.value() <= 0x23BFE00) and
-            !(0x37F8000 <= header.arm7_entry_address.value() and header.arm7_entry_address.value() <= 0x3807E00))
+        if ((header.arm7_entry_address.value() < 0x2000000 or 0x23BFE00 < header.arm7_entry_address.value()) and
+            (header.arm7_entry_address.value() < 0x37F8000 or 0x3807E00 < header.arm7_entry_address.value()))
             return error.InvalidArm7EntryAddress;
-        if (!(0x2000000 <= header.arm7_ram_address.value() and header.arm7_ram_address.value() <= 0x23BFE00) and
-            !(0x37F8000 <= header.arm7_ram_address.value() and header.arm7_ram_address.value() <= 0x3807E00))
+        if ((header.arm7_ram_address.value() < 0x2000000 or 0x23BFE00 < header.arm7_ram_address.value()) and
+            (header.arm7_ram_address.value() < 0x37F8000 or 0x3807E00 < header.arm7_ram_address.value()))
             return error.InvalidArm7RamAddress;
         if (header.arm7_size.value() > 0x3BFE00)
             return error.InvalidArm7Size;
 
-        if ((0x1 <= header.banner_offset.value() and header.banner_offset.value() <= 0x7FFF))
+        if (header.banner_offset.value() != 0 and header.banner_offset.value() < 0x8000)
             return error.InvalidIconTitleOffset;
 
         if (header.secure_area_delay.value() != 0x051E and header.secure_area_delay.value() != 0x0D7E)

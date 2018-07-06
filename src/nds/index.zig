@@ -154,7 +154,15 @@ pub const Rom = struct {
         header.arm9_rom_offset = lu32.init(@intCast(u32, arm9_pos));
         header.arm9_size = lu32.init(@intCast(u32, rom.arm9.len));
 
-        const arm7_pos = try file.getPos();
+        const arm7_pos = blk: {
+            var res = try file.getPos();
+            if (res < 0x8000) {
+                try file.seekTo(0x8000);
+                res = 0x8000;
+            }
+
+            break :blk res;
+        };
         try file.write(rom.arm7);
 
         header.arm7_rom_offset = lu32.init(@intCast(u32, arm7_pos));

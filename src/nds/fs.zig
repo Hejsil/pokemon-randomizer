@@ -108,8 +108,13 @@ pub fn Folder(comptime TFile: type) type {
             }
         }
 
+        // TODO: ensureCapacity for HashMap?
+        pub fn ensureCapacity(folder: *Self, new_capacity: usize) !void {
+            try folder.nodes.ensureCapacity(new_capacity);
+        }
+
         /// Get the allocator the filesystem uses for allocating files and folders.
-        pub fn allocator(folder: Self) *mem.Allocator {
+        pub fn allocator(folder: *Self) *mem.Allocator {
             return folder.nodes.allocator;
         }
 
@@ -214,6 +219,15 @@ pub fn Folder(comptime TFile: type) type {
             }
 
             return res;
+        }
+
+        /// Create all none existing folders in `path` and creates a file at the path location.
+        pub fn createPathAndFile(folder: *Self, path: []const u8, file: File) !*File {
+            var res_folder = folder;
+            if (std.os.path.dirnamePosix(path)) |dirname|
+                res_folder = try folder.createPath(dirname);
+
+            return try res_folder.createFile(std.os.path.basenamePosix(path), file);
         }
 
         fn createNode(folder: *Self, name: []const u8) !*Node {
