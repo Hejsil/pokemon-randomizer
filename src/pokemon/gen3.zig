@@ -160,13 +160,15 @@ pub const Game = struct {
         try file.seekTo(0);
 
         const info = try getInfo(header.game_title, header.gamecode);
-        const rom = try in_stream.readAllAlloc(allocator, @maxValue(usize));
+        const size = try file.getEndPos();
+
+        if (size % 0x1000000 != 0)
+            return error.InvalidRomSize;
+
+        const rom = try allocator.alloc(u8, size);
         errdefer allocator.free(rom);
 
-        if (rom.len % 0x1000000 != 0) {
-            debug.warn("{x}\n", rom.len);
-            return error.InvalidRomSize;
-        }
+        try in_stream.readNoEof(rom);
 
         return Game{
             .base = pokemon.BaseGame{ .version = info.version },
