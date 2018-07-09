@@ -520,7 +520,7 @@ pub const Pokemons = extern struct {
     const AtErrs = error{
         FileToSmall,
         NotFile,
-        InvalidOffset,
+        InvalidPointer,
         NodeIsFolder,
     };
 
@@ -553,8 +553,7 @@ pub const Pokemons = extern struct {
             var data: []u8 = undefined;
             switch (gen) {
                 gen3 => {
-                    const s = generic.at(game.level_up_learnset_pointers, index) catch return error.InvalidOffset;
-                    start = math.sub(usize, s.value(), 0x8000000) catch return error.InvalidOffset;
+                    start = try game.level_up_learnset_pointers[index].toInt();
                     data = game.data;
                 },
                 gen4, gen5 => {
@@ -777,7 +776,7 @@ pub const Party = extern struct {
         const index = c.index;
         const trainer = @ptrCast(*gen.Trainer, c.party.trainer.base);
         const member_size = c.party.memberSize();
-        const party_size = if (gen == gen3) trainer.party_size.value() else trainer.party_size;
+        const party_size = if (gen == gen3) trainer.party.len() else trainer.party_size;
         const party_data = c.party.trainer.party_ptr[0 .. party_size * member_size];
         const member_data = party_data[index * member_size ..][0..member_size];
         var off: usize = 0;
@@ -835,7 +834,7 @@ pub const Party = extern struct {
     fn lenHelper(comptime gen: Namespace, party: var) usize {
         const trainer = @ptrCast(*gen.Trainer, party.trainer.base);
         return switch (gen) {
-            gen3 => trainer.party_size.value(),
+            gen3 => trainer.party.len(),
             gen4, gen5 => trainer.party_size,
             else => @compileError("Gen not supported!"),
         };
@@ -896,8 +895,8 @@ pub const Trainers = extern struct {
     const AtErr = error{
         FileToSmall,
         NotFile,
-        InvalidOffset,
         InvalidPartySize,
+        InvalidPointer,
     };
 
     const AtC = struct {
@@ -919,9 +918,7 @@ pub const Trainers = extern struct {
 
         res.party_ptr = switch (gen) {
             gen3 => blk: {
-                const start = math.sub(usize, trainer.party_offset.value(), 0x8000000) catch return error.InvalidOffset;
-                const end = start + trainer.party_size.value() * res.party().memberSize();
-                const party = generic.slice(game.data, start, end) catch return error.InvalidOffset;
+                const party = try trainer.party.toSlice(game.data);
                 break :blk party.ptr;
             },
             gen4, gen5 => blk: {

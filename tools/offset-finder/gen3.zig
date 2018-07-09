@@ -30,7 +30,7 @@ const TmSection = gen3.constants.TmSection;
 const ItemSection = gen3.constants.ItemSection;
 
 pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
-    const ignored_trainer_fields = [][]const u8{ "party_offset", "name" };
+    const ignored_trainer_fields = [][]const u8{ "party", "name" };
     const maybe_trainers = switch (version) {
         pokemon.Version.Emerald => search.findStructs(
             gen3.Trainer,
@@ -122,7 +122,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         }
 
         const pointers = search.findPattern(u8, data, first_pointers, last_pointers) orelse return error.UnableToFindLevelUpLearnsetOffset;
-        break :blk @bytesToSlice(lu32, pointers);
+        break :blk @bytesToSlice(gen3.Ref(gen3.LevelUpMove), pointers);
     };
 
     const hms_start = mem.indexOf(u8, data, constants.hms) orelse return error.UnableToFindHmOffset;

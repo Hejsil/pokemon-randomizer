@@ -10,7 +10,7 @@ const mem = std.mem;
 const debug = std.debug;
 const io = std.io;
 const os = std.os;
-const slice = utils.slice;
+const math = std.math;
 
 const assert = debug.assert;
 
@@ -20,6 +20,85 @@ const lu32 = int.lu32;
 const lu64 = int.lu64;
 
 pub const constants = @import("gen3-constants.zig");
+
+pub fn Ptr(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        v: lu32,
+
+        pub fn init(i: u32) !Self {
+            const v = math.add(u32, i, 0x8000000) catch return error.InvalidPointer;
+            return Self{
+                .v = lu32.init(v),
+            };
+        }
+
+        pub fn toMany(ptr: this, data: []u8) ![*]T {
+            const s = try ptr.toSlice(data, 0);
+            return s.ptr;
+        }
+
+        pub fn toSlice(ptr: this, data: []u8, len: u32) ![]T {
+            const start = try ptr.toInt();
+            const end = start + len * @sizeOf(T);
+            if (data.len < start or data.len < end)
+                return error.InvalidPointer;
+
+            return @bytesToSlice(T, data[start..end]);
+        }
+
+        pub fn toInt(ptr: this) !u32 {
+            return math.sub(u32, ptr.v.value(), 0x8000000) catch return error.InvalidPointer;
+        }
+    };
+}
+
+pub fn Slice(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        l: lu32,
+        ptr: Ptr(T),
+
+        pub fn init(ptr: u32, l: u32) !Self {
+            return Self{
+                .l = lu32.init(l),
+                .ptr = try Ptr(T).init(ptr),
+            };
+        }
+
+        pub fn toSlice(slice: Self, data: []u8) ![]T {
+            return slice.ptr.toSlice(data, slice.len());
+        }
+
+        pub fn len(slice: Self) u32 {
+            return slice.l.value();
+        }
+    };
+}
+
+pub fn Ref(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        ptr: Ptr(T),
+
+        pub fn init(i: u32) !Self {
+            return Self{
+                .ptr = try Ptr(T).init(i),
+            };
+        }
+
+        pub fn toSingle(ref: Self, data: []u8) !*T {
+            return &ref.ptr.slice(data, 1)[0];
+        }
+
+        pub fn toInt(ref: Self) !u32 {
+            return try ref.ptr.toInt();
+        }
+    };
+}
 
 pub const BasePokemon = packed struct {
     stats: common.Stats,
@@ -64,8 +143,7 @@ pub const Trainer = packed struct {
     items: [4]lu16,
     is_double: lu32,
     ai: lu32,
-    party_size: lu32,
-    party_offset: lu32,
+    party: Slice(u8),
 };
 
 /// All party members have this as the base.
@@ -97,14 +175,14 @@ pub const Item = packed struct {
     price: lu16,
     hold_effect: u8,
     hold_effect_param: u8,
-    description_offset: lu32,
+    description: Ptr(u8),
     importance: u8,
     unknown: u8,
     pocked: u8,
     @"type": u8,
-    field_use_func: lu32,
+    field_use_func: Ptr(u8),
     battle_usage: lu32,
-    battle_use_func: lu32,
+    battle_use_func: Ptr(u8),
     secondary_id: lu32,
 };
 
@@ -134,6 +212,34 @@ pub const LevelUpMove = packed struct {
     level: u7,
 };
 
+
+// TODO: Confirm layout
+pub const WildPokemon = packed struct {
+    min_level: u8,
+    max_level: u8,
+    species: lu16,
+};
+
+// TODO: Confirm layout
+pub fn WildPokemonInfo(comptime len: usize) type {
+    return packed struct {
+        encounter_rate: u8,
+        pad: [3]u8,
+        wild_pokemons: Ref([len]WildPokemon),
+    };
+}
+
+// TODO: Confirm layout
+pub const WildPokemonHeader = packed struct {
+    map_group: u8,
+    map_num: u8,
+    pad: [2]u8,
+    land_pokemons: WildPokemonInfo(12),
+    surf_pokemons: WildPokemonInfo(5),
+    rock_smash_pokemons: WildPokemonInfo(5),
+    fishing_pokemons: WildPokemonInfo(10),
+};
+
 pub const Game = struct {
     base: pokemon.BaseGame,
     allocator: *mem.Allocator,
@@ -146,7 +252,7 @@ pub const Game = struct {
     tm_hm_learnset: []lu64,
     base_stats: []BasePokemon,
     evolution_table: [][5]common.Evolution,
-    level_up_learnset_pointers: []lu32,
+    level_up_learnset_pointers: []Ref(LevelUpMove),
     items: []Item,
     hms: []lu16,
     tms: []lu16,

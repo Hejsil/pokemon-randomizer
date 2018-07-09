@@ -132,8 +132,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
             .items = undefined,
             .is_double = undefined,
             .ai = undefined,
-            .party_size = lu32.init(party_size),
-            .party_offset = lu32.init(@intCast(u32, free_space_offset + 0x8000000)),
+            .party = try libpoke.gen3.Slice(u8).init(@intCast(u32, free_space_offset), party_size),
         }));
 
         // Output party
