@@ -180,9 +180,9 @@ pub const Item = packed struct {
     unknown: u8,
     pocked: u8,
     @"type": u8,
-    field_use_func: Ptr(u8),
+    field_use_func: Ref(u8),
     battle_usage: lu32,
-    battle_use_func: Ptr(u8),
+    battle_use_func: Ref(u8),
     secondary_id: lu32,
 };
 
