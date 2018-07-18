@@ -7,9 +7,6 @@ const common = @import("common.zig");
 
 const mem = std.mem;
 
-const u9 = @IntType(false, 9);
-const u10 = @IntType(false, 10);
-
 const lu16 = int.lu16;
 const lu32 = int.lu32;
 const lu128 = int.lu128;
