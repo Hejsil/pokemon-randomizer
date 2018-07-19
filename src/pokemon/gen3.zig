@@ -14,7 +14,6 @@ const math = std.math;
 
 const assert = debug.assert;
 
-const u9 = @IntType(false, 9);
 const lu16 = int.lu16;
 const lu32 = int.lu32;
 const lu64 = int.lu64;

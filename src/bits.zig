@@ -5,8 +5,6 @@ const debug = std.debug;
 
 const assert = debug.assert;
 
-pub const u1 = @IntType(false, 1);
-
 pub fn set(comptime Int: type, num: Int, bit: math.Log2Int(Int), value: bool) Int {
     return (num & ~(Int(1) << bit)) | (Int(@boolToInt(value)) << bit);
 }

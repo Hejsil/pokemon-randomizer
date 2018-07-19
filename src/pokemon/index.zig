@@ -22,8 +22,6 @@ const mem = std.mem;
 
 const Namespace = @typeOf(std);
 
-const u9 = @IntType(false, 9);
-const u10 = @IntType(false, 10);
 const lu16 = int.lu16;
 const lu64 = int.lu64;
 const lu128 = int.lu128;
