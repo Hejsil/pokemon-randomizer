@@ -65,13 +65,13 @@ pub fn main() !void {
     try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files, allocator);
     try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files, allocator);
 
-    try writeFs(root_folder, rom.root, allocator);
+    try writeFs(nds.fs.Nitro, root_folder, rom.root, allocator);
 }
 
-fn writeFs(p: []const u8, folder: *nds.fs.Nitro, allocator: *mem.Allocator) !void {
+fn writeFs(comptime Fs: type, p: []const u8, folder: *Fs, allocator: *mem.Allocator) !void {
     const State = struct {
         path: []const u8,
-        folder: *nds.fs.Nitro,
+        folder: *Fs,
     };
 
     var stack = std.ArrayList(State).init(allocator);
@@ -86,22 +86,35 @@ fn writeFs(p: []const u8, folder: *nds.fs.Nitro, allocator: *mem.Allocator) !voi
         defer allocator.free(state.path);
 
         for (state.folder.nodes.toSliceConst()) |node| {
+            const node_path = try path.join(allocator, state.path, node.name);
             switch (node.kind) {
-                nds.fs.Nitro.Node.Kind.File => |f| {
-                    const file_path = try path.join(allocator, state.path, node.name);
-                    defer allocator.free(file_path);
-
-                    var file = try os.File.openWrite(allocator, file_path);
-                    defer file.close();
-
-                    try nds.fs.writeNitroFile(&file, allocator, f.*);
+                Fs.Node.Kind.File => |f| {
+                    defer allocator.free(node_path);
+                    const Tag = @TagType(nds.fs.Nitro.File);
+                    switch (Fs) {
+                        nds.fs.Nitro => switch (f.*) {
+                            Tag.Binary => |bin| {
+                                var file = try os.File.openWrite(allocator, node_path);
+                                defer file.close();
+                                try file.write(bin.data);
+                            },
+                            Tag.Narc => |narc| {
+                                try os.makePath(allocator, node_path);
+                                try writeFs(nds.fs.Narc, node_path, narc, allocator);
+                            }
+                        },
+                        nds.fs.Narc => {
+                            var file = try os.File.openWrite(allocator, node_path);
+                            defer file.close();
+                            try file.write(f.data);
+                        },
+                        else => comptime unreachable,
+                    }
                 },
-                nds.fs.Nitro.Node.Kind.Folder => |f| {
-                    const folder_path = try path.join(allocator, state.path, node.name);
-
-                    try os.makePath(allocator, folder_path);
+                Fs.Node.Kind.Folder => |f| {
+                    try os.makePath(allocator, node_path);
                     try stack.append(State{
-                        .path = folder_path,
+                        .path = node_path,
                         .folder = f,
                     });
                 },
