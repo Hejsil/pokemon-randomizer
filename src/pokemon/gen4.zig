@@ -124,6 +124,52 @@ pub const LevelUpMove = packed struct {
     level: u7,
 };
 
+pub const DpptWildPokemons = packed struct {
+    grass_rate: lu32,
+    grass: [12]Grass,
+    replacements: [26]lu32, // TODO: Figure out exactly how these replacements map to encounters.
+    surf: [5]Sea,
+    sea_unkwown: [5]Sea,
+    old_rod: [5]Sea,
+    good_rod: [5]Sea,
+    super_rod: [5]Sea,
+
+    pub const Grass = packed struct {
+        level: lu32,
+        species: lu32,
+    };
+
+    pub const Sea = packed struct {
+        level_max: u8,
+        level_min: u8,
+        pad: [2]u8,
+        species: lu32,
+    };
+};
+
+pub const HgssWildPokemons = packed struct {
+    grass_rate: u8,
+    sea_rates: [5]u8,
+    unknown: [2]u8,
+    grass_levels: [12]u8,
+    grass_morning: [12]lu16,
+    grass_day: [12]lu16,
+    grass_night: [12]lu16,
+    radio: [4]lu16,
+    surf: [5]Sea,
+    sea_unknown: [2]Sea,
+    old_rod: [5]Sea,
+    good_rod: [5]Sea,
+    super_rod: [5]Sea,
+    swarm: [4]lu16,
+
+    pub const Sea = packed struct {
+        level_min: u8,
+        level_max: u8,
+        species: lu16,
+    };
+};
+
 pub const Game = struct {
     base: pokemon.BaseGame,
     base_stats: *const nds.fs.Narc,

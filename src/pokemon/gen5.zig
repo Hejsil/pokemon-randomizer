@@ -147,6 +147,24 @@ pub const Type = enum(u8) {
     Dark = 0x10,
 };
 
+pub const WildPokemon = packed struct {
+    species: lu16,
+    level_min: u8,
+    level_max: u8,
+};
+
+pub const WildPokemons = packed struct {
+    rates: [7]u8,
+    pad: u8,
+    grass: [12]WildPokemon,
+    dark_grass: [12]WildPokemon,
+    rustling_grass: [12]WildPokemon,
+    surf: [5]WildPokemon,
+    ripple_surf: [5]WildPokemon,
+    fishing: [5]WildPokemon,
+    ripple_fishing: [5]WildPokemon,
+};
+
 pub const Game = struct {
     const legendaries = common.legendaries;
 
