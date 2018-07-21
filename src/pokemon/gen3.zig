@@ -26,6 +26,12 @@ pub fn Ptr(comptime T: type) type {
 
         v: lu32,
 
+        pub fn initNull() Self {
+            return Self{
+                .v = lu32.init(0),
+            };
+        }
+
         pub fn init(i: u32) !Self {
             const v = math.add(u32, i, 0x8000000) catch return error.InvalidPointer;
             return Self{
@@ -34,11 +40,17 @@ pub fn Ptr(comptime T: type) type {
         }
 
         pub fn toMany(ptr: this, data: []u8) ![*]T {
-            const s = try ptr.toSlice(data, 0);
-            return s.ptr;
+            return (try ptr.toSlice(data, 0)).ptr;
         }
 
         pub fn toSlice(ptr: this, data: []u8, len: u32) ![]T {
+            if (ptr.isNull()) {
+                if (len == 0)
+                    return @bytesToSlice(T, data[0..0]);
+
+                return error.InvalidPointer;
+            }
+
             const start = try ptr.toInt();
             const end = start + len * @sizeOf(T);
             if (data.len < start or data.len < end)
@@ -47,8 +59,44 @@ pub fn Ptr(comptime T: type) type {
             return @bytesToSlice(T, data[start..end]);
         }
 
+        pub fn isNull(ptr: this) bool {
+            return ptr.v.value() == 0;
+        }
+
         pub fn toInt(ptr: this) !u32 {
             return math.sub(u32, ptr.v.value(), 0x8000000) catch return error.InvalidPointer;
+        }
+    };
+}
+
+pub fn Ref(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        ptr: Ptr(T),
+
+        pub fn initNull() Self {
+            return Self{
+                .ptr = Ptr(T).initNull(),
+            };
+        }
+
+        pub fn init(i: u32) !Self {
+            return Self{
+                .ptr = try Ptr(T).init(i),
+            };
+        }
+
+        pub fn toSingle(ref: Self, data: []u8) !*T {
+            return &(try ref.ptr.toSlice(data, 1))[0];
+        }
+
+        pub fn isNull(ref: this) bool {
+            return ref.ptr.isNull();
+        }
+
+        pub fn toInt(ref: Self) !u32 {
+            return try ref.ptr.toInt();
         }
     };
 }
@@ -59,6 +107,13 @@ pub fn Slice(comptime T: type) type {
 
         l: lu32,
         ptr: Ptr(T),
+
+        pub fn initEmpty() !Self {
+            return Self{
+                .l = lu32.init(0),
+                .ptr = try Ptr(T).initNull(),
+            };
+        }
 
         pub fn init(ptr: u32, l: u32) !Self {
             return Self{
@@ -73,28 +128,6 @@ pub fn Slice(comptime T: type) type {
 
         pub fn len(slice: Self) u32 {
             return slice.l.value();
-        }
-    };
-}
-
-pub fn Ref(comptime T: type) type {
-    return packed struct {
-        const Self = this;
-
-        ptr: Ptr(T),
-
-        pub fn init(i: u32) !Self {
-            return Self{
-                .ptr = try Ptr(T).init(i),
-            };
-        }
-
-        pub fn toSingle(ref: Self, data: []u8) !*T {
-            return &ref.ptr.slice(data, 1)[0];
-        }
-
-        pub fn toInt(ref: Self) !u32 {
-            return try ref.ptr.toInt();
         }
     };
 }
@@ -233,10 +266,10 @@ pub const WildPokemonHeader = packed struct {
     map_group: u8,
     map_num: u8,
     pad: [2]u8,
-    land_pokemons: WildPokemonInfo(12),
-    surf_pokemons: WildPokemonInfo(5),
-    rock_smash_pokemons: WildPokemonInfo(5),
-    fishing_pokemons: WildPokemonInfo(10),
+    land_pokemons: Ref(WildPokemonInfo(12)),
+    surf_pokemons: Ref(WildPokemonInfo(5)),
+    rock_smash_pokemons: Ref(WildPokemonInfo(5)),
+    fishing_pokemons: Ref(WildPokemonInfo(10)),
 };
 
 pub const Game = struct {
