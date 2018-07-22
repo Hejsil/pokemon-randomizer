@@ -36,6 +36,7 @@ pub const defense = 12;
 pub const speed = 13;
 pub const sp_attack = 14;
 pub const sp_defense = 15;
+pub const rate = 16;
 pub const has_moves = 0b01;
 pub const has_item = 0b10;
 
@@ -43,6 +44,7 @@ const trainer_count = 800;
 const move_count = 200;
 const pokemon_count = 800;
 const level_up_move_count = pokemon_count;
+const zone_count = 100;
 
 pub fn generateFakeRoms(allocator: *mem.Allocator) ![][]u8 {
     const tmp = try allocator.alloc(u8, 2 * 1024 * 1024);
@@ -237,6 +239,42 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         try file.write(lu16.init(move).bytes);
     }
 
+    for (loop.to(info.wild_pokemon_headers.len)) |_, i| {
+        try file.seekTo(free_space_offset);
+        const lens = []usize{12,5,5,10};
+        var offsets: [lens.len]u32 = undefined;
+        inline for (lens) |len, j| {
+            const offset = try file.getPos();
+            for (loop.to(len)) |_2| {
+                try file.write(utils.toBytes(libpoke.gen3.WildPokemon, libpoke.gen3.WildPokemon{
+                    .min_level = level,
+                    .max_level = level,
+                    .species = lu16.init(species),
+                }));
+            }
+
+            offsets[j] = @intCast(u32, try file.getPos());
+            try file.write(utils.toBytes(libpoke.gen3.WildPokemonInfo(len), libpoke.gen3.WildPokemonInfo(len){
+                .encounter_rate = rate,
+                .pad = undefined,
+                .wild_pokemons = try libpoke.gen3.Ref([len]libpoke.gen3.WildPokemon).init(@intCast(u32, offset)),
+            }));
+        }
+
+        free_space_offset = try file.getPos();
+
+        try file.seekTo(info.wild_pokemon_headers.start + i * @sizeOf(libpoke.gen3.WildPokemonHeader));
+        try file.write(utils.toBytes(libpoke.gen3.WildPokemonHeader, libpoke.gen3.WildPokemonHeader{
+            .map_group = undefined,
+            .map_num = undefined,
+            .pad = undefined,
+            .land_pokemons = try libpoke.gen3.Ref(libpoke.gen3.WildPokemonInfo(12)).init(offsets[0]),
+            .surf_pokemons = try libpoke.gen3.Ref(libpoke.gen3.WildPokemonInfo(5)).init(offsets[1]),
+            .rock_smash_pokemons = try libpoke.gen3.Ref(libpoke.gen3.WildPokemonInfo(5)).init(offsets[2]),
+            .fishing_pokemons = try libpoke.gen3.Ref(libpoke.gen3.WildPokemonInfo(10)).init(offsets[3]),
+        }));
+    }
+
     const end = try file.getEndPos();
     try file.seekTo(end);
 
@@ -262,6 +300,7 @@ fn getGen3FreeSpace(info: libpoke.gen3.constants.Info) usize {
     res = math.max(res, info.level_up_learnset_pointers.end());
     res = math.max(res, info.hms.end());
     res = math.max(res, info.tms.end());
+    res = math.max(res, info.wild_pokemon_headers.end());
 
     return math.max(res, info.items.end());
 }
@@ -448,6 +487,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
     const root = rom.root;
 
     {
+        // TODO: This can leak on err
         const trainer_narc = try nds.fs.Narc.create(allocator);
         const party_narc = try nds.fs.Narc.create(allocator);
         try trainer_narc.ensureCapacity(trainer_count);
@@ -469,19 +509,23 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             if (i & has_item != 0)
                 party_type |= libpoke.gen4.Trainer.has_item;
 
-            const trainer = try allocator.create(libpoke.gen4.Trainer{
-                .party_type = party_type,
-                .class = undefined,
-                .battle_type = undefined,
-                .party_size = party_size,
-                .items = []lu16{comptime lu16.init(item)} ** 4,
-                .ai = undefined,
-                .battle_type2 = undefined,
-            });
-            _ = try trainer_narc.createFile(name, nds.fs.Narc.File{
-                .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen4.Trainer, trainer)[0..],
-            });
+            {
+                const trainer = try allocator.create(libpoke.gen4.Trainer{
+                    .party_type = party_type,
+                    .class = undefined,
+                    .battle_type = undefined,
+                    .party_size = party_size,
+                    .items = []lu16{comptime lu16.init(item)} ** 4,
+                    .ai = undefined,
+                    .battle_type2 = undefined,
+                });
+                errdefer allocator.destroy(trainer);
+
+                _ = try trainer_narc.createFile(name, nds.fs.Narc.File{
+                    .allocator = allocator,
+                    .data = utils.asBytes(libpoke.gen4.Trainer, trainer)[0..],
+                });
+            }
 
             var tmp_buf: [100]u8 = undefined;
             const party_member = libpoke.gen4.PartyMember{
@@ -507,6 +551,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
                 ([]u8{0x00} ** 2)[0..padding],
             );
+            errdefer allocator.free(full_party_member_bytes);
 
             _ = try party_narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
@@ -516,6 +561,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
     }
 
     {
+        // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(move_count);
         _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
@@ -526,6 +572,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
+            // TODO: This can leak on err
             const gen4_move = try allocator.create(libpoke.gen4.Move{
                 .u8_0 = undefined,
                 .u8_1 = undefined,
@@ -552,6 +599,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
     }
 
     {
+        // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(pokemon_count);
         _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
@@ -562,6 +610,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
+            // TODO: This can leak on err
             const base_stats = try allocator.create(libpoke.gen4.BasePokemon{
                 .stats = libpoke.common.Stats{
                     .hp = hp,
@@ -601,6 +650,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
     }
 
     {
+        // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(level_up_move_count);
         _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
@@ -617,6 +667,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             };
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
+                // TODO: This can leak on err
                 .data = try fmt.allocPrint(
                     allocator,
                     "{}{}",
@@ -624,6 +675,89 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                     []u8{0xFF} ** @sizeOf(libpoke.gen4.LevelUpMove),
                 ),
             });
+        }
+    }
+
+    {
+        // TODO: This can leak on err
+        const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(zone_count);
+        _ = try root.createPathAndFile(info.wild_pokemons, nds.fs.Nitro.File{
+            .Narc = narc,
+        });
+
+        for (loop.to(zone_count)) |_, i| {
+            var name_buf: [10]u8 = undefined;
+            const name = try fmt.bufPrint(name_buf[0..], "{}", i);
+
+            switch (info.version) {
+                libpoke.Version.Diamond, libpoke.Version.Pearl, libpoke.Version.Platinum => {
+                    const WildPokemons = libpoke.gen4.DpptWildPokemons;
+                    const Grass = WildPokemons.Grass;
+                    const Sea = WildPokemons.Sea;
+                    const sea = comptime Sea{
+                        .level_max = level,
+                        .level_min = level,
+                        .pad = undefined,
+                        .species = lu32.init(species),
+                    };
+
+                    // TODO: This can leak on err
+                    const wild_pokemon = try allocator.create(WildPokemons{
+                        .grass_rate = lu32.init(rate),
+                        .grass = []Grass{
+                            comptime Grass{
+                                .level = lu32.init(level),
+                                .species = lu32.init(species),
+                            },
+                        } ** 12,
+                        .replacements = []lu32{comptime lu32.init(species)} ** 26,
+                        .surf = []Sea{sea} ** 5,
+                        .sea_unkwown = []Sea{sea} ** 5,
+                        .old_rod = []Sea{sea} ** 5,
+                        .good_rod = []Sea{sea} ** 5,
+                        .super_rod = []Sea{sea} ** 5,
+                    });
+
+                    _ = try narc.createFile(name, nds.fs.Narc.File{
+                        .allocator = allocator,
+                        .data = utils.asBytes(WildPokemons, wild_pokemon),
+                    });
+                },
+                libpoke.Version.HeartGold, libpoke.Version.SoulSilver => {
+                    const WildPokemons = libpoke.gen4.HgssWildPokemons;
+                    const Sea = WildPokemons.Sea;
+                    const sea = comptime Sea{
+                        .level_min = level,
+                        .level_max = level,
+                        .species = lu16.init(species),
+                    };
+
+                    // TODO: This can leak on err
+                    const wild_pokemon = try allocator.create(WildPokemons{
+                        .grass_rate = rate,
+                        .sea_rates = []u8{rate} ** 5,
+                        .unknown = undefined,
+                        .grass_levels = []u8{level} ** 12,
+                        .grass_morning = []lu16{comptime lu16.init(species)} ** 12,
+                        .grass_day = []lu16{comptime lu16.init(species)} ** 12,
+                        .grass_night = []lu16{comptime lu16.init(species)} ** 12,
+                        .radio = []lu16{comptime lu16.init(species)} ** 4,
+                        .surf = []Sea{sea} ** 5,
+                        .sea_unknown = []Sea{sea} ** 2,
+                        .old_rod = []Sea{sea} ** 5,
+                        .good_rod = []Sea{sea} ** 5,
+                        .super_rod = []Sea{sea} ** 5,
+                        .swarm = []lu16{comptime lu16.init(species)} ** 4,
+                    });
+
+                    _ = try narc.createFile(name, nds.fs.Narc.File{
+                        .allocator = allocator,
+                        .data = utils.asBytes(WildPokemons, wild_pokemon),
+                    });
+                },
+                else => unreachable,
+            }
         }
     }
 
@@ -661,6 +795,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
     const root = rom.root;
 
     {
+        // TODO: This can leak on err
         const trainer_narc = try nds.fs.Narc.create(allocator);
         const party_narc = try nds.fs.Narc.create(allocator);
         try trainer_narc.ensureCapacity(trainer_count);
@@ -682,6 +817,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             if (i & has_item != 0)
                 party_type |= libpoke.gen5.Trainer.has_item;
 
+            // TODO: This can leak on err
             const trainer = try allocator.create(libpoke.gen5.Trainer{
                 .party_type = party_type,
                 .class = undefined,
@@ -712,6 +848,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             const held_item_bytes = lu16.init(item).bytes;
             const moves_bytes = utils.toBytes([4]lu16, []lu16{comptime lu16.init(move)} ** 4);
 
+            // TODO: This can leak on err
             const full_party_member_bytes = try fmt.bufPrint(
                 tmp_buf[0..],
                 "{}{}{}",
@@ -728,6 +865,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
     }
 
     {
+        // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(move_count);
         _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
@@ -738,6 +876,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
+            // TODO: This can leak on err
             const gen5_move = try allocator.create(libpoke.gen5.Move{
                 .@"type" = @intToEnum(libpoke.gen5.Type, ptype),
                 .effect_category = undefined,
@@ -769,6 +908,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
     }
 
     {
+        // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(pokemon_count);
         _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
@@ -779,6 +919,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             var name_buf: [10]u8 = undefined;
             const name = try fmt.bufPrint(name_buf[0..], "{}", i);
 
+            // TODO: This can leak on err
             const base_stats = try allocator.create(libpoke.gen5.BasePokemon{
                 .stats = libpoke.common.Stats{
                     .hp = hp,
@@ -823,6 +964,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
     }
 
     {
+        // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(level_up_move_count);
         _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
@@ -839,12 +981,52 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             };
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
+                // TODO: This can leak on err
                 .data = try fmt.allocPrint(
                     allocator,
                     "{}{}",
                     utils.toBytes(libpoke.gen5.LevelUpMove, lvlup_learnset)[0..],
                     []u8{0xFF} ** @sizeOf(libpoke.gen5.LevelUpMove),
                 ),
+            });
+        }
+    }
+
+    {
+        // TODO: This can leak on err
+        const narc = try nds.fs.Narc.create(allocator);
+        try narc.ensureCapacity(level_up_move_count);
+        _ = try root.createPathAndFile(info.wild_pokemons, nds.fs.Nitro.File{
+            .Narc = narc,
+        });
+
+        for (loop.to(zone_count)) |_, i| {
+            var name_buf: [10]u8 = undefined;
+            const name = try fmt.bufPrint(name_buf[0..], "{}", i);
+
+            const WildPokemon = libpoke.gen5.WildPokemon;
+            const wild_pokemon = comptime WildPokemon{
+                .species = lu16.init(species),
+                .level_min = level,
+                .level_max = level,
+            };
+
+            // TODO: This can leak on err
+            const wild_pokemons = try allocator.create(libpoke.gen5.WildPokemons{
+                .rates = []u8{rate} ** 7,
+                .pad = undefined,
+                .grass = []WildPokemon{wild_pokemon} ** 12,
+                .dark_grass = []WildPokemon{wild_pokemon} ** 12,
+                .rustling_grass = []WildPokemon{wild_pokemon} ** 12,
+                .surf = []WildPokemon{wild_pokemon} ** 5,
+                .ripple_surf = []WildPokemon{wild_pokemon} ** 5,
+                .fishing = []WildPokemon{wild_pokemon} ** 5,
+                .ripple_fishing = []WildPokemon{wild_pokemon} ** 5,
+            });
+
+            _ = try narc.createFile(name, nds.fs.Narc.File{
+                .allocator = allocator,
+                .data = utils.asBytes(libpoke.gen5.WildPokemons, wild_pokemons),
             });
         }
     }
