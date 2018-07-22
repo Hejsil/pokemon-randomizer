@@ -127,7 +127,7 @@ gen2.BasePokemon{
     .egg_group1 = common.EggGroup.Grass,
     .egg_group2 = common.EggGroup.Monster,
 
-    .tm_hm_learnset = undefined,
+    .machine_learnset = undefined,
 }};
 
 pub const last_base_stats = []gen2.BasePokemon{
@@ -162,5 +162,5 @@ gen2.BasePokemon{
     .egg_group1 = common.EggGroup.Undiscovered,
     .egg_group2 = common.EggGroup.Undiscovered,
 
-    .tm_hm_learnset = undefined,
+    .machine_learnset = undefined,
 }};

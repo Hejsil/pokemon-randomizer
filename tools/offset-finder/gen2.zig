@@ -108,7 +108,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
         else => unreachable,
     }
 
-    const ignored_base_stat_fields = [][]const u8{ "dimension_of_front_sprite", "blank", "tm_hm_learnset", "gender_ratio", "egg_group1_pad", "egg_group2_pad" };
+    const ignored_base_stat_fields = [][]const u8{ "dimension_of_front_sprite", "blank", "machine_learnset", "gender_ratio", "egg_group1_pad", "egg_group2_pad" };
     const base_stats = search.findStructs(
         gen2.BasePokemon,
         ignored_base_stat_fields,

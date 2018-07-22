@@ -537,11 +537,11 @@ pub const Pokemons = extern struct {
         switch (gen) {
             gen3 => {
                 base_pokemon = &game.base_stats[index];
-                learnset = @ptrCast(*u8, &game.tm_hm_learnset[index]);
+                learnset = @ptrCast(*u8, &game.machine_learnsets[index]);
             },
             gen4, gen5 => {
                 base_pokemon = try getFileAsType(gen.BasePokemon, game.base_stats, index);
-                learnset = @ptrCast(*u8, &base_pokemon.tm_hm_learnset);
+                learnset = @ptrCast(*u8, &base_pokemon.machine_learnset);
             },
             else => @compileError("Gen not supported!"),
         }
@@ -592,8 +592,8 @@ pub const Pokemons = extern struct {
         switch (gen) {
             gen3 => {
                 var min = game.base_stats.len;
-                min = math.min(min, game.tm_hm_learnset.len);
-                min = math.min(min, game.evolution_table.len);
+                min = math.min(min, game.machine_learnsets.len);
+                min = math.min(min, game.evolutions.len);
                 return math.min(min, game.level_up_learnset_pointers.len);
             },
             gen4, gen5 => {

@@ -279,15 +279,17 @@ pub const Game = struct {
 
     // All these fields point into data
     header: *gba.Header,
+
     trainers: []Trainer,
     moves: []Move,
-    tm_hm_learnset: []lu64,
+    machine_learnsets: []lu64,
     base_stats: []BasePokemon,
-    evolution_table: [][5]common.Evolution,
+    evolutions: [][5]common.Evolution,
     level_up_learnset_pointers: []Ref(LevelUpMove),
-    items: []Item,
     hms: []lu16,
     tms: []lu16,
+    items: []Item,
+    wild_pokemon_headers: []WildPokemonHeader,
 
     pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
@@ -315,13 +317,14 @@ pub const Game = struct {
             .header = @ptrCast(*gba.Header, &rom[0]),
             .trainers = info.trainers.slice(rom),
             .moves = info.moves.slice(rom),
-            .tm_hm_learnset = info.machine_learnsets.slice(rom),
+            .machine_learnsets = info.machine_learnsets.slice(rom),
             .base_stats = info.base_stats.slice(rom),
-            .evolution_table = info.evolutions.slice(rom),
+            .evolutions = info.evolutions.slice(rom),
             .level_up_learnset_pointers = info.level_up_learnset_pointers.slice(rom),
-            .items = info.items.slice(rom),
             .hms = info.hms.slice(rom),
             .tms = info.tms.slice(rom),
+            .items = info.items.slice(rom),
+            .wild_pokemon_headers = info.wild_pokemon_headers.slice(rom),
         };
     }
 

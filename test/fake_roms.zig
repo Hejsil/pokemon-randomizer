@@ -591,7 +591,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 .flee_rate = undefined,
                 .color = undefined,
                 .color_padding = undefined,
-                .tm_hm_learnset = lu128.init(0),
+                .machine_learnset = lu128.init(0),
             });
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
@@ -813,7 +813,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
                 .base_exp_yield = undefined,
                 .height = undefined,
                 .weight = undefined,
-                .tm_hm_learnset = undefined,
+                .machine_learnset = undefined,
             });
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,

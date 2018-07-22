@@ -55,7 +55,7 @@ pub const BasePokemon = packed struct {
 
     // Memory layout
     // TMS 01-92, HMS 01-06, TMS 93-95
-    tm_hm_learnset: lu128,
+    machine_learnset: lu128,
 
     // TODO: Tutor data only exists in BW2
     //special_tutors: lu32,
@@ -174,6 +174,7 @@ pub const Game = struct {
     level_up_moves: *const nds.fs.Narc,
     trainers: *const nds.fs.Narc,
     parties: *const nds.fs.Narc,
+    wild_pokemons: *const nds.fs.Narc,
     tms1: []lu16,
     hms: []lu16,
     tms2: []lu16,
@@ -192,6 +193,7 @@ pub const Game = struct {
             .moves = try common.getNarc(rom.root, info.moves),
             .trainers = try common.getNarc(rom.root, info.trainers),
             .parties = try common.getNarc(rom.root, info.parties),
+            .wild_pokemons = try common.getNarc(rom.root, info.wild_pokemons),
             .tms1 = hm_tms[0..92],
             .hms = hm_tms[92..98],
             .tms2 = hm_tms[98..],

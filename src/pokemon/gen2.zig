@@ -26,7 +26,7 @@ pub const BasePokemon = packed struct {
     egg_group1: common.EggGroup,
     egg_group2: common.EggGroup,
 
-    tm_hm_learnset: lu64,
+    machine_learnset: lu64,
 };
 
 pub const Type = enum(u8) {
