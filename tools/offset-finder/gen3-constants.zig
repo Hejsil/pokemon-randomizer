@@ -120,22 +120,40 @@ pub const frls_first_trainers = []gen3.Trainer{
     },
 };
 
-pub const frls_last_trainers = []gen3.Trainer{gen3.Trainer{
-    .party_type = 0x00,
-    .class = 90,
-    .encounter_music = 0,
-    .trainer_picture = 125,
-    .name = undefined,
-    .items = []lu16{
-        lu16.init(19),
-        lu16.init(19),
-        lu16.init(19),
-        lu16.init(19),
+pub const frls_last_trainers = []gen3.Trainer{
+    gen3.Trainer{
+        .party_type = 0x03,
+        .class = 90,
+        .encounter_music = 0,
+        .trainer_picture = 125,
+        .name = undefined,
+        .items = []lu16{
+            lu16.init(19),
+            lu16.init(19),
+            lu16.init(19),
+            lu16.init(19),
+        },
+        .is_double = lu32.init(0),
+        .ai = lu32.init(7),
+        .party = undefined,
     },
-    .is_double = lu32.init(0),
-    .ai = lu32.init(7),
-    .party = undefined,
-}};
+    gen3.Trainer{
+        .party_type = 0x00,
+        .class = 0x47,
+        .encounter_music = 0,
+        .trainer_picture = 0x60,
+        .name = undefined,
+        .items = []lu16{
+            lu16.init(0),
+            lu16.init(0),
+            lu16.init(0),
+            lu16.init(0),
+        },
+        .is_double = lu32.init(0),
+        .ai = lu32.init(1),
+        .party = undefined,
+    },
+};
 
 pub const first_moves = []gen3.Move{
     // Dummy
@@ -793,4 +811,59 @@ pub const frlg_last_items = []gen3.Item{
         .battle_use_func = undefined,
         .secondary_id = lu32.init(0),
     },
+};
+
+fn wildHeader(map_group: u8, map_num: u8) gen3.WildPokemonHeader {
+    return gen3.WildPokemonHeader{
+        .map_group = map_group,
+        .map_num = map_num,
+        .pad = undefined,
+        .land_pokemons = undefined,
+        .surf_pokemons = undefined,
+        .rock_smash_pokemons = undefined,
+        .fishing_pokemons = undefined,
+    };
+}
+
+pub const em_first_wild_mon_headers = []gen3.WildPokemonHeader{
+    wildHeader(0, 16),
+    wildHeader(0, 17),
+    wildHeader(0, 18),
+};
+
+pub const em_last_wild_mon_headers = []gen3.WildPokemonHeader{
+    wildHeader(24, 106),
+    wildHeader(24, 106),
+    wildHeader(24, 107),
+};
+
+pub const rs_first_wild_mon_headers = []gen3.WildPokemonHeader{
+    wildHeader(0, 0),
+    wildHeader(0, 1),
+    wildHeader(0, 5),
+    wildHeader(0, 6),
+};
+
+pub const rs_last_wild_mon_headers = []gen3.WildPokemonHeader{
+    wildHeader(0, 15),
+    wildHeader(0, 50),
+    wildHeader(0, 51),
+};
+
+pub const frlg_first_wild_mon_headers = []gen3.WildPokemonHeader{
+    wildHeader(2, 27),
+    wildHeader(2, 28),
+    wildHeader(2, 29),
+};
+
+pub const frlg_last_wild_mon_headers = []gen3.WildPokemonHeader{
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
+    wildHeader(1, 122),
 };

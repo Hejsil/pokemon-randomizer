@@ -48,6 +48,7 @@ pub const LevelUpLearnsetPointerSection = Section(libpoke.gen3.Ref(libpoke.gen3.
 pub const HmSection = Section(lu16);
 pub const TmSection = Section(lu16);
 pub const ItemSection = Section(libpoke.gen3.Item);
+pub const WildPokemonHeaderSection = Section(libpoke.gen3.WildPokemonHeader);
 
 pub const Info = struct {
     game_title: [12]u8,
@@ -63,6 +64,7 @@ pub const Info = struct {
     hms: HmSection,
     tms: TmSection,
     items: ItemSection,
+    wild_pokemon_headers: WildPokemonHeaderSection,
 };
 
 pub const infos = []Info{
@@ -73,46 +75,50 @@ pub const infos = []Info{
     leaf_us_info,
 };
 
+
 const emerald_us_info = Info{
     .game_title = "POKEMON EMER",
     .gamecode = "BPEE",
     .version = libpoke.Version.Emerald,
-
     .trainers = TrainerSection{
-        .start = 0x0310030,
+        .start = 0x00310030,
         .len = 855,
     },
     .moves = MoveSection{
-        .start = 0x031C898,
+        .start = 0x0031C898,
         .len = 355,
     },
     .machine_learnsets = MachineLearnsetSection{
-        .start = 0x031E898,
+        .start = 0x0031E898,
         .len = 412,
     },
     .base_stats = BaseStatsSection{
-        .start = 0x03203CC,
+        .start = 0x003203CC,
         .len = 412,
     },
     .evolutions = EvolutionSection{
-        .start = 0x032531C,
+        .start = 0x0032531C,
         .len = 412,
     },
     .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
-        .start = 0x032937C,
+        .start = 0x0032937C,
         .len = 412,
     },
     .hms = HmSection{
-        .start = 0x0329EEA,
-        .len = 008,
+        .start = 0x00329EEA,
+        .len = 8,
     },
     .tms = TmSection{
-        .start = 0x0615B94,
-        .len = 050,
+        .start = 0x00615B94,
+        .len = 50,
     },
     .items = ItemSection{
-        .start = 0x05839A0,
+        .start = 0x005839A0,
         .len = 377,
+    },
+    .wild_pokemon_headers = WildPokemonHeaderSection{
+        .start = 0x00552D48,
+        .len = 124,
     },
 };
 
@@ -120,42 +126,45 @@ pub const ruby_us_info = Info{
     .game_title = "POKEMON RUBY",
     .gamecode = "AXVE",
     .version = libpoke.Version.Ruby,
-
     .trainers = TrainerSection{
-        .start = 0x01F0514,
-        .len = 339,
+        .start = 0x001F0514,
+        .len = 337,
     },
     .moves = MoveSection{
-        .start = 0x01FB144,
+        .start = 0x001FB144,
         .len = 355,
     },
     .machine_learnsets = MachineLearnsetSection{
-        .start = 0x01FD108,
+        .start = 0x001FD108,
         .len = 412,
     },
     .base_stats = BaseStatsSection{
-        .start = 0x01FEC30,
+        .start = 0x001FEC30,
         .len = 412,
     },
     .evolutions = EvolutionSection{
-        .start = 0x0203B80,
+        .start = 0x00203B80,
         .len = 412,
     },
     .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
-        .start = 0x0207BE0,
+        .start = 0x00207BE0,
         .len = 412,
     },
     .hms = HmSection{
-        .start = 0x0208332,
-        .len = 008,
+        .start = 0x00208332,
+        .len = 8,
     },
     .tms = TmSection{
-        .start = 0x037651C,
-        .len = 050,
+        .start = 0x0037651C,
+        .len = 50,
     },
     .items = ItemSection{
-        .start = 0x03C5580,
+        .start = 0x003C5580,
         .len = 349,
+    },
+    .wild_pokemon_headers = WildPokemonHeaderSection{
+        .start = 0x0039D46C,
+        .len = 97,
     },
 };
 
@@ -163,42 +172,45 @@ pub const sapphire_us_info = Info{
     .game_title = "POKEMON SAPP",
     .gamecode = "AXPE",
     .version = libpoke.Version.Sapphire,
-
     .trainers = TrainerSection{
-        .start = 0x01F04A4,
-        .len = 339,
+        .start = 0x001F04A4,
+        .len = 337,
     },
     .moves = MoveSection{
-        .start = 0x01FB0D4,
+        .start = 0x001FB0D4,
         .len = 355,
     },
     .machine_learnsets = MachineLearnsetSection{
-        .start = 0x01FD098,
+        .start = 0x001FD098,
         .len = 412,
     },
     .base_stats = BaseStatsSection{
-        .start = 0x01FEBC0,
+        .start = 0x001FEBC0,
         .len = 412,
     },
     .evolutions = EvolutionSection{
-        .start = 0x0203B10,
+        .start = 0x00203B10,
         .len = 412,
     },
     .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
-        .start = 0x0207B70,
+        .start = 0x00207B70,
         .len = 412,
     },
     .hms = HmSection{
-        .start = 0x02082C2,
-        .len = 008,
+        .start = 0x002082C2,
+        .len = 8,
     },
     .tms = TmSection{
-        .start = 0x03764AC,
-        .len = 050,
+        .start = 0x003764AC,
+        .len = 50,
     },
     .items = ItemSection{
-        .start = 0x03C55DC,
+        .start = 0x003C55DC,
         .len = 349,
+    },
+    .wild_pokemon_headers = WildPokemonHeaderSection{
+        .start = 0x0039D2B4,
+        .len = 97,
     },
 };
 
@@ -206,42 +218,45 @@ pub const fire_us_info = Info{
     .game_title = "POKEMON FIRE",
     .gamecode = "BPRE",
     .version = libpoke.Version.FireRed,
-
     .trainers = TrainerSection{
-        .start = 0x023EB38,
-        .len = 439,
+        .start = 0x0023EB38,
+        .len = 743,
     },
     .moves = MoveSection{
-        .start = 0x0250C74,
+        .start = 0x00250C74,
         .len = 355,
     },
     .machine_learnsets = MachineLearnsetSection{
-        .start = 0x0252C38,
+        .start = 0x00252C38,
         .len = 412,
     },
     .base_stats = BaseStatsSection{
-        .start = 0x02547F4,
+        .start = 0x002547F4,
         .len = 412,
     },
     .evolutions = EvolutionSection{
-        .start = 0x02597C4,
+        .start = 0x002597C4,
         .len = 412,
     },
     .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
-        .start = 0x025D824,
+        .start = 0x0025D824,
         .len = 412,
     },
     .hms = HmSection{
-        .start = 0x025E084,
-        .len = 008,
+        .start = 0x0025E084,
+        .len = 8,
     },
     .tms = TmSection{
-        .start = 0x045A604,
-        .len = 050,
+        .start = 0x0045A604,
+        .len = 50,
     },
     .items = ItemSection{
-        .start = 0x03DB098,
+        .start = 0x003DB098,
         .len = 374,
+    },
+    .wild_pokemon_headers = WildPokemonHeaderSection{
+        .start = 0x003C9D28,
+        .len = 132,
     },
 };
 
@@ -249,41 +264,44 @@ pub const leaf_us_info = Info{
     .game_title = "POKEMON LEAF",
     .gamecode = "BPGE",
     .version = libpoke.Version.LeafGreen,
-
     .trainers = TrainerSection{
-        .start = 0x023EB14,
-        .len = 439,
+        .start = 0x0023EB14,
+        .len = 743,
     },
     .moves = MoveSection{
-        .start = 0x0250C50,
+        .start = 0x00250C50,
         .len = 355,
     },
     .machine_learnsets = MachineLearnsetSection{
-        .start = 0x0252C14,
+        .start = 0x00252C14,
         .len = 412,
     },
     .base_stats = BaseStatsSection{
-        .start = 0x02547D0,
+        .start = 0x002547D0,
         .len = 412,
     },
     .evolutions = EvolutionSection{
-        .start = 0x02597A4,
+        .start = 0x002597A4,
         .len = 412,
     },
     .level_up_learnset_pointers = LevelUpLearnsetPointerSection{
-        .start = 0x025D804,
+        .start = 0x0025D804,
         .len = 412,
     },
     .hms = HmSection{
-        .start = 0x025E064,
-        .len = 008,
+        .start = 0x0025E064,
+        .len = 8,
     },
     .tms = TmSection{
-        .start = 0x045A034,
-        .len = 050,
+        .start = 0x0045A034,
+        .len = 50,
     },
     .items = ItemSection{
-        .start = 0x03DAED4,
+        .start = 0x003DAED4,
         .len = 374,
+    },
+    .wild_pokemon_headers = WildPokemonHeaderSection{
+        .start = 0x003C9B64,
+        .len = 132,
     },
 };

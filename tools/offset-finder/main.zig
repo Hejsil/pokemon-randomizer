@@ -43,29 +43,30 @@ pub fn main() !void {
         defer allocator.free(data);
 
         var gamecode: []const u8 = undefined;
+        var game_title: []const u8 = undefined;
         const version = blk: {
             const gba_gamecode = gbaGamecode(data);
+            const gba_game_title = gbaGameTitle(data);
             const gb_gamecode = gbGamecode(data);
-            const gb_title = gbTitle(data);
+            const gb_title = gbGameTitle(data);
 
             if (getVersion(gba_gamecode)) |v| {
                 gamecode = gba_gamecode;
+                game_title = gba_game_title;
                 break :blk v;
             } else |err1| if (getVersion(gb_gamecode)) |v| {
                 gamecode = gb_gamecode;
+                game_title = gb_title;
                 break :blk v;
             } else |err2| if (getVersion(gb_title)) |v| {
-                gamecode = gb_title;
+                gamecode = gb_gamecode;
+                game_title = gb_title;
                 break :blk v;
             } else |err3| {
                 debug.warn("Neither gba gamecode '{}', gb gamecode '{}' or gb title '{}' correspond with any Pokemon game.\n", gba_gamecode, gb_gamecode, gb_title);
                 return err3;
             }
         };
-
-        debug.warn("Gamecode: {}\n", gamecode);
-        debug.warn("Game: {}\n", @tagName(version));
-        debug.warn("Generation: {}\n", version.gen());
 
         switch (version.gen()) {
             1 => unreachable,
@@ -77,24 +78,31 @@ pub fn main() !void {
             3 => {
                 const info = try gen3.findInfoInFile(data, version);
 
-                debug.warn(".trainers = TrainerSection");
+                debug.warn("Info{{\n");
+                debug.warn("    .game_title = \"{}\",\n", game_title);
+                debug.warn("    .gamecode = \"{}\",\n", gamecode);
+                debug.warn("    .version = libpoke.Version.{},\n", @tagName(version));
+                debug.warn("    .trainers = TrainerSection");
                 dumpSection(info.trainers);
-                debug.warn(".moves = MoveSection");
+                debug.warn("    .moves = MoveSection");
                 dumpSection(info.moves);
-                debug.warn(".machine_learnsets = MachineLearnsetSection");
+                debug.warn("    .machine_learnsets = MachineLearnsetSection");
                 dumpSection(info.machine_learnsets);
-                debug.warn(".base_stats = BaseStatsSection");
+                debug.warn("    .base_stats = BaseStatsSection");
                 dumpSection(info.base_stats);
-                debug.warn(".evolutions = EvolutionSection");
+                debug.warn("    .evolutions = EvolutionSection");
                 dumpSection(info.evolutions);
-                debug.warn(".level_up_learnset_pointers = LevelUpLearnsetPointerSection");
+                debug.warn("    .level_up_learnset_pointers = LevelUpLearnsetPointerSection");
                 dumpSection(info.level_up_learnset_pointers);
-                debug.warn(".hms = HmSection");
+                debug.warn("    .hms = HmSection");
                 dumpSection(info.hms);
-                debug.warn(".tms = TmSection");
+                debug.warn("    .tms = TmSection");
                 dumpSection(info.tms);
-                debug.warn(".items = ItemSection");
+                debug.warn("    .items = ItemSection");
                 dumpSection(info.items);
+                debug.warn("    .wild_pokemon_headers = WildPokemonHeaderSection");
+                dumpSection(info.wild_pokemon_headers);
+                debug.warn("}};\n");
             },
             else => unreachable,
         }
@@ -103,9 +111,9 @@ pub fn main() !void {
 
 fn dumpSection(sec: var) void {
     debug.warn("{{\n");
-    debug.warn("    .start = 0x{X8},\n", sec.start);
-    debug.warn("    .len = {},\n", sec.len);
-    debug.warn("}},\n");
+    debug.warn("        .start = 0x{X8},\n", sec.start);
+    debug.warn("        .len = {},\n", sec.len);
+    debug.warn("    }},\n");
 }
 
 fn getVersion(gamecode: []const u8) !pokemon.Version {
@@ -140,12 +148,17 @@ fn gbaGamecode(data: []const u8) []const u8 {
     return header.gamecode;
 }
 
+fn gbaGameTitle(data: []const u8) []const u8 {
+    const header = &@bytesToSlice(gba.Header, data[0..@sizeOf(gba.Header)])[0];
+    return header.game_title;
+}
+
 fn gbGamecode(data: []const u8) []const u8 {
     const header = &@bytesToSlice(gb.Header, data[0..@sizeOf(gb.Header)])[0];
     return header.title.split.gamecode;
 }
 
-fn gbTitle(data: []const u8) []const u8 {
+fn gbGameTitle(data: []const u8) []const u8 {
     const header = &@bytesToSlice(gb.Header, data[0..@sizeOf(gb.Header)])[0];
     return header.title.full;
 }
