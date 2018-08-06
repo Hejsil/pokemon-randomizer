@@ -694,12 +694,14 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 libpoke.Version.Diamond, libpoke.Version.Pearl, libpoke.Version.Platinum => {
                     const WildPokemons = libpoke.gen4.DpptWildPokemons;
                     const Grass = WildPokemons.Grass;
+                    const Replacement = WildPokemons.Replacement;
                     const Sea = WildPokemons.Sea;
                     const sea = comptime Sea{
                         .level_max = level,
                         .level_min = level,
-                        .pad = undefined,
-                        .species = lu32.init(species),
+                        .pad1 = undefined,
+                        .species = lu16.init(species),
+                        .pad2 = undefined,
                     };
 
                     // TODO: This can leak on err
@@ -707,11 +709,48 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                         .grass_rate = lu32.init(rate),
                         .grass = []Grass{
                             comptime Grass{
-                                .level = lu32.init(level),
-                                .species = lu32.init(species),
+                                .level = level,
+                                .pad1 = undefined,
+                                .species = lu16.init(species),
+                                .pad2 = undefined,
                             },
                         } ** 12,
-                        .replacements = []lu32{comptime lu32.init(species)} ** 26,
+                        .swarm_replacements = []Replacement{
+                            Replacement{
+                                .species = comptime lu16.init(species),
+                                .pad = undefined,
+                            },
+                        } ** 2,
+                        .day_replacements = []Replacement{
+                            Replacement{
+                                .species = comptime lu16.init(species),
+                                .pad = undefined,
+                            },
+                        } ** 2,
+                        .night_replacements = []Replacement{
+                            Replacement{
+                                .species = comptime lu16.init(species),
+                                .pad = undefined,
+                            },
+                        } ** 2,
+                        .radar_replacements = []Replacement{
+                            Replacement{
+                                .species = comptime lu16.init(species),
+                                .pad = undefined,
+                            },
+                        } ** 4,
+                        .unknown_replacements = []Replacement{
+                            Replacement{
+                                .species = comptime lu16.init(species),
+                                .pad = undefined,
+                            },
+                        } ** 6,
+                        .gba_replacements = []Replacement{
+                            Replacement{
+                                .species = comptime lu16.init(species),
+                                .pad = undefined,
+                            },
+                        } ** 10,
                         .surf = []Sea{sea} ** 5,
                         .sea_unkwown = []Sea{sea} ** 5,
                         .old_rod = []Sea{sea} ** 5,

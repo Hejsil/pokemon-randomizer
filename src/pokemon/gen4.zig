@@ -127,7 +127,12 @@ pub const LevelUpMove = packed struct {
 pub const DpptWildPokemons = packed struct {
     grass_rate: lu32,
     grass: [12]Grass,
-    replacements: [26]lu32, // TODO: Figure out exactly how these replacements map to encounters.
+    swarm_replacements: [2]Replacement, // Replaces grass[0, 1]
+    day_replacements: [2]Replacement, // Replaces grass[2, 3]
+    night_replacements: [2]Replacement, // Replaces grass[2, 3]
+    radar_replacements: [4]Replacement, // Replaces grass[4, 5, 10, 11]
+    unknown_replacements: [6]Replacement, // ???
+    gba_replacements: [10]Replacement, // Each even replaces grass[8], each uneven replaces grass[9]
     surf: [5]Sea,
     sea_unkwown: [5]Sea,
     old_rod: [5]Sea,
@@ -135,15 +140,23 @@ pub const DpptWildPokemons = packed struct {
     super_rod: [5]Sea,
 
     pub const Grass = packed struct {
-        level: lu32,
-        species: lu32,
+        level: u8,
+        pad1: [3]u8,
+        species: lu16,
+        pad2: [2]u8,
     };
 
     pub const Sea = packed struct {
         level_max: u8,
         level_min: u8,
+        pad1: [2]u8,
+        species: lu16,
+        pad2: [2]u8,
+    };
+
+    pub const Replacement = packed struct {
+        species: lu16,
         pad: [2]u8,
-        species: lu32,
     };
 };
 

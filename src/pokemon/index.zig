@@ -1132,6 +1132,393 @@ pub const Moves = extern struct {
     const Iter = ErrIterator(Moves, Move);
 };
 
+pub const WildPokemon = extern struct {
+    vtable: *const VTable,
+    species: *lu16,
+    min_level: *u8,
+    max_level: *u8,
+
+    pub fn getSpecies(wild_mon: WildPokemon) u16 {
+        return wild_mon.species.value();
+    }
+
+    pub fn setSpecies(wild_mon: WildPokemon, species: u16) void {
+        wild_mon.species.* = lu16.init(species);
+    }
+
+    pub fn getMinLevel(wild_mon: WildPokemon) u8 {
+        return wild_mon.min_level.*;
+    }
+
+    pub fn setMinLevel(wild_mon: WildPokemon, lvl: u8) void {
+        wild_mon.min_level.* = lvl;
+    }
+
+    pub fn getMaxLevel(wild_mon: WildPokemon) u8 {
+        return wild_mon.max_level.*;
+    }
+
+    pub fn setMaxLevel(wild_mon: WildPokemon, lvl: u8) void {
+        wild_mon.max_level.* = lvl;
+    }
+
+    const VTable = struct {
+        fn init(comptime gen: Namespace) VTable {
+            return VTable{};
+        }
+    };
+};
+
+pub const WildPokemons = extern struct {
+    vtable: *const VTable,
+    version: Version,
+    data: *u8,
+
+    pub fn at(wild_mons: WildPokemons, index: usize) WildPokemon {
+        return wild_mons.vtable.at(wild_mons, index);
+    }
+
+    pub fn len(wild_mons: WildPokemons) usize {
+        return wild_mons.vtable.len(wild_mons);
+    }
+
+    pub fn iterator(wild_mons: WildPokemons) Iter {
+        return Iter.init(wildMons);
+    }
+
+    const Iter = Iterator(WildPokemons, WildPokemon);
+
+    const VTable = struct {
+        const AtErr = error{};
+
+        at: fn(wild_mons: WildPokemons, index: usize) AtErr!WildPokemon,
+        len: fn(wild_mons: WildPokemons) usize,
+
+        fn init(comptime gen: Namespace) VTable {
+            const Funcs = struct {
+                fn at(wild_mons: WildPokemons, index: usize) AtErr!WildPokemon {
+                    var i = index;
+                    switch (gen) {
+                        gen3 => {
+                            const data = @ptrCast(*gen.WildPokemonHeader, wild_mons.data);
+                            inline for ([][]const u8{
+                                "land_pokemons",
+                                "surf_pokemons",
+                                "rock_smash_pokemons",
+                                "fishing_pokemons",
+                            }) |field| {
+                                const ref = @field(data, field);
+                                if (!ref.isNull()) {
+                                    const arr = try ref.toSingle();
+                                    if (i < arr.len) {
+                                        return WildPokemon{
+                                            .vtable = WildPokemon.VTable.init(gen),
+                                            .species = &arr[i].species,
+                                            .min_level = &arr[i].min_level,
+                                            .max_level = &arr[i].max_level,
+                                        };
+                                    }
+                                    i -= arr.len;
+                                }
+                            }
+
+                            unreachable;
+                        },
+                        gen4 => switch (wild_mons.version) {
+                            Version.Diamond, Version.Pearl, Version.Platinum => {
+                                const data = @ptrCast(*gen.DpptWildPokemons, wild_mons.data);
+                                if (i < data.grass.len) {
+                                    return WildPokemon{
+                                        .vtable = WildPokemon.VTable.init(gen),
+                                        .species = &data.grass[i].species,
+                                        .min_level = &data.grass[i].level,
+                                        .max_level = &data.grass[i].level,
+                                    };
+                                }
+                                i -= data.grass.len;
+
+                                const ReplacementField = struct {
+                                    name: []const u8,
+                                    replace_with: []const usize,
+                                };
+                                inline for ([]ReplacementField{
+                                    ReplacementField{
+                                        .name = "swarm_replacements",
+                                        .replace_with = []const usize { 0, 1 },
+                                    },
+                                    ReplacementField{
+                                        .name = "day_replacements",
+                                        .replace_with = []const usize { 2, 3 },
+                                    },
+                                    ReplacementField{
+                                        .name = "night_replacements",
+                                        .replace_with = []const usize { 2, 3 },
+                                    },
+                                    ReplacementField{
+                                        .name = "radar_replacements",
+                                        .replace_with = []const usize { 4, 5, 10, 11 },
+                                    },
+                                    ReplacementField{
+                                        .name = "unknown_replacements",
+                                        .replace_with = []const usize { 0 } ** 6,
+                                    },
+                                    ReplacementField{
+                                        .name = "gba_replacements",
+                                        .replace_with = []const usize { 8, 9 } ** 5,
+                                    },
+                                }) |field| {
+                                    const arr = &@field(data, field.name);
+                                    if (i < arr.len) {
+                                        const replacement = &data.grass[field.replace_with[i]];
+                                        return WildPokemon{
+                                            .vtable = WildPokemon.VTable.init(gen),
+                                            .species = &arr[i].species,
+                                            .min_level = &replacement.level,
+                                            .max_level = &replacement.level,
+                                        };
+                                    }
+                                    i -= arr.len;
+                                }
+
+                                inline for ([][]const u8 {
+                                    "surf",
+                                    "sea_unkwown",
+                                    "old_rod",
+                                    "good_rod",
+                                    "super_rod",
+                                }) |field| {
+                                    const arr = &@field(data, field);
+                                    if (i < arr.len) {
+                                        return WildPokemon{
+                                            .vtable = WildPokemon.VTable.init(gen),
+                                            .species = &arr[i].species,
+                                            .min_level = &arr[i].level_min,
+                                            .max_level = &arr[i].level_max,
+                                        };
+                                    }
+                                    i -= arr.len;
+                                }
+
+                                unreachable;
+                            },
+                            Version.HeartGold, Version.SoulSilver => {
+                                const data = @ptrCast(*gen.HgssWildPokemons, wild_mons.data);
+                                inline for ([][]const u8 {
+                                    "grass_morning",
+                                    "grass_day",
+                                    "grass_night",
+                                }) |field| {
+                                    const arr = &@field(data, field);
+                                    if (i < arr.len) {
+                                        return WildPokemon{
+                                            .vtable = WildPokemon.VTable.init(gen),
+                                            .species = &arr[i],
+                                            .min_level = &data.grass_levels[i],
+                                            .max_level = &data.grass_levels[i],
+                                        };
+                                    }
+                                    i -= arr.len;
+                                }
+
+                                inline for ([][]const u8 {
+                                    "surf",
+                                    "sea_unknown",
+                                    "old_rod",
+                                    "good_rod",
+                                    "super_rod",
+                                }) |field| {
+                                    const arr = &@field(data, field);
+                                    if (i < arr.len) {
+                                        return WildPokemon{
+                                            .vtable = WildPokemon.VTable.init(gen),
+                                            .species = &arr[i].species,
+                                            .min_level = &arr[i].level_min,
+                                            .max_level = &arr[i].level_max,
+                                        };
+                                    }
+                                    i -= arr.len;
+                                }
+
+                                // TODO: Swarm and radio
+                                unreachable;
+                            },
+                            else => unreachable,
+                        },
+                        gen5 => {
+                            inline for ([][]const u8 {
+                                "grass",
+                                "dark_grass",
+                                "rustling_grass",
+                                "surf",
+                                "ripple_surf",
+                                "fishing",
+                                "ripple_fishing",
+                            }) |field| {
+                                const arr = &@field(data, field);
+                                if (i < arr.len) {
+                                    return WildPokemon{
+                                        .vtable = WildPokemon.VTable.init(gen),
+                                        .species = &arr[i].species,
+                                        .min_level = &arr[i].level_min,
+                                        .max_level = &arr[i].level_max,
+                                    };
+                                }
+                                i -= arr.len;
+                            }
+
+                            unreachable;
+                        }
+                    }
+                }
+
+                fn len(wild_mons: WildPokemons) usize {
+                    switch (gen) {
+                        gen3 => {
+                            const data = @ptrCast(*gen.WildPokemonHeader, wild_mons.data);
+                            return 12 * @boolToInt(!data.land_pokemons.isNull()) +
+                                5 * @boolToInt(!data.surf_pokemons.isNull()) +
+                                5 * @boolToInt(!data.rock_smash_pokemons.isNull()) +
+                                10 * @boolToInt(!data.fishing_pokemons.isNull());
+                        },
+                        gen4 => switch (wild_mons.version) {
+                            Version.Diamond, Version.Pearl, Version.Platinum => {
+                                const data = @ptrCast(*gen.DpptWildPokemons, wild_mons.data);
+                                return data.grass.len +
+                                    data.swarm_replacements.len +
+                                    data.day_replacements.len +
+                                    data.night_replacements.len +
+                                    data.radar_replacements.len +
+                                    // Skip unknown_replacements, until we know if they are used
+                                    // data.unknown_replacements.len +
+                                    data.gba_replacements.len +
+                                    data.surf.len +
+                                    data.sea_unknown.len +
+                                    data.old_rod.len +
+                                    data.good_rod.len +
+                                    data.super_rod.len;
+                            },
+                            Version.HeartGold, Version.SoulSilver => {
+                                const data = @ptrCast(*gen.HgssWildPokemons, wild_mons.data);
+                                return data.grass_morning.len +
+                                    data.grass_day.len +
+                                    data.grass_night.len +
+                                    data.radio.len +
+                                    data.surf.len +
+                                    data.sea_unknown.len +
+                                    data.old_rod.len +
+                                    data.good_rod.len +
+                                    data.super_rod.len +
+                                    data.swarm.len;
+                            },
+                            else => unreachable,
+                        },
+                        gen5 => {
+                            const data = @ptrCast(*gen.WildPokemons, wild_mons.data);
+                            return data.grass.len +
+                                data.dark_grass.len +
+                                data.rustling_grass.len +
+                                data.surf.len +
+                                data.ripple_surf.len +
+                                data.fishing.len +
+                                data.ripple_fishing.len;
+                        }
+                    }
+                }
+            };
+
+            return VTable{
+                .at = Funcs.at,
+                .len = Funcs.len,
+            };
+        }
+    };
+};
+
+pub const Zone = extern struct {
+    vtable: *const VTable,
+    version: Version,
+    wild_pokemons: *u8,
+
+    pub fn getWildPokemons(zone: Zone) WildPokemons {
+        return zone.vtable.getWildPokemons(zone);
+    }
+
+    const VTable = struct {
+        getWildPokemons: fn(zone: Zone) WildPokemons,
+
+        fn init(comptime gen: Namespace) VTable {
+            const Funcs = struct {
+                fn getWildPokemons(zone: Zone) WildPokemons {
+                    return WildPokemons{
+                        .vtable = &comptime WildPokemons.VTable.init(gen),
+                        .version = zone.version,
+                        .data = zone.wild_pokemons,
+                    };
+                }
+            };
+
+            return VTable{
+                .getWildPokemons = Funcs.getWildPokemons,
+            };
+        }
+    };
+};
+
+pub const Zones = extern struct {
+    vtable: *const VTable,
+    game: *const BaseGame,
+
+    pub fn at(zones: Zones, index: usize) Zone {
+        return zones.vtable.at(zones, index);
+    }
+
+    pub fn len(zones: Zones) usize {
+        return zones.vtable.len(zones);
+    }
+
+    pub fn iterator(zones: Zones) Iter {
+        return Iter.init(zones);
+    }
+
+    const Iter = Iterator(Zones, Zone);
+
+    const VTable = struct {
+        at: fn(zones: Zones, index: usize) Zone,
+        len: fn(zones: Zones) usize,
+
+        fn init(comptime gen: Namespace) VTable {
+            const Funcs = struct {
+                fn at(zones: Zones, index: usize) Zone {
+                    const game = @fieldParentPtr(gen.Game, "base", zones.game);
+                    return Zone{
+                        .vtable = &comptime Zone.VTable.init(gen),
+                        .version = zones.game.version,
+                        .wild_pokemons = switch (gen) {
+                            gen3 => @ptrCast(*u8, &game.wild_pokemon_headers[index]),
+                            gen4, gen5 => @ptrCast(*u8, try getFileAsType(gen.WildPokemons, game.wild_pokemons, index)),
+                            else => comptime unreachable,
+                        },
+                    };
+                }
+
+                fn len(zones: Zones) usize {
+                    const game = @fieldParentPtr(gen.Game, "base", zones.game);
+                    return switch (gen) {
+                        gen3 => game.wild_pokemon_headers.len,
+                        gen4, gen5 => game.wild_pokemons.nodes.len,
+                        else => comptime unreachable,
+                    };
+                }
+            };
+
+            return VTable{
+                .at = Funcs.at,
+                .len = Funcs.len,
+            };
+        }
+    };
+};
+
 pub const BaseGame = extern struct {
     version: Version,
 };
@@ -1239,6 +1626,18 @@ pub const Game = extern struct {
 
     pub fn moves(game: Game) Moves {
         return Moves{ .game = game.base };
+    }
+
+    pub fn zones(game: Game) Zones {
+        return Zones{
+            .vtable = switch (game.version.gen()) {
+                3 => Zones.VTable.init(gen3),
+                4 => Zones.VTable.init(gen4),
+                5 => Zones.VTable.init(gen5),
+                else => unreachable,
+            },
+            .game = game.base,
+        };
     }
 };
 

@@ -141,6 +141,24 @@ test "Fake rom: Api" {
             while (hm_it.next()) |move_id|
                 debug.assert(move_id.value == fakes.move);
         }
+
+        {
+            const zones = game.zones();
+            debug.assert(zones.len() > 0);
+
+            var zone_it = zones.iterator();
+            while (zone_it.next()) |zone| {
+                const wild_pokemons = zone.getWildPokemons();
+                debug.assert(wild_pokemons.len() > 0);
+
+                var wild_it = wild_pokemons.iterator();
+                while (wild_it.next()) |wild_mon| {
+                    debug.assert(wild_mon.getSpecies() == fakes.species);
+                    debug.assert(wild_mon.getMinLevel() == fakes.level);
+                    debug.assert(wild_mon.getMaxLevel() == fakes.level);
+                }
+            }
+        }
     }
 }
 
