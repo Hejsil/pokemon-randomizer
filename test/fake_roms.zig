@@ -752,7 +752,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                             },
                         } ** 10,
                         .surf = []Sea{sea} ** 5,
-                        .sea_unkwown = []Sea{sea} ** 5,
+                        .sea_unknown = []Sea{sea} ** 5,
                         .old_rod = []Sea{sea} ** 5,
                         .good_rod = []Sea{sea} ** 5,
                         .super_rod = []Sea{sea} ** 5,

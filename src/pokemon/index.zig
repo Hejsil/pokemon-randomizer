@@ -1133,7 +1133,7 @@ pub const Moves = extern struct {
 };
 
 pub const WildPokemon = extern struct {
-    vtable: *const VTable,
+    //vtable: *const VTable,
     species: *lu16,
     min_level: *u8,
     max_level: *u8,
@@ -1171,11 +1171,11 @@ pub const WildPokemon = extern struct {
 
 pub const WildPokemons = extern struct {
     vtable: *const VTable,
-    version: Version,
+    game: *const BaseGame,
     data: *u8,
 
-    pub fn at(wild_mons: WildPokemons, index: usize) WildPokemon {
-        return wild_mons.vtable.at(wild_mons, index);
+    pub fn at(wild_mons: WildPokemons, index: usize) !WildPokemon {
+        return try wild_mons.vtable.at(wild_mons, index);
     }
 
     pub fn len(wild_mons: WildPokemons) usize {
@@ -1183,23 +1183,27 @@ pub const WildPokemons = extern struct {
     }
 
     pub fn iterator(wild_mons: WildPokemons) Iter {
-        return Iter.init(wildMons);
+        return Iter.init(wild_mons);
     }
 
-    const Iter = Iterator(WildPokemons, WildPokemon);
+    const Iter = ErrIterator(WildPokemons, WildPokemon);
 
     const VTable = struct {
-        const AtErr = error{};
+        const AtErr = error{
+            InvalidPointer,
+        };
 
-        at: fn(wild_mons: WildPokemons, index: usize) AtErr!WildPokemon,
-        len: fn(wild_mons: WildPokemons) usize,
+        // TODO: convert to pass by value
+        at: fn(wild_mons: *const WildPokemons, index: usize) AtErr!WildPokemon,
+        len: fn(wild_mons: *const WildPokemons) usize,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
-                fn at(wild_mons: WildPokemons, index: usize) AtErr!WildPokemon {
+                fn at(wild_mons: *const WildPokemons, index: usize) AtErr!WildPokemon {
                     var i = index;
                     switch (gen) {
                         gen3 => {
+                            const game = @fieldParentPtr(gen.Game, "base", wild_mons.game);
                             const data = @ptrCast(*gen.WildPokemonHeader, wild_mons.data);
                             inline for ([][]const u8{
                                 "land_pokemons",
@@ -1207,12 +1211,14 @@ pub const WildPokemons = extern struct {
                                 "rock_smash_pokemons",
                                 "fishing_pokemons",
                             }) |field| {
+                                // TODO: Compiler crash. Cause: Different types per inline loop iterations
                                 const ref = @field(data, field);
                                 if (!ref.isNull()) {
-                                    const arr = try ref.toSingle();
+                                    const info = try ref.toSingle(game.data);
+                                    const arr = try info.wild_pokemons.toSingle(game.data);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            .vtable = WildPokemon.VTable.init(gen),
+                                            //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &arr[i].min_level,
                                             .max_level = &arr[i].max_level,
@@ -1224,12 +1230,12 @@ pub const WildPokemons = extern struct {
 
                             unreachable;
                         },
-                        gen4 => switch (wild_mons.version) {
+                        gen4 => switch (wild_mons.game.version) {
                             Version.Diamond, Version.Pearl, Version.Platinum => {
                                 const data = @ptrCast(*gen.DpptWildPokemons, wild_mons.data);
                                 if (i < data.grass.len) {
                                     return WildPokemon{
-                                        .vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                         .species = &data.grass[i].species,
                                         .min_level = &data.grass[i].level,
                                         .max_level = &data.grass[i].level,
@@ -1271,7 +1277,7 @@ pub const WildPokemons = extern struct {
                                     if (i < arr.len) {
                                         const replacement = &data.grass[field.replace_with[i]];
                                         return WildPokemon{
-                                            .vtable = WildPokemon.VTable.init(gen),
+                                            //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &replacement.level,
                                             .max_level = &replacement.level,
@@ -1282,7 +1288,7 @@ pub const WildPokemons = extern struct {
 
                                 inline for ([][]const u8 {
                                     "surf",
-                                    "sea_unkwown",
+                                    "sea_unknown",
                                     "old_rod",
                                     "good_rod",
                                     "super_rod",
@@ -1290,7 +1296,7 @@ pub const WildPokemons = extern struct {
                                     const arr = &@field(data, field);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            .vtable = WildPokemon.VTable.init(gen),
+                                            //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &arr[i].level_min,
                                             .max_level = &arr[i].level_max,
@@ -1311,7 +1317,7 @@ pub const WildPokemons = extern struct {
                                     const arr = &@field(data, field);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            .vtable = WildPokemon.VTable.init(gen),
+                                            //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i],
                                             .min_level = &data.grass_levels[i],
                                             .max_level = &data.grass_levels[i],
@@ -1330,7 +1336,7 @@ pub const WildPokemons = extern struct {
                                     const arr = &@field(data, field);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            .vtable = WildPokemon.VTable.init(gen),
+                                            //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &arr[i].level_min,
                                             .max_level = &arr[i].level_max,
@@ -1345,6 +1351,7 @@ pub const WildPokemons = extern struct {
                             else => unreachable,
                         },
                         gen5 => {
+                            const data = @ptrCast(*gen.WildPokemons, wild_mons.data);
                             inline for ([][]const u8 {
                                 "grass",
                                 "dark_grass",
@@ -1357,7 +1364,7 @@ pub const WildPokemons = extern struct {
                                 const arr = &@field(data, field);
                                 if (i < arr.len) {
                                     return WildPokemon{
-                                        .vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                         .species = &arr[i].species,
                                         .min_level = &arr[i].level_min,
                                         .max_level = &arr[i].level_max,
@@ -1367,20 +1374,21 @@ pub const WildPokemons = extern struct {
                             }
 
                             unreachable;
-                        }
+                        },
+                        else => comptime unreachable,
                     }
                 }
 
-                fn len(wild_mons: WildPokemons) usize {
+                fn len(wild_mons: *const WildPokemons) usize {
                     switch (gen) {
                         gen3 => {
                             const data = @ptrCast(*gen.WildPokemonHeader, wild_mons.data);
-                            return 12 * @boolToInt(!data.land_pokemons.isNull()) +
-                                5 * @boolToInt(!data.surf_pokemons.isNull()) +
-                                5 * @boolToInt(!data.rock_smash_pokemons.isNull()) +
-                                10 * @boolToInt(!data.fishing_pokemons.isNull());
+                            return usize(12) * @boolToInt(!data.land_pokemons.isNull()) +
+                                usize(5) * @boolToInt(!data.surf_pokemons.isNull()) +
+                                usize(5) * @boolToInt(!data.rock_smash_pokemons.isNull()) +
+                                usize(10) * @boolToInt(!data.fishing_pokemons.isNull());
                         },
-                        gen4 => switch (wild_mons.version) {
+                        gen4 => switch (wild_mons.game.version) {
                             Version.Diamond, Version.Pearl, Version.Platinum => {
                                 const data = @ptrCast(*gen.DpptWildPokemons, wild_mons.data);
                                 return data.grass.len +
@@ -1421,7 +1429,8 @@ pub const WildPokemons = extern struct {
                                 data.ripple_surf.len +
                                 data.fishing.len +
                                 data.ripple_fishing.len;
-                        }
+                        },
+                        else => comptime unreachable,
                     }
                 }
             };
@@ -1436,7 +1445,7 @@ pub const WildPokemons = extern struct {
 
 pub const Zone = extern struct {
     vtable: *const VTable,
-    version: Version,
+    game: *const BaseGame,
     wild_pokemons: *u8,
 
     pub fn getWildPokemons(zone: Zone) WildPokemons {
@@ -1444,14 +1453,15 @@ pub const Zone = extern struct {
     }
 
     const VTable = struct {
-        getWildPokemons: fn(zone: Zone) WildPokemons,
+        // TODO: convert to pass by value
+        getWildPokemons: fn(zone: *const Zone) WildPokemons,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
-                fn getWildPokemons(zone: Zone) WildPokemons {
+                fn getWildPokemons(zone: *const Zone) WildPokemons {
                     return WildPokemons{
                         .vtable = &comptime WildPokemons.VTable.init(gen),
-                        .version = zone.version,
+                        .game = zone.game,
                         .data = zone.wild_pokemons,
                     };
                 }
@@ -1468,8 +1478,8 @@ pub const Zones = extern struct {
     vtable: *const VTable,
     game: *const BaseGame,
 
-    pub fn at(zones: Zones, index: usize) Zone {
-        return zones.vtable.at(zones, index);
+    pub fn at(zones: Zones, index: usize) !Zone {
+        return try zones.vtable.at(zones, index);
     }
 
     pub fn len(zones: Zones) usize {
@@ -1480,28 +1490,42 @@ pub const Zones = extern struct {
         return Iter.init(zones);
     }
 
-    const Iter = Iterator(Zones, Zone);
+    const Iter = ErrIterator(Zones, Zone);
 
     const VTable = struct {
-        at: fn(zones: Zones, index: usize) Zone,
-        len: fn(zones: Zones) usize,
+        const AtErr = error{
+            FileToSmall,
+            NotFile,
+        };
+        // TODO: pass by value
+        at: fn(zones: *const Zones, index: usize) AtErr!Zone,
+        len: fn(zones: *const Zones) usize,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
-                fn at(zones: Zones, index: usize) Zone {
+                fn at(zones: *const Zones, index: usize) AtErr!Zone {
                     const game = @fieldParentPtr(gen.Game, "base", zones.game);
                     return Zone{
                         .vtable = &comptime Zone.VTable.init(gen),
-                        .version = zones.game.version,
+                        .game = zones.game,
                         .wild_pokemons = switch (gen) {
                             gen3 => @ptrCast(*u8, &game.wild_pokemon_headers[index]),
-                            gen4, gen5 => @ptrCast(*u8, try getFileAsType(gen.WildPokemons, game.wild_pokemons, index)),
+                            gen4 => switch (zones.game.version) {
+                            Version.Diamond, Version.Pearl, Version.Platinum => blk: {
+                                break :blk @ptrCast(*u8, try getFileAsType(gen.DpptWildPokemons, game.wild_pokemons, index));
+                            },
+                            Version.HeartGold, Version.SoulSilver => blk: {
+                                break :blk @ptrCast(*u8, try getFileAsType(gen.HgssWildPokemons, game.wild_pokemons, index));
+                            },
+                            else => unreachable,
+                        },
+                            gen5 => @ptrCast(*u8, try getFileAsType(gen.WildPokemon, game.wild_pokemons, index)),
                             else => comptime unreachable,
                         },
                     };
                 }
 
-                fn len(zones: Zones) usize {
+                fn len(zones: *const Zones) usize {
                     const game = @fieldParentPtr(gen.Game, "base", zones.game);
                     return switch (gen) {
                         gen3 => game.wild_pokemon_headers.len,
@@ -1630,7 +1654,7 @@ pub const Game = extern struct {
 
     pub fn zones(game: Game) Zones {
         return Zones{
-            .vtable = switch (game.version.gen()) {
+            .vtable = switch (game.base.version.gen()) {
                 3 => Zones.VTable.init(gen3),
                 4 => Zones.VTable.init(gen4),
                 5 => Zones.VTable.init(gen5),

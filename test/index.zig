@@ -147,15 +147,15 @@ test "Fake rom: Api" {
             debug.assert(zones.len() > 0);
 
             var zone_it = zones.iterator();
-            while (zone_it.next()) |zone| {
-                const wild_pokemons = zone.getWildPokemons();
+            while (try zone_it.next()) |zone| {
+                const wild_pokemons = zone.value.getWildPokemons();
                 debug.assert(wild_pokemons.len() > 0);
 
                 var wild_it = wild_pokemons.iterator();
-                while (wild_it.next()) |wild_mon| {
-                    debug.assert(wild_mon.getSpecies() == fakes.species);
-                    debug.assert(wild_mon.getMinLevel() == fakes.level);
-                    debug.assert(wild_mon.getMaxLevel() == fakes.level);
+                while (try wild_it.next()) |wild_mon| {
+                    debug.assert(wild_mon.value.getSpecies() == fakes.species);
+                    debug.assert(wild_mon.value.getMinLevel() == fakes.level);
+                    debug.assert(wild_mon.value.getMaxLevel() == fakes.level);
                 }
             }
         }

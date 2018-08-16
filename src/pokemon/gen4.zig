@@ -134,7 +134,7 @@ pub const DpptWildPokemons = packed struct {
     unknown_replacements: [6]Replacement, // ???
     gba_replacements: [10]Replacement, // Each even replaces grass[8], each uneven replaces grass[9]
     surf: [5]Sea,
-    sea_unkwown: [5]Sea,
+    sea_unknown: [5]Sea,
     old_rod: [5]Sea,
     good_rod: [5]Sea,
     super_rod: [5]Sea,
