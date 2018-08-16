@@ -1396,8 +1396,7 @@ pub const WildPokemons = extern struct {
                                     data.day_replacements.len +
                                     data.night_replacements.len +
                                     data.radar_replacements.len +
-                                    // Skip unknown_replacements, until we know if they are used
-                                    // data.unknown_replacements.len +
+                                    data.unknown_replacements.len +
                                     data.gba_replacements.len +
                                     data.surf.len +
                                     data.sea_unknown.len +
