@@ -368,7 +368,7 @@ fn readHelper(comptime F: type, file: *os.File, allocator: *mem.Allocator, fnt: 
             File = 0x00,
             Folder = 0x80,
         };
-        const type_length = try utils.stream.read(stream, u8);
+        const type_length = try stream.readByte();
 
         if (type_length == 0x80)
             return error.InvalidSubTableTypeLength;
@@ -397,11 +397,11 @@ fn readHelper(comptime F: type, file: *os.File, allocator: *mem.Allocator, fnt: 
                 }) catch unreachable;
             },
             Kind.Folder => {
-                const id = try utils.stream.read(stream, lu16);
-                if (id.value() < 0xF001 or id.value() > 0xFFFF)
+                const id = try stream.readIntLe(u16);
+                if (id < 0xF001 or id > 0xFFFF)
                     return error.InvalidSubDirectoryId;
 
-                const fnt_entry = generic.at(fnt_main_table, id.value() & 0x0FFF) catch return error.InvalidSubDirectoryId;
+                const fnt_entry = generic.at(fnt_main_table, id & 0x0FFF) catch return error.InvalidSubDirectoryId;
                 const sub_folder = try folder.createFolder(name);
 
                 stack.append(State{
