@@ -274,7 +274,7 @@ test "nds.fs.Folder.root" {
 }
 
 test "nds.fs.read/writeNitro" {
-    var buf: [1024 * 1024]u8 = undefined;
+    var buf: [400 * 1024]u8 = undefined;
     var fix_buf_alloc = heap.FixedBufferAllocator.init(buf[0..]);
     var random = rand.DefaultPrng.init(0);
 
