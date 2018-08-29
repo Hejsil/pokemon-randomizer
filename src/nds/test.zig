@@ -291,10 +291,10 @@ test "nds.fs.read/writeNitro" {
     var fat = std.ArrayList(fs.FatEntry).init(allocator);
 
     const test_file = "__nds.fs.test.read.write__";
-    defer os.deleteFile(allocator, test_file) catch unreachable;
+    defer os.deleteFile(test_file) catch unreachable;
 
     {
-        var file = try os.File.openWrite(allocator, test_file);
+        var file = try os.File.openWrite(test_file);
         defer file.close();
 
         for (files) |f| {
@@ -305,7 +305,7 @@ test "nds.fs.read/writeNitro" {
     }
 
     const fs2 = blk: {
-        var file = try os.File.openRead(allocator, test_file);
+        var file = try os.File.openRead(test_file);
         defer file.close();
         break :blk try fs.readNitro(&file, allocator, fnt, fat.toSlice());
     };

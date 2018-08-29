@@ -34,7 +34,7 @@ test "Fake rom: Api" {
         debug.warn("Testing api ({}/{}): '{}':\n", i + 1, roms_files.len, file_name);
         defer debug.warn("Ok\n");
 
-        var file = try os.File.openRead(allocator, file_name);
+        var file = try os.File.openRead(file_name);
         defer file.close();
 
         timer.reset();
@@ -186,7 +186,7 @@ test "Fake rom: Randomizer" {
 
         const game_buf = buf[gen_alloc.end_index..];
         var game_alloc = heap.FixedBufferAllocator.init(game_buf);
-        var file = try os.File.openRead(&game_alloc.allocator, file_name);
+        var file = try os.File.openRead(file_name);
         defer file.close();
 
         var game = try libpoke.Game.load(&file, &game_alloc.allocator);

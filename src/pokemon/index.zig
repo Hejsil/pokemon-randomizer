@@ -1409,13 +1409,13 @@ pub const WildPokemons = extern struct {
                                 return data.grass_morning.len +
                                     data.grass_day.len +
                                     data.grass_night.len +
-                                    data.radio.len +
+                                    //data.radio.len +
                                     data.surf.len +
                                     data.sea_unknown.len +
                                     data.old_rod.len +
                                     data.good_rod.len +
-                                    data.super_rod.len +
-                                    data.swarm.len;
+                                    data.super_rod.len;// +
+                                    //data.swarm.len;
                             },
                             else => unreachable,
                         },
@@ -1654,9 +1654,9 @@ pub const Game = extern struct {
     pub fn zones(game: Game) Zones {
         return Zones{
             .vtable = switch (game.base.version.gen()) {
-                3 => Zones.VTable.init(gen3),
-                4 => Zones.VTable.init(gen4),
-                5 => Zones.VTable.init(gen5),
+                3 => &comptime Zones.VTable.init(gen3),
+                4 => &comptime Zones.VTable.init(gen4),
+                5 => &comptime Zones.VTable.init(gen5),
                 else => unreachable,
             },
             .game = game.base,

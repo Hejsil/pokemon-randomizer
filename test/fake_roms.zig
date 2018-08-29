@@ -20,7 +20,7 @@ const lu32 = int.lu32;
 const lu64 = int.lu64;
 const lu128 = int.lu128;
 
-const tmp_folder = "zig-cache/__fake_roms__";
+const tmp_folder = "zig-cache" ++ []u8{path.sep} ++  "__fake_roms__" ++ []u8{path.sep};
 
 pub const level = 1;
 pub const party_size = 2;
@@ -54,7 +54,7 @@ pub fn generateFakeRoms(allocator: *mem.Allocator) ![][]u8 {
     const tmp_allocator = &tmp_fix_buf_alloc.allocator;
 
     deleteFakeRoms(tmp_allocator);
-    try os.makeDir(tmp_allocator, tmp_folder);
+    try os.makeDir(tmp_folder);
     errdefer deleteFakeRoms(tmp_allocator);
 
     tmp_fix_buf_alloc = heap.FixedBufferAllocator.init(tmp[0..]);
@@ -92,12 +92,12 @@ pub fn deleteFakeRoms(allocator: *mem.Allocator) void {
 }
 
 fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) ![]u8 {
-    const name = try fmt.allocPrint(allocator, "{}/__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
+    const name = try fmt.allocPrint(allocator, "{}__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
     errdefer allocator.free(name);
 
     var free_space_offset = getGen3FreeSpace(info);
-    var file = try os.File.openWrite(allocator, name);
-    errdefer os.deleteFile(allocator, name) catch {};
+    var file = try os.File.openWrite(name);
+    errdefer os.deleteFile(name) catch {};
     defer file.close();
 
     const header = gba.Header{
@@ -800,11 +800,11 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         }
     }
 
-    const name = try fmt.allocPrint(allocator, "{}/__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
+    const name = try fmt.allocPrint(allocator, "{}__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
     errdefer allocator.free(name);
 
-    var file = try os.File.openWrite(allocator, name);
-    errdefer os.deleteFile(allocator, name) catch {};
+    var file = try os.File.openWrite(name);
+    errdefer os.deleteFile(name) catch {};
     defer file.close();
 
     try rom.writeToFile(&file, allocator);
@@ -1070,11 +1070,11 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         }
     }
 
-    const name = try fmt.allocPrint(allocator, "{}/__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
+    const name = try fmt.allocPrint(allocator, "{}__{}_{}_{}__", tmp_folder, info.game_title, info.gamecode, @tagName(info.version));
     errdefer allocator.free(name);
 
-    var file = try os.File.openWrite(allocator, name);
-    errdefer os.deleteFile(allocator, name) catch {};
+    var file = try os.File.openWrite(name);
+    errdefer os.deleteFile(name) catch {};
     defer file.close();
 
     try rom.writeToFile(&file, allocator);
