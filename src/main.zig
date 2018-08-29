@@ -139,7 +139,7 @@ pub fn main() !void {
         return;
     }
 
-    var rom_file = os.File.openRead(allocator, input_file) catch |err| {
+    var rom_file = os.File.openRead(input_file) catch |err| {
         debug.warn("Couldn't open {}.\n", input_file);
         return err;
     };
@@ -163,7 +163,7 @@ pub fn main() !void {
         return err;
     };
 
-    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
+    var out_file = os.File.openWrite(output_file) catch |err| {
         debug.warn("Couldn't open {}.\n", output_file);
         return err;
     };

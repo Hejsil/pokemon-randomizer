@@ -36,7 +36,7 @@ pub fn main() !void {
     }
 
     const nds_path = args[1];
-    var rom_file = try os.File.openRead(allocator, args[1]);
+    var rom_file = try os.File.openRead(args[1]);
     defer rom_file.close();
     var rom = try nds.Rom.fromFile(&rom_file, allocator);
     defer rom.deinit();
@@ -94,7 +94,7 @@ fn writeFs(comptime Fs: type, p: []const u8, folder: *Fs, allocator: *mem.Alloca
                     switch (Fs) {
                         nds.fs.Nitro => switch (f.*) {
                             Tag.Binary => |bin| {
-                                var file = try os.File.openWrite(allocator, node_path);
+                                var file = try os.File.openWrite(node_path);
                                 defer file.close();
                                 try file.write(bin.data);
                             },
@@ -104,7 +104,7 @@ fn writeFs(comptime Fs: type, p: []const u8, folder: *Fs, allocator: *mem.Alloca
                             }
                         },
                         nds.fs.Narc => {
-                            var file = try os.File.openWrite(allocator, node_path);
+                            var file = try os.File.openWrite(node_path);
                             defer file.close();
                             try file.write(f.data);
                         },
@@ -153,7 +153,7 @@ fn writeToFileInFolder(folder_path: []const u8, file: []const u8, data: []const 
 }
 
 fn writeToFile(file_path: []const u8, data: []const u8, allocator: *mem.Allocator) !void {
-    var file = try os.File.openWrite(allocator, file_path);
+    var file = try os.File.openWrite(file_path);
     defer file.close();
 
     try file.write(data);

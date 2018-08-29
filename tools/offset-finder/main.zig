@@ -31,7 +31,7 @@ pub fn main() !void {
 
         const allocator = &arena.allocator;
 
-        var file = os.File.openRead(allocator, arg) catch |err| {
+        var file = os.File.openRead(arg) catch |err| {
             debug.warn("Couldn't open {}.\n", arg);
             return err;
         };
