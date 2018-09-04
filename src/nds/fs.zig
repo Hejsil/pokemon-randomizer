@@ -319,15 +319,15 @@ pub const FatEntry = packed struct {
     }
 };
 
-pub fn readNitro(file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry) !*Nitro {
+pub fn readNitro(file: os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry) !*Nitro {
     return readHelper(Nitro, file, allocator, fnt, fat, 0);
 }
 
-pub fn readNarc(file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*Narc {
+pub fn readNarc(file: os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*Narc {
     return readHelper(Narc, file, allocator, fnt, fat, img_base);
 }
 
-fn readHelper(comptime F: type, file: *os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*F {
+fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*F {
     const fnt_main_table = blk: {
         const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
         const first = generic.at(fnt_mains, 0) catch return error.InvalidFnt;
@@ -421,7 +421,7 @@ fn readHelper(comptime F: type, file: *os.File, allocator: *mem.Allocator, fnt: 
     return root;
 }
 
-pub fn readNitroFile(file: *os.File, allocator: *mem.Allocator, fat_entry: FatEntry, img_base: usize) !Nitro.File {
+pub fn readNitroFile(file: os.File, allocator: *mem.Allocator, fat_entry: FatEntry, img_base: usize) !Nitro.File {
     var file_in_stream = io.FileInStream.init(file);
 
     narc_read: {
@@ -507,7 +507,7 @@ pub fn readNitroFile(file: *os.File, allocator: *mem.Allocator, fat_entry: FatEn
     };
 }
 
-pub fn readNarcFile(file: *os.File, allocator: *mem.Allocator, fat_entry: FatEntry, img_base: usize) !Narc.File {
+pub fn readNarcFile(file: os.File, allocator: *mem.Allocator, fat_entry: FatEntry, img_base: usize) !Narc.File {
     var file_in_stream = io.FileInStream.init(file);
     const stream = &file_in_stream.stream;
 
@@ -602,7 +602,7 @@ pub fn getFntAndFiles(comptime F: type, root: *F, allocator: *mem.Allocator) !Fn
     };
 }
 
-pub fn writeNitroFile(file: *os.File, allocator: *mem.Allocator, fs_file: Nitro.File) !void {
+pub fn writeNitroFile(file: os.File, allocator: *mem.Allocator, fs_file: Nitro.File) !void {
     const Tag = @TagType(Nitro.File);
     switch (fs_file) {
         Tag.Binary => |bin| {

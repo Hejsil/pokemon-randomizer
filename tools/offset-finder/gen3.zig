@@ -28,9 +28,10 @@ const LevelUpLearnsetPointerSection = gen3.constants.LevelUpLearnsetPointerSecti
 const HmSection = gen3.constants.HmSection;
 const TmSection = gen3.constants.TmSection;
 const ItemSection = gen3.constants.ItemSection;
+const WildPokemonHeaderSection = gen3.constants.WildPokemonHeaderSection;
 
 pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
-    const ignored_trainer_fields = [][]const u8{ "party_offset", "name" };
+    const ignored_trainer_fields = [][]const u8{ "party", "name" };
     const maybe_trainers = switch (version) {
         pokemon.Version.Emerald => search.findStructs(
             gen3.Trainer,
@@ -122,7 +123,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         }
 
         const pointers = search.findPattern(u8, data, first_pointers, last_pointers) orelse return error.UnableToFindLevelUpLearnsetOffset;
-        break :blk @bytesToSlice(lu32, pointers);
+        break :blk @bytesToSlice(gen3.Ref(gen3.LevelUpMove), pointers);
     };
 
     const hms_start = mem.indexOf(u8, data, constants.hms) orelse return error.UnableToFindHmOffset;
@@ -134,7 +135,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
     const tms_start = mem.indexOf(u8, data, constants.tms) orelse return error.UnableToFindTmOffset;
     const tms = @bytesToSlice(lu16, data[tms_start..][0..constants.tms.len]);
 
-    const ignored_item_fields = [][]const u8{ "name", "description_offset", "field_use_func", "battle_use_func" };
+    const ignored_item_fields = [][]const u8{ "name", "description", "field_use_func", "battle_use_func" };
     const maybe_items = switch (version) {
         pokemon.Version.Emerald => search.findStructs(
             gen3.Item,
@@ -161,6 +162,39 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
     };
     const items = maybe_items orelse return error.UnableToFindItemsOffset;
 
+    const ignored_wild_pokemon_header_fields = [][]const u8{
+        "pad",
+        "land_pokemons",
+        "surf_pokemons",
+        "rock_smash_pokemons",
+        "fishing_pokemons",
+    };
+    const maybe_wild_pokemon_headers = switch (version) {
+        pokemon.Version.Emerald => search.findStructs(
+            gen3.WildPokemonHeader,
+            ignored_wild_pokemon_header_fields,
+            data,
+            constants.em_first_wild_mon_headers,
+            constants.em_last_wild_mon_headers,
+        ),
+        pokemon.Version.Ruby, pokemon.Version.Sapphire => search.findStructs(
+            gen3.WildPokemonHeader,
+            ignored_wild_pokemon_header_fields,
+            data,
+            constants.rs_first_wild_mon_headers,
+            constants.rs_last_wild_mon_headers,
+        ),
+        pokemon.Version.FireRed, pokemon.Version.LeafGreen => search.findStructs(
+            gen3.WildPokemonHeader,
+            ignored_wild_pokemon_header_fields,
+            data,
+            constants.frlg_first_wild_mon_headers,
+            constants.frlg_last_wild_mon_headers,
+        ),
+        else => null,
+    };
+    const wild_pokemon_headers = maybe_wild_pokemon_headers orelse return error.UnableToFindWildPokemonHeaders;
+
     return Info{
         .game_title = undefined,
         .gamecode = undefined,
@@ -174,5 +208,6 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version) !Info {
         .hms = HmSection.init(data, hms),
         .tms = TmSection.init(data, tms),
         .items = ItemSection.init(data, items),
+        .wild_pokemon_headers = WildPokemonHeaderSection.init(data, wild_pokemon_headers),
     };
 }

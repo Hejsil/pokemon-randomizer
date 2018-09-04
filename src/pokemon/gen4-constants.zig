@@ -12,6 +12,7 @@ pub const Info = struct {
     trainers: []const u8,
     parties: []const u8,
     evolutions: []const u8,
+    wild_pokemons: []const u8,
 };
 
 pub const infos = []Info{
@@ -22,7 +23,6 @@ pub const infos = []Info{
     platinum_info,
 };
 
-// TODO: Fill out game_titles
 const hg_info = Info{
     .game_title = "POKEMON HG\x00\x00",
     .gamecode = "IPKE",
@@ -35,6 +35,7 @@ const hg_info = Info{
     .trainers = "/a/0/5/5",
     .parties = "/a/0/5/6",
     .evolutions = "/a/0/3/4",
+    .wild_pokemons = "a/0/3/7",
 };
 
 const ss_info = blk: {
@@ -42,6 +43,7 @@ const ss_info = blk: {
     res.game_title = "POKEMON SS\x00\x00";
     res.gamecode = "IPGE";
     res.version = pokemon.Version.SoulSilver;
+    res.wild_pokemons = "a/0/3/6";
 
     break :blk res;
 };
@@ -58,6 +60,7 @@ const diamond_info = Info{
     .trainers = "/poketool/trainer/trdata.narc",
     .parties = "/poketool/trainer/trpoke.narc",
     .evolutions = "/poketool/personal/evo.narc",
+    .wild_pokemons = "fielddata/encountdata/d_enc_data.narc",
 };
 
 const pearl_info = blk: {
@@ -66,6 +69,7 @@ const pearl_info = blk: {
     res.gamecode = "APAE";
     res.version = pokemon.Version.Pearl;
     res.base_stats = "/poketool/personal_pearl/personal.narc";
+    res.wild_pokemons = "fielddata/encountdata/p_enc_data.narc";
     break :blk res;
 };
 
@@ -76,6 +80,7 @@ const platinum_info = blk: {
     res.version = pokemon.Version.Platinum;
     res.base_stats = "/poketool/personal/pl_personal.narc";
     res.moves = "/poketool/waza/pl_waza_tbl.narc";
+    res.wild_pokemons = "fielddata/encountdata/pl_enc_data.narc";
     break :blk res;
 };
 

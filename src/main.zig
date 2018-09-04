@@ -123,7 +123,7 @@ pub fn main() !void {
     const allocator = &arena.allocator;
 
     var stdout_handle = try io.getStdOut();
-    var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
+    var stdout_file_stream = io.FileOutStream.init(stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
     const args = try os.argsAlloc(allocator);
@@ -139,13 +139,13 @@ pub fn main() !void {
         return;
     }
 
-    var rom_file = os.File.openRead(allocator, input_file) catch |err| {
+    var rom_file = os.File.openRead(input_file) catch |err| {
         debug.warn("Couldn't open {}.\n", input_file);
         return err;
     };
     defer rom_file.close();
 
-    var game = pokemon.Game.load(&rom_file, allocator) catch |err| {
+    var game = pokemon.Game.load(rom_file, allocator) catch |err| {
         debug.warn("Couldn't load game {}.\n", input_file);
         return err;
     };
@@ -163,13 +163,13 @@ pub fn main() !void {
         return err;
     };
 
-    var out_file = os.File.openWrite(allocator, output_file) catch |err| {
+    var out_file = os.File.openWrite(output_file) catch |err| {
         debug.warn("Couldn't open {}.\n", output_file);
         return err;
     };
     defer out_file.close();
 
-    game.save(&out_file) catch |err| {
+    game.save(out_file) catch |err| {
         debug.warn("Couldn't save game {}.\n", @errorName(err));
         return err;
     };

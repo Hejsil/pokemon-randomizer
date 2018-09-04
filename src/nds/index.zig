@@ -62,7 +62,7 @@ pub const Rom = struct {
 
     root: *fs.Nitro,
 
-    pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Rom {
+    pub fn fromFile(file: os.File, allocator: *mem.Allocator) !Rom {
         var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
 
@@ -136,7 +136,7 @@ pub const Rom = struct {
         };
     }
 
-    pub fn writeToFile(rom: Rom, file: *os.File, allocator: *mem.Allocator) !void {
+    pub fn writeToFile(rom: Rom, file: os.File, allocator: *mem.Allocator) !void {
         var header = rom.header;
 
         const arm9_pos = 0x4000;

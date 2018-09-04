@@ -10,6 +10,7 @@ pub const Info = struct {
     moves: []const u8,
     trainers: []const u8,
     parties: []const u8,
+    wild_pokemons: []const u8,
 };
 
 pub const infos = []Info{
@@ -19,7 +20,6 @@ pub const infos = []Info{
     white_info,
 };
 
-// TODO: Fill out game_titles
 const black2_info = Info{
     .game_title = "POKEMON B2\x00\x00",
     .gamecode = "IREO",
@@ -30,6 +30,7 @@ const black2_info = Info{
     .moves = "a/0/2/1",
     .trainers = "a/0/9/1",
     .parties = "a/0/9/2",
+    .wild_pokemons = "a/1/2/7",
 };
 
 const white2_info = blk: {
@@ -48,6 +49,7 @@ const black_info = blk: {
     res.version = pokemon.Version.Black;
     res.trainers = "a/0/9/2";
     res.parties = "a/0/9/3";
+    res.wild_pokemons = "a/1/2/6";
 
     break :blk res;
 };

@@ -98,7 +98,6 @@ pub const Evolution = packed struct {
     };
 };
 
-// TODO: Fix format
 pub const legendaries = []u16{
     144, 145, 146, // Articuno, Zapdos, Moltres
     150, 151, 243, // Mewtwo, Mew, Raikou

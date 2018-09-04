@@ -34,11 +34,11 @@ test "Fake rom: Api" {
         debug.warn("Testing api ({}/{}): '{}':\n", i + 1, roms_files.len, file_name);
         defer debug.warn("Ok\n");
 
-        var file = try os.File.openRead(allocator, file_name);
+        var file = try os.File.openRead(file_name);
         defer file.close();
 
         timer.reset();
-        var game = try libpoke.Game.load(&file, allocator);
+        var game = try libpoke.Game.load(file, allocator);
         defer game.deinit();
         const time_to_load = timer.read();
 
@@ -141,6 +141,24 @@ test "Fake rom: Api" {
             while (hm_it.next()) |move_id|
                 debug.assert(move_id.value == fakes.move);
         }
+
+        {
+            const zones = game.zones();
+            debug.assert(zones.len() > 0);
+
+            var zone_it = zones.iterator();
+            while (try zone_it.next()) |zone| {
+                const wild_pokemons = zone.value.getWildPokemons();
+                debug.assert(wild_pokemons.len() > 0);
+
+                var wild_it = wild_pokemons.iterator();
+                while (try wild_it.next()) |wild_mon| {
+                    debug.assert(wild_mon.value.getSpecies() == fakes.species);
+                    debug.assert(wild_mon.value.getMinLevel() == fakes.level);
+                    debug.assert(wild_mon.value.getMaxLevel() == fakes.level);
+                }
+            }
+        }
     }
 }
 
@@ -168,10 +186,10 @@ test "Fake rom: Randomizer" {
 
         const game_buf = buf[gen_alloc.end_index..];
         var game_alloc = heap.FixedBufferAllocator.init(game_buf);
-        var file = try os.File.openRead(&game_alloc.allocator, file_name);
+        var file = try os.File.openRead(file_name);
         defer file.close();
 
-        var game = try libpoke.Game.load(&file, &game_alloc.allocator);
+        var game = try libpoke.Game.load(file, &game_alloc.allocator);
         defer game.deinit();
 
         var max_mem: usize = 0;

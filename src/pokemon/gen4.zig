@@ -41,7 +41,7 @@ pub const BasePokemon = packed struct {
 
     // Memory layout
     // TMS 01-92, HMS 01-08
-    tm_hm_learnset: lu128,
+    machine_learnset: lu128,
 };
 
 pub const MoveTutor = packed struct {
@@ -124,6 +124,65 @@ pub const LevelUpMove = packed struct {
     level: u7,
 };
 
+pub const DpptWildPokemons = packed struct {
+    grass_rate: lu32,
+    grass: [12]Grass,
+    swarm_replacements: [2]Replacement, // Replaces grass[0, 1]
+    day_replacements: [2]Replacement, // Replaces grass[2, 3]
+    night_replacements: [2]Replacement, // Replaces grass[2, 3]
+    radar_replacements: [4]Replacement, // Replaces grass[4, 5, 10, 11]
+    unknown_replacements: [6]Replacement, // ???
+    gba_replacements: [10]Replacement, // Each even replaces grass[8], each uneven replaces grass[9]
+    surf: [5]Sea,
+    sea_unknown: [5]Sea,
+    old_rod: [5]Sea,
+    good_rod: [5]Sea,
+    super_rod: [5]Sea,
+
+    pub const Grass = packed struct {
+        level: u8,
+        pad1: [3]u8,
+        species: lu16,
+        pad2: [2]u8,
+    };
+
+    pub const Sea = packed struct {
+        level_max: u8,
+        level_min: u8,
+        pad1: [2]u8,
+        species: lu16,
+        pad2: [2]u8,
+    };
+
+    pub const Replacement = packed struct {
+        species: lu16,
+        pad: [2]u8,
+    };
+};
+
+pub const HgssWildPokemons = packed struct {
+    grass_rate: u8,
+    sea_rates: [5]u8,
+    unknown: [2]u8,
+    grass_levels: [12]u8,
+    grass_morning: [12]lu16,
+    grass_day: [12]lu16,
+    grass_night: [12]lu16,
+    radio: [4]lu16,
+    surf: [5]Sea,
+    sea_unknown: [2]Sea,
+    old_rod: [5]Sea,
+    good_rod: [5]Sea,
+    super_rod: [5]Sea,
+    swarm: [4]lu16,
+
+    pub const Sea = packed struct {
+        level_min: u8,
+        level_max: u8,
+        species: lu16,
+    };
+};
+
 pub const Game = struct {
     base: pokemon.BaseGame,
     base_stats: *const nds.fs.Narc,
@@ -131,6 +190,7 @@ pub const Game = struct {
     level_up_moves: *const nds.fs.Narc,
     trainers: *const nds.fs.Narc,
     parties: *const nds.fs.Narc,
+    wild_pokemons: *const nds.fs.Narc,
     tms: []align(1) lu16,
     hms: []align(1) lu16,
 
@@ -148,6 +208,7 @@ pub const Game = struct {
             .moves = try common.getNarc(rom.root, info.moves),
             .trainers = try common.getNarc(rom.root, info.trainers),
             .parties = try common.getNarc(rom.root, info.parties),
+            .wild_pokemons = try common.getNarc(rom.root, info.wild_pokemons),
             .tms = hm_tms[0..92],
             .hms = hm_tms[92..],
         };

@@ -10,7 +10,7 @@ const mem = std.mem;
 const debug = std.debug;
 const io = std.io;
 const os = std.os;
-const slice = utils.slice;
+const math = std.math;
 
 const assert = debug.assert;
 
@@ -19,6 +19,118 @@ const lu32 = int.lu32;
 const lu64 = int.lu64;
 
 pub const constants = @import("gen3-constants.zig");
+
+pub fn Ptr(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        v: lu32,
+
+        pub fn initNull() Self {
+            return Self{
+                .v = lu32.init(0),
+            };
+        }
+
+        pub fn init(i: u32) !Self {
+            const v = math.add(u32, i, 0x8000000) catch return error.InvalidPointer;
+            return Self{
+                .v = lu32.init(v),
+            };
+        }
+
+        pub fn toMany(ptr: this, data: []u8) ![*]T {
+            return (try ptr.toSlice(data, 0)).ptr;
+        }
+
+        pub fn toSlice(ptr: this, data: []u8, len: u32) ![]T {
+            if (ptr.isNull()) {
+                if (len == 0)
+                    return @bytesToSlice(T, data[0..0]);
+
+                return error.InvalidPointer;
+            }
+
+            const start = try ptr.toInt();
+            const end = start + len * @sizeOf(T);
+            if (data.len < start or data.len < end)
+                return error.InvalidPointer;
+
+            return @bytesToSlice(T, data[start..end]);
+        }
+
+        pub fn isNull(ptr: this) bool {
+            return ptr.v.value() == 0;
+        }
+
+        pub fn toInt(ptr: this) !u32 {
+            return math.sub(u32, ptr.v.value(), 0x8000000) catch return error.InvalidPointer;
+        }
+    };
+}
+
+pub fn Ref(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        ptr: Ptr(T),
+
+        pub fn initNull() Self {
+            return Self{
+                .ptr = Ptr(T).initNull(),
+            };
+        }
+
+        pub fn init(i: u32) !Self {
+            return Self{
+                .ptr = try Ptr(T).init(i),
+            };
+        }
+
+        pub fn toSingle(ref: Self, data: []u8) !*T {
+            return &(try ref.ptr.toSlice(data, 1))[0];
+        }
+
+        pub fn isNull(ref: this) bool {
+            return ref.ptr.isNull();
+        }
+
+        pub fn toInt(ref: Self) !u32 {
+            return try ref.ptr.toInt();
+        }
+    };
+}
+
+pub fn Slice(comptime T: type) type {
+    return packed struct {
+        const Self = this;
+
+        l: lu32,
+        ptr: Ptr(T),
+
+        pub fn initEmpty() !Self {
+            return Self{
+                .l = lu32.init(0),
+                .ptr = try Ptr(T).initNull(),
+            };
+        }
+
+        pub fn init(ptr: u32, l: u32) !Self {
+            return Self{
+                .l = lu32.init(l),
+                .ptr = try Ptr(T).init(ptr),
+            };
+        }
+
+        pub fn toSlice(slice: Self, data: []u8) ![]T {
+            return slice.ptr.toSlice(data, slice.len());
+        }
+
+        pub fn len(slice: Self) u32 {
+            return slice.l.value();
+        }
+    };
+}
 
 pub const BasePokemon = packed struct {
     stats: common.Stats,
@@ -63,8 +175,7 @@ pub const Trainer = packed struct {
     items: [4]lu16,
     is_double: lu32,
     ai: lu32,
-    party_size: lu32,
-    party_offset: lu32,
+    party: Slice(u8),
 };
 
 /// All party members have this as the base.
@@ -96,14 +207,14 @@ pub const Item = packed struct {
     price: lu16,
     hold_effect: u8,
     hold_effect_param: u8,
-    description_offset: lu32,
+    description: Ptr(u8),
     importance: u8,
     unknown: u8,
     pocked: u8,
     @"type": u8,
-    field_use_func: lu32,
+    field_use_func: Ref(u8),
     battle_usage: lu32,
-    battle_use_func: lu32,
+    battle_use_func: Ref(u8),
     secondary_id: lu32,
 };
 
@@ -133,6 +244,34 @@ pub const LevelUpMove = packed struct {
     level: u7,
 };
 
+
+// TODO: Confirm layout
+pub const WildPokemon = packed struct {
+    min_level: u8,
+    max_level: u8,
+    species: lu16,
+};
+
+// TODO: Confirm layout
+pub fn WildPokemonInfo(comptime len: usize) type {
+    return packed struct {
+        encounter_rate: u8,
+        pad: [3]u8,
+        wild_pokemons: Ref([len]WildPokemon),
+    };
+}
+
+// TODO: Confirm layout
+pub const WildPokemonHeader = packed struct {
+    map_group: u8,
+    map_num: u8,
+    pad: [2]u8,
+    land_pokemons: Ref(WildPokemonInfo(12)),
+    surf_pokemons: Ref(WildPokemonInfo(5)),
+    rock_smash_pokemons: Ref(WildPokemonInfo(5)),
+    fishing_pokemons: Ref(WildPokemonInfo(10)),
+};
+
 pub const Game = struct {
     base: pokemon.BaseGame,
     allocator: *mem.Allocator,
@@ -140,17 +279,19 @@ pub const Game = struct {
 
     // All these fields point into data
     header: *gba.Header,
+
     trainers: []Trainer,
     moves: []Move,
-    tm_hm_learnset: []lu64,
+    machine_learnsets: []lu64,
     base_stats: []BasePokemon,
-    evolution_table: [][5]common.Evolution,
-    level_up_learnset_pointers: []lu32,
-    items: []Item,
+    evolutions: [][5]common.Evolution,
+    level_up_learnset_pointers: []Ref(LevelUpMove),
     hms: []lu16,
     tms: []lu16,
+    items: []Item,
+    wild_pokemon_headers: []WildPokemonHeader,
 
-    pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
+    pub fn fromFile(file: os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
         var in_stream = &file_in_stream.stream;
 
@@ -176,13 +317,14 @@ pub const Game = struct {
             .header = @ptrCast(*gba.Header, &rom[0]),
             .trainers = info.trainers.slice(rom),
             .moves = info.moves.slice(rom),
-            .tm_hm_learnset = info.machine_learnsets.slice(rom),
+            .machine_learnsets = info.machine_learnsets.slice(rom),
             .base_stats = info.base_stats.slice(rom),
-            .evolution_table = info.evolutions.slice(rom),
+            .evolutions = info.evolutions.slice(rom),
             .level_up_learnset_pointers = info.level_up_learnset_pointers.slice(rom),
-            .items = info.items.slice(rom),
             .hms = info.hms.slice(rom),
             .tms = info.tms.slice(rom),
+            .items = info.items.slice(rom),
+            .wild_pokemon_headers = info.wild_pokemon_headers.slice(rom),
         };
     }
 
