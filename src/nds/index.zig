@@ -1,11 +1,13 @@
 const std = @import("std");
 // TODO: We can't have packages in tests
 const blz = @import("../../lib/blz/blz.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const common = @import("common.zig");
 const overlay = @import("overlay.zig");
 const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
+const generic = fun.generic;
 const debug = std.debug;
 const mem = std.mem;
 const io = std.io;
@@ -169,7 +171,7 @@ pub const Rom = struct {
         header.arm7_size = lu32.init(@intCast(u32, rom.arm7.len));
 
         const banner_pos = try file.getPos();
-        try file.write(utils.toBytes(Banner, rom.banner));
+        try file.write(generic.toBytes(rom.banner));
 
         header.banner_offset = lu32.init(@intCast(u32, banner_pos));
         header.banner_size = lu32.init(@sizeOf(Banner));
@@ -251,7 +253,7 @@ pub const Rom = struct {
 
         try header.validate();
         try file.seekTo(0x00);
-        try file.write(utils.toBytes(Header, header));
+        try file.write(generic.toBytes(header));
     }
 
     pub fn hasNitroFooter(rom: Rom) bool {

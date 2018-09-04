@@ -6,10 +6,10 @@ const mem = std.mem;
 const math = std.math;
 
 pub fn read(in_stream: var, comptime T: type) !T {
-    var result: T = undefined;
-    try in_stream.readNoEof(utils.asBytes(T, &result)[0..]);
+    var result: [1]T = undefined;
+    try in_stream.readNoEof(@sliceToBytes(result[0..]));
 
-    return result;
+    return result[0];
 }
 
 pub fn allocRead(in_stream: var, allocator: *mem.Allocator, comptime T: type, size: usize) ![]T {

@@ -1,8 +1,9 @@
 const std = @import("std");
-const utils = @import("utils");
+const fun = @import("fun");
 // TODO: When https://github.com/zig-lang/zig/issues/855 is fixed. Make this into a package import instead of this HACK
 const nds = @import("../../src/nds/index.zig");
 
+const generic = fun.generic;
 const heap = std.heap;
 const os = std.os;
 const io = std.io;
@@ -57,10 +58,10 @@ pub fn main() !void {
 
     try writeToFileInFolder(out_folder, "arm9", rom.arm9, allocator);
     try writeToFileInFolder(out_folder, "arm7", rom.arm7, allocator);
-    try writeToFileInFolder(out_folder, "banner", utils.toBytes(nds.Banner, rom.banner), allocator);
+    try writeToFileInFolder(out_folder, "banner", generic.toBytes(rom.banner), allocator);
 
     if (rom.hasNitroFooter())
-        try writeToFileInFolder(out_folder, "nitro_footer", utils.toBytes(@typeOf(rom.nitro_footer), rom.nitro_footer), allocator);
+        try writeToFileInFolder(out_folder, "nitro_footer", generic.toBytes(rom.nitro_footer), allocator);
 
     try writeOverlays(arm9_overlay_folder, rom.arm9_overlay_table, rom.arm9_overlay_files, allocator);
     try writeOverlays(arm7_overlay_folder, rom.arm7_overlay_table, rom.arm7_overlay_files, allocator);
@@ -131,7 +132,7 @@ fn writeOverlays(folder: []const u8, overlays: []const nds.Overlay, files: []con
         const overlay_path = try fmt.allocPrint(allocator, "{}{}", overlay_folder_path, i);
         defer allocator.free(overlay_path);
 
-        try writeToFile(overlay_path, utils.toBytes(nds.Overlay, overlay), allocator);
+        try writeToFile(overlay_path, generic.toBytes(overlay), allocator);
     }
 
     const file_folder_path = try path.join(allocator, folder, "file");

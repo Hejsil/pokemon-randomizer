@@ -639,8 +639,8 @@ pub fn writeNitroFile(file: os.File, allocator: *mem.Allocator, fs_file: Nitro.F
 
             const stream = &buffered_out_stream.stream;
 
-            try stream.write(utils.toBytes(formats.Header, formats.Header.narc(@intCast(u32, file_end - file_start))));
-            try stream.write(utils.toBytes(formats.FatChunk, formats.FatChunk{
+            try stream.write(generic.toBytes(formats.Header.narc(@intCast(u32, file_end - file_start))));
+            try stream.write(generic.toBytes(formats.FatChunk{
                 .header = formats.Chunk{
                     .name = formats.Chunk.names.fat,
                     .size = lu32.init(@intCast(u32, fnt_start - fat_start)),
@@ -653,11 +653,11 @@ pub fn writeNitroFile(file: os.File, allocator: *mem.Allocator, fs_file: Nitro.F
             for (files) |f| {
                 const len = @intCast(u32, f.data.len);
                 const fat_entry = FatEntry.init(start, len);
-                try stream.write(utils.toBytes(FatEntry, fat_entry));
+                try stream.write(generic.toBytes(fat_entry));
                 start += len;
             }
 
-            try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
+            try stream.write(generic.toBytes(formats.Chunk{
                 .name = formats.Chunk.names.fnt,
                 .size = lu32.init(@intCast(u32, file_image_start - fnt_start)),
             }));
@@ -665,7 +665,7 @@ pub fn writeNitroFile(file: os.File, allocator: *mem.Allocator, fs_file: Nitro.F
             try stream.write(sub_fnt);
             try stream.writeByteNTimes(0xFF, file_image_start - fnt_end);
 
-            try stream.write(utils.toBytes(formats.Chunk, formats.Chunk{
+            try stream.write(generic.toBytes(formats.Chunk{
                 .name = formats.Chunk.names.file_data,
                 .size = lu32.init(@intCast(u32, file_end - file_image_start)),
             }));

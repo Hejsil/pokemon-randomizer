@@ -26,7 +26,6 @@ pub fn build(b: *Builder) void {
     nds_util.addPackagePath("crc", "lib/zig-crc/crc.zig");
     nds_util.addPackagePath("fun", "lib/fun-with-zig/src/index.zig");
     nds_util.addPackagePath("blz", "lib/blz/blz.zig");
-    nds_util.addPackagePath("utils", "src/utils/index.zig");
 
     // TODO: When https://github.com/zig-lang/zig/issues/855 is fixed. Add this line.
     // nds_util.addPackagePath("nds", "src/nds/index.zig");
@@ -37,6 +36,8 @@ pub fn build(b: *Builder) void {
 
     const src_tests = b.addTest("src/test.zig");
     const test_tests = b.addTest("test/index.zig");
+    src_tests.setBuildMode(mode);
+    test_tests.setBuildMode(mode);
 
     const test_step = b.step("test", "Run all tests");
     test_step.dependOn(&src_tests.step);

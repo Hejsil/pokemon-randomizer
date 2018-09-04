@@ -566,7 +566,7 @@ pub const Pokemons = extern struct {
             const terminator = []u8{0xFF} ** @sizeOf(gen.LevelUpMove);
             const res = slice.bytesToSliceTrim(gen.LevelUpMove, data[start..]);
             for (res) |level_up_move, i| {
-                const bytes = utils.toBytes(@typeOf(level_up_move), level_up_move);
+                const bytes = generic.toBytes(level_up_move);
                 if (std.mem.eql(u8, bytes, terminator))
                     break :blk res[0..i];
             }

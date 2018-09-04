@@ -16,6 +16,7 @@ const debug = std.debug;
 const io = std.io;
 const path = os.path;
 const loop = fun.loop;
+const generic = fun.generic;
 
 const lu16 = int.lu16;
 const lu32 = int.lu32;
@@ -116,7 +117,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         .complement_check = undefined,
         .reserved2 = []u8{0} ** 2,
     };
-    try file.write(utils.toBytes(gba.Header, header));
+    try file.write(generic.toBytes(header));
 
     for (loop.to(info.trainers.len)) |_, i| {
         var party_type: u8 = 0;
@@ -127,7 +128,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
 
         // Output trainer
         try file.seekTo(info.trainers.start + i * @sizeOf(libpoke.gen3.Trainer));
-        try file.write(utils.toBytes(libpoke.gen3.Trainer, libpoke.gen3.Trainer{
+        try file.write(generic.toBytes(libpoke.gen3.Trainer{
             .party_type = party_type,
             .class = undefined,
             .encounter_music = undefined,
@@ -142,7 +143,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         // Output party
         try file.seekTo(free_space_offset);
         for (loop.to(party_size)) |_2, j| {
-            try file.write(utils.toBytes(libpoke.gen3.PartyMember, libpoke.gen3.PartyMember{
+            try file.write(generic.toBytes(libpoke.gen3.PartyMember{
                 .iv = undefined,
                 .level = lu16.init(level),
                 .species = lu16.init(species),
@@ -164,7 +165,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
 
     try file.seekTo(info.moves.start);
     for (loop.to(info.moves.len)) |_, i| {
-        try file.write(utils.toBytes(libpoke.gen3.Move, libpoke.gen3.Move{
+        try file.write(generic.toBytes(libpoke.gen3.Move{
             .effect = undefined,
             .power = power,
             .@"type" = @intToEnum(libpoke.gen3.Type, ptype),
@@ -184,7 +185,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
 
     try file.seekTo(info.base_stats.start);
     for (loop.to(info.base_stats.len)) |_, i| {
-        try file.write(utils.toBytes(libpoke.gen3.BasePokemon, libpoke.gen3.BasePokemon{
+        try file.write(generic.toBytes(libpoke.gen3.BasePokemon{
             .stats = libpoke.common.Stats{
                 .hp = hp,
                 .attack = attack,
@@ -222,7 +223,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         try file.write(lu32.init(@intCast(u32, free_space_offset + 0x8000000)).bytes);
 
         try file.seekTo(free_space_offset);
-        try file.write(utils.toBytes(libpoke.gen3.LevelUpMove, libpoke.gen3.LevelUpMove{
+        try file.write(generic.toBytes(libpoke.gen3.LevelUpMove{
             .move_id = move,
             .level = level,
         }));
@@ -248,7 +249,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         inline for (lens) |len, j| {
             const offset = try file.getPos();
             for (loop.to(len)) |_2| {
-                try file.write(utils.toBytes(libpoke.gen3.WildPokemon, libpoke.gen3.WildPokemon{
+                try file.write(generic.toBytes(libpoke.gen3.WildPokemon{
                     .min_level = level,
                     .max_level = level,
                     .species = lu16.init(species),
@@ -256,7 +257,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
             }
 
             offsets[j] = @intCast(u32, try file.getPos());
-            try file.write(utils.toBytes(libpoke.gen3.WildPokemonInfo(len), libpoke.gen3.WildPokemonInfo(len){
+            try file.write(generic.toBytes(libpoke.gen3.WildPokemonInfo(len){
                 .encounter_rate = rate,
                 .pad = undefined,
                 .wild_pokemons = try libpoke.gen3.Ref([len]libpoke.gen3.WildPokemon).init(@intCast(u32, offset)),
@@ -266,7 +267,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
         free_space_offset = try file.getPos();
 
         try file.seekTo(info.wild_pokemon_headers.start + i * @sizeOf(libpoke.gen3.WildPokemonHeader));
-        try file.write(utils.toBytes(libpoke.gen3.WildPokemonHeader, libpoke.gen3.WildPokemonHeader{
+        try file.write(generic.toBytes(libpoke.gen3.WildPokemonHeader{
             .map_group = undefined,
             .map_num = undefined,
             .pad = undefined,
@@ -525,7 +526,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
                 _ = try trainer_narc.createFile(name, nds.fs.Narc.File{
                     .allocator = allocator,
-                    .data = utils.asBytes(libpoke.gen4.Trainer, trainer)[0..],
+                    .data = generic.asBytes(libpoke.gen4.Trainer, trainer)[0..],
                 });
             }
 
@@ -539,7 +540,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 .form = undefined,
             };
             const held_item_bytes = lu16.init(item).bytes;
-            const moves_bytes = utils.toBytes([4]lu16, []lu16{comptime lu16.init(move)} ** 4);
+            const moves_bytes = generic.toBytes([]lu16{comptime lu16.init(move)} ** 4);
             const padding = switch (info.version) {
                 libpoke.Version.HeartGold, libpoke.Version.SoulSilver, libpoke.Version.Platinum => usize(2),
                 else => usize(0),
@@ -548,7 +549,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             const full_party_member_bytes = try fmt.bufPrint(
                 tmp_buf[0..],
                 "{}{}{}{}",
-                utils.toBytes(libpoke.gen4.PartyMember, party_member)[0..],
+                generic.toBytes(party_member)[0..],
                 held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
                 moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
                 ([]u8{0x00} ** 2)[0..padding],
@@ -595,7 +596,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             });
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen4.Move, gen4_move),
+                .data = generic.asBytes(libpoke.gen4.Move, gen4_move),
             });
         }
     }
@@ -646,7 +647,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
             });
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen4.BasePokemon, base_stats),
+                .data = generic.asBytes(libpoke.gen4.BasePokemon, base_stats),
             });
         }
     }
@@ -673,7 +674,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 .data = try fmt.allocPrint(
                     allocator,
                     "{}{}",
-                    utils.toBytes(libpoke.gen4.LevelUpMove, lvlup_learnset)[0..],
+                    generic.toBytes(lvlup_learnset)[0..],
                     []u8{0xFF} ** @sizeOf(libpoke.gen4.LevelUpMove),
                 ),
             });
@@ -762,7 +763,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
                     _ = try narc.createFile(name, nds.fs.Narc.File{
                         .allocator = allocator,
-                        .data = utils.asBytes(WildPokemons, wild_pokemon),
+                        .data = generic.asBytes(WildPokemons, wild_pokemon),
                     });
                 },
                 libpoke.Version.HeartGold, libpoke.Version.SoulSilver => {
@@ -794,7 +795,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
 
                     _ = try narc.createFile(name, nds.fs.Narc.File{
                         .allocator = allocator,
-                        .data = utils.asBytes(WildPokemons, wild_pokemon),
+                        .data = generic.asBytes(WildPokemons, wild_pokemon),
                     });
                 },
                 else => unreachable,
@@ -873,7 +874,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             });
             _ = try trainer_narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen5.Trainer, trainer)[0..],
+                .data = generic.asBytes(libpoke.gen5.Trainer, trainer)[0..],
             });
 
             var tmp_buf: [100]u8 = undefined;
@@ -887,13 +888,13 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
                 .form = undefined,
             };
             const held_item_bytes = lu16.init(item).bytes;
-            const moves_bytes = utils.toBytes([4]lu16, []lu16{comptime lu16.init(move)} ** 4);
+            const moves_bytes = generic.toBytes([]lu16{comptime lu16.init(move)} ** 4);
 
             // TODO: This can leak on err
             const full_party_member_bytes = try fmt.bufPrint(
                 tmp_buf[0..],
                 "{}{}{}",
-                utils.toBytes(libpoke.gen5.PartyMember, party_member)[0..],
+                generic.toBytes(party_member)[0..],
                 held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
                 moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
             );
@@ -943,7 +944,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             });
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen5.Move, gen5_move),
+                .data = generic.asBytes(libpoke.gen5.Move, gen5_move),
             });
         }
     }
@@ -999,7 +1000,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
             });
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen5.BasePokemon, base_stats),
+                .data = generic.asBytes(libpoke.gen5.BasePokemon, base_stats),
             });
         }
     }
@@ -1026,7 +1027,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
                 .data = try fmt.allocPrint(
                     allocator,
                     "{}{}",
-                    utils.toBytes(libpoke.gen5.LevelUpMove, lvlup_learnset)[0..],
+                    generic.toBytes(lvlup_learnset)[0..],
                     []u8{0xFF} ** @sizeOf(libpoke.gen5.LevelUpMove),
                 ),
             });
@@ -1067,7 +1068,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
 
             _ = try narc.createFile(name, nds.fs.Narc.File{
                 .allocator = allocator,
-                .data = utils.asBytes(libpoke.gen5.WildPokemons, wild_pokemons),
+                .data = generic.asBytes(libpoke.gen5.WildPokemons, wild_pokemons),
             });
         }
     }
