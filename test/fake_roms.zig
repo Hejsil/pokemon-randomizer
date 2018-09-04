@@ -280,7 +280,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
 
     const rem = end % 0x1000000;
     if (rem != 0) {
-        var file_stream = io.FileOutStream.init(&file);
+        var file_stream = io.FileOutStream.init(file);
         var buf_stream = io.BufferedOutStream(io.FileOutStream.Error).init(&file_stream.stream);
         var stream = &buf_stream.stream;
         try stream.writeByteNTimes(0, 0x1000000 - rem);
@@ -807,7 +807,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
     errdefer os.deleteFile(name) catch {};
     defer file.close();
 
-    try rom.writeToFile(&file, allocator);
+    try rom.writeToFile(file, allocator);
 
     return name;
 }
@@ -1077,7 +1077,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
     errdefer os.deleteFile(name) catch {};
     defer file.close();
 
-    try rom.writeToFile(&file, allocator);
+    try rom.writeToFile(file, allocator);
 
     return name;
 }

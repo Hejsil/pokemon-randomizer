@@ -299,7 +299,7 @@ test "nds.fs.read/writeNitro" {
 
         for (files) |f| {
             const pos = @intCast(u32, try file.getPos());
-            try fs.writeNitroFile(&file, allocator, f.*);
+            try fs.writeNitroFile(file, allocator, f.*);
             fat.append(fs.FatEntry.init(pos, @intCast(u32, try file.getPos()) - pos)) catch unreachable;
         }
     }
@@ -307,7 +307,7 @@ test "nds.fs.read/writeNitro" {
     const fs2 = blk: {
         var file = try os.File.openRead(test_file);
         defer file.close();
-        break :blk try fs.readNitro(&file, allocator, fnt, fat.toSlice());
+        break :blk try fs.readNitro(file, allocator, fnt, fat.toSlice());
     };
 
     debug.assert(try fsEqual(allocator, fs.Nitro, root, fs2));

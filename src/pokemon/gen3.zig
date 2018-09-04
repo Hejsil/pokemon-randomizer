@@ -291,7 +291,7 @@ pub const Game = struct {
     items: []Item,
     wild_pokemon_headers: []WildPokemonHeader,
 
-    pub fn fromFile(file: *os.File, allocator: *mem.Allocator) !Game {
+    pub fn fromFile(file: os.File, allocator: *mem.Allocator) !Game {
         var file_in_stream = io.FileInStream.init(file);
         var in_stream = &file_in_stream.stream;
 

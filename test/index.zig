@@ -38,7 +38,7 @@ test "Fake rom: Api" {
         defer file.close();
 
         timer.reset();
-        var game = try libpoke.Game.load(&file, allocator);
+        var game = try libpoke.Game.load(file, allocator);
         defer game.deinit();
         const time_to_load = timer.read();
 
@@ -189,7 +189,7 @@ test "Fake rom: Randomizer" {
         var file = try os.File.openRead(file_name);
         defer file.close();
 
-        var game = try libpoke.Game.load(&file, &game_alloc.allocator);
+        var game = try libpoke.Game.load(file, &game_alloc.allocator);
         defer game.deinit();
 
         var max_mem: usize = 0;

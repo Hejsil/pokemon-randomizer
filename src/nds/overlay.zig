@@ -21,7 +21,7 @@ pub const Overlay = packed struct {
     reserved: [4]u8,
 };
 
-pub fn readFiles(file: *os.File, allocator: *mem.Allocator, overlay_table: []Overlay, fat: []fs.FatEntry) ![][]u8 {
+pub fn readFiles(file: os.File, allocator: *mem.Allocator, overlay_table: []Overlay, fat: []fs.FatEntry) ![][]u8 {
     var results = std.ArrayList([]u8).init(allocator);
     try results.ensureCapacity(overlay_table.len);
     errdefer {

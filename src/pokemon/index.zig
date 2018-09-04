@@ -1551,7 +1551,7 @@ pub const Game = extern struct {
     allocator: *mem.Allocator,
     nds_rom: ?*nds.Rom,
 
-    pub fn load(file: *os.File, allocator: *mem.Allocator) !Game {
+    pub fn load(file: os.File, allocator: *mem.Allocator) !Game {
         const start = try file.getPos();
         try file.seekTo(start);
         return loadGbaGame(file, allocator) catch {
@@ -1560,7 +1560,7 @@ pub const Game = extern struct {
         };
     }
 
-    pub fn loadGbaGame(file: *os.File, allocator: *mem.Allocator) !Game {
+    pub fn loadGbaGame(file: os.File, allocator: *mem.Allocator) !Game {
         var game = try gen3.Game.fromFile(file, allocator);
         errdefer game.deinit();
 
@@ -1574,7 +1574,7 @@ pub const Game = extern struct {
         };
     }
 
-    pub fn loadNdsGame(file: *os.File, allocator: *mem.Allocator) !Game {
+    pub fn loadNdsGame(file: os.File, allocator: *mem.Allocator) !Game {
         var rom = try nds.Rom.fromFile(file, allocator);
         errdefer rom.deinit();
 
@@ -1600,7 +1600,7 @@ pub const Game = extern struct {
         }
     }
 
-    pub fn save(game: Game, file: *os.File) !void {
+    pub fn save(game: Game, file: os.File) !void {
         const gen = game.base.version.gen();
         if (gen == 3) {
             const g = @fieldParentPtr(gen3.Game, "base", game.base);
