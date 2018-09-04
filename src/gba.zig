@@ -6,7 +6,8 @@ const ascii = fun.ascii;
 const debug = std.debug;
 const mem = std.mem;
 const io = std.io;
-const slice = utils.slice;
+const generic = fun.generic;
+const slice = generic.slice;
 
 const assert = debug.assert;
 

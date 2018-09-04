@@ -2,11 +2,9 @@ const std = @import("std");
 const mem = std.mem;
 const debug = std.debug;
 
-pub const slice = @import("slice.zig");
 pub const stream = @import("stream.zig");
 
 test "utils" {
-    _ = @import("slice.zig");
     _ = @import("stream.zig");
 }
 
