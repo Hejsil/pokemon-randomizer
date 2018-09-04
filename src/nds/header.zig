@@ -1,10 +1,11 @@
 const std = @import("std");
 // TODO: We can't have packages in tests
 const crc = @import("../../lib/zig-crc/crc.zig");
-const ascii = @import("../ascii.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
+const ascii = fun.ascii;
 const debug = std.debug;
 const mem = std.mem;
 const io = std.io;
@@ -216,18 +217,24 @@ pub const Header = packed struct {
         if (header.header_checksum.value() != header.calcChecksum())
             return error.InvalidHeaderChecksum;
 
-        if (!slice.all(header.game_title[0..], isUpperAsciiOrZero))
+        const game_title = ascii.asAsciiConst(header.game_title) catch return error.InvalidGameTitle;
+        if (!slice.all(game_title, notLower))
             return error.InvalidGameTitle;
-        if (!slice.all(header.gamecode[0..], ascii.isUpperAscii))
+
+        const gamecode = ascii.asAsciiConst(header.gamecode) catch return error.InvalidGamecode;
+        if (!slice.all(gamecode[0..], ascii.isUpper))
             return error.InvalidGamecode;
-        if (!slice.all(header.makercode[0..], ascii.isUpperAscii))
+
+        const makercode = ascii.asAsciiConst(header.makercode) catch return error.InvalidMakercode;
+        if (!slice.all(makercode, ascii.isUpper))
             return error.InvalidMakercode;
+
         if (header.unitcode > 0x03)
             return error.InvalidUnitcode;
         if (header.encryption_seed_select > 0x07)
             return error.InvalidEncryptionSeedSelect;
 
-        if (!slice.all(header.reserved1[0..], ascii.isZero))
+        if (!slice.all(header.reserved1[0..], isZero))
             return error.InvalidReserved1;
 
         // It seems that arm9 (secure area) is always at 0x4000
@@ -261,18 +268,18 @@ pub const Header = packed struct {
         if (header.rom_header_size.value() != 0x4000)
             return error.InvalidRomHeaderSize;
 
-        if (!slice.all(header.reserved3[12..], ascii.isZero))
+        if (!slice.all(header.reserved3[12..], isZero))
             return error.InvalidReserved3;
 
-        if (!slice.all(header.reserved4[0..], ascii.isZero))
+        if (!slice.all(header.reserved4[0..], isZero))
             return error.InvalidReserved4;
-        if (!slice.all(header.reserved5[0..], ascii.isZero))
+        if (!slice.all(header.reserved5[0..], isZero))
             return error.InvalidReserved5;
 
         if (header.isDsi()) {
-            if (!slice.all(header.reserved6[0..], ascii.isZero))
+            if (!slice.all(header.reserved6[0..], isZero))
                 return error.InvalidReserved6;
-            if (!slice.all(header.reserved7[0..], ascii.isZero))
+            if (!slice.all(header.reserved7[0..], isZero))
                 return error.InvalidReserved7;
 
             // TODO: (usually same as ARM9 rom offs, 0004000h)
@@ -281,22 +288,26 @@ pub const Header = packed struct {
                 return error.InvalidDigestNtrRegionOffset;
             if (!mem.eql(u8, header.reserved8, []u8{ 0x00, 0x00, 0x01, 0x00 }))
                 return error.InvalidReserved8;
-            if (!slice.all(header.reserved9[0..], ascii.isZero))
+            if (!slice.all(header.reserved9[0..], isZero))
                 return error.InvalidReserved9;
             if (!mem.eql(u8, header.title_id_rest, []u8{ 0x00, 0x03, 0x00 }))
                 return error.InvalidTitleIdRest;
-            if (!slice.all(header.reserved12[0..], ascii.isZero))
+            if (!slice.all(header.reserved12[0..], isZero))
                 return error.InvalidReserved12;
-            if (!slice.all(header.reserved16[0..], ascii.isZero))
+            if (!slice.all(header.reserved16[0..], isZero))
                 return error.InvalidReserved16;
-            if (!slice.all(header.reserved17[0..], ascii.isZero))
+            if (!slice.all(header.reserved17[0..], isZero))
                 return error.InvalidReserved17;
-            if (!slice.all(header.reserved18[0..], ascii.isZero))
+            if (!slice.all(header.reserved18[0..], isZero))
                 return error.InvalidReserved18;
         }
     }
 
-    fn isUpperAsciiOrZero(char: u8) bool {
-        return ascii.isUpperAscii(char) or char == 0;
+    fn isZero(b: u8) bool {
+        return b == 0;
+    }
+
+    fn notLower(char: u7) bool {
+        return !ascii.isLower(char);
     }
 };

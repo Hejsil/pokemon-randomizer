@@ -1,7 +1,8 @@
 const std = @import("std");
 const utils = @import("utils/index.zig");
-const ascii = @import("ascii.zig");
+const fun = @import("../lib/fun-with-zig/src/index.zig"); // TODO: package fix
 
+const ascii = fun.ascii;
 const debug = std.debug;
 const mem = std.mem;
 const io = std.io;
@@ -28,19 +29,31 @@ pub const Header = packed struct {
     reserved2: [2]u8,
 
     pub fn validate(header: *const Header) !void {
-        if (!slice.all(header.game_title[0..], ascii.isUpperAscii))
+        const game_title = ascii.asAsciiConst(header.game_title) catch return error.InvalidGameTitle;
+        if (!slice.all(game_title, notLower))
             return error.InvalidGameTitle;
-        if (!slice.all(header.gamecode[0..], ascii.isUpperAscii))
+
+        const gamecode = ascii.asAsciiConst(header.gamecode) catch return error.InvalidGameTitle;
+        if (!slice.all(gamecode, ascii.isUpper))
             return error.InvalidGamecode;
 
-        if (!slice.all(header.makercode[0..], ascii.isUpperAscii))
+        const makercode = ascii.asAsciiConst(header.makercode) catch return error.InvalidGameTitle;
+        if (!slice.all(makercode, ascii.isUpper))
             return error.InvalidMakercode;
         if (header.fixed_value != 0x96)
             return error.InvalidFixedValue;
 
-        if (!slice.all(header.reserved1[0..], ascii.isZero))
+        if (!slice.all(header.reserved1[0..], isZero))
             return error.InvalidReserved1;
-        if (!slice.all(header.reserved2[0..], ascii.isZero))
+        if (!slice.all(header.reserved2[0..], isZero))
             return error.InvalidReserved2;
+    }
+
+    fn isZero(b: u8) bool {
+        return b == 0;
+    }
+
+    fn notLower(char: u7) bool {
+        return !ascii.isLower(char);
     }
 };

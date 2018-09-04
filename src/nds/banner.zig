@@ -1,6 +1,10 @@
-const ascii = @import("../ascii.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig"); // TODO: package stuff
 const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
+
+const ascii = fun.ascii;
+const generic = fun.generic;
+const slice = generic.slice;
 
 const lu16 = int.lu16;
 
@@ -54,7 +58,7 @@ pub const Banner = packed struct {
         if (banner.has_animated_dsi_icon_padding != 0)
             return error.InvalidHasAnimatedDsiIconPadding;
 
-        if (!utils.slice.all(banner.reserved1[0..], ascii.isZero))
+        if (!slice.all(banner.reserved1[0..], isZero))
             return error.InvalidReserved1;
 
         //if (!utils.all(u8, banner.reserved2, ascii.isZero))
@@ -68,6 +72,10 @@ pub const Banner = packed struct {
         //    if (!utils.all(u8, banner.icon_animation_sequence, is0xFF))
         //        return error.InvalidIconAnimationSequence;
         //}
+    }
+
+    fn isZero(b: u8) bool {
+        return b == 0;
     }
 
     fn is0xFF(char: u8) bool {
