@@ -37,7 +37,7 @@ pub fn main() !void {
         };
         defer file.close();
 
-        var file_stream = io.FileInStream.init(&file);
+        var file_stream = io.FileInStream.init(file);
         var stream = &file_stream.stream;
         const data = try stream.readAllAlloc(allocator, @maxValue(usize));
         defer allocator.free(data);

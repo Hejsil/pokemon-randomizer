@@ -23,7 +23,7 @@ pub fn main() !void {
     const allocator = &arena.allocator;
 
     var stdout_handle = try io.getStdOut();
-    var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
+    var stdout_file_stream = io.FileOutStream.init(stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
     // NOTE: Do we want to use another allocator for arguments? Does it matter? Idk.
@@ -38,7 +38,7 @@ pub fn main() !void {
     const nds_path = args[1];
     var rom_file = try os.File.openRead(args[1]);
     defer rom_file.close();
-    var rom = try nds.Rom.fromFile(&rom_file, allocator);
+    var rom = try nds.Rom.fromFile(rom_file, allocator);
     defer rom.deinit();
 
     // TODO: No hardcoding in here!

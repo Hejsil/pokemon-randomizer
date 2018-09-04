@@ -123,7 +123,7 @@ pub fn main() !void {
     const allocator = &arena.allocator;
 
     var stdout_handle = try io.getStdOut();
-    var stdout_file_stream = io.FileOutStream.init(&stdout_handle);
+    var stdout_file_stream = io.FileOutStream.init(stdout_handle);
     var stdout = &stdout_file_stream.stream;
 
     const args = try os.argsAlloc(allocator);
@@ -145,7 +145,7 @@ pub fn main() !void {
     };
     defer rom_file.close();
 
-    var game = pokemon.Game.load(&rom_file, allocator) catch |err| {
+    var game = pokemon.Game.load(rom_file, allocator) catch |err| {
         debug.warn("Couldn't load game {}.\n", input_file);
         return err;
     };
@@ -169,7 +169,7 @@ pub fn main() !void {
     };
     defer out_file.close();
 
-    game.save(&out_file) catch |err| {
+    game.save(out_file) catch |err| {
         debug.warn("Couldn't save game {}.\n", @errorName(err));
         return err;
     };
