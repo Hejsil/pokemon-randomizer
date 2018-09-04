@@ -8,7 +8,7 @@ const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const generic = fun.generic;
-
+const slice = generic.slice;
 const debug = std.debug;
 const mem = std.mem;
 const heap = std.heap;
@@ -329,9 +329,9 @@ pub fn readNarc(file: os.File, allocator: *mem.Allocator, fnt: []const u8, fat: 
 
 fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: []const u8, fat: []const FatEntry, img_base: usize) !*F {
     const fnt_main_table = blk: {
-        const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
-        const first = generic.at(fnt_mains, 0) catch return error.InvalidFnt;
-        const res = generic.slice(fnt_mains, 0, first.parent_id.value()) catch return error.InvalidFnt;
+        const fnt_mains = slice.bytesToSliceTrim(FntMainEntry, fnt);
+        const first = slice.at(fnt_mains, 0) catch return error.InvalidFnt;
+        const res = slice.slice(fnt_mains, 0, first.parent_id.value()) catch return error.InvalidFnt;
         if (res.len > 4096) return error.InvalidFnt;
 
         break :blk res;
@@ -353,7 +353,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
     try stack.append(State{
         .folder = root,
         .file_id = fnt_first.first_file_id_in_subtable.value(),
-        .fnt_sub_table = generic.slice(fnt, fnt_first.offset_to_subtable.value(), fnt.len) catch return error.InvalidFnt,
+        .fnt_sub_table = slice.slice(fnt, fnt_first.offset_to_subtable.value(), fnt.len) catch return error.InvalidFnt,
     });
 
     while (stack.popOrNull()) |state| {
@@ -383,7 +383,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
         defer allocator.free(name);
         switch (kind) {
             Kind.File => {
-                const fat_entry = generic.at(fat, file_id) catch return error.InvalidFileId;
+                const fat_entry = slice.at(fat, file_id) catch return error.InvalidFileId;
                 _ = try folder.createFile(name, switch (F) {
                     Nitro => try readNitroFile(file, allocator, fat_entry.*, img_base),
                     Narc => try readNarcFile(file, allocator, fat_entry.*, img_base),
@@ -401,7 +401,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
                 if (id < 0xF001 or id > 0xFFFF)
                     return error.InvalidSubDirectoryId;
 
-                const fnt_entry = generic.at(fnt_main_table, id & 0x0FFF) catch return error.InvalidSubDirectoryId;
+                const fnt_entry = slice.at(fnt_main_table, id & 0x0FFF) catch return error.InvalidSubDirectoryId;
                 const sub_folder = try folder.createFolder(name);
 
                 stack.append(State{
@@ -412,7 +412,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
                 try stack.append(State{
                     .folder = sub_folder,
                     .file_id = fnt_entry.first_file_id_in_subtable.value(),
-                    .fnt_sub_table = generic.slice(fnt, fnt_entry.offset_to_subtable.value(), fnt.len) catch return error.InvalidFnt,
+                    .fnt_sub_table = slice.slice(fnt, fnt_entry.offset_to_subtable.value(), fnt.len) catch return error.InvalidFnt,
                 });
             },
         }
@@ -466,8 +466,8 @@ pub fn readNitroFile(file: os.File, allocator: *mem.Allocator, fat_entry: FatEnt
         const fnt = try utils.stream.allocRead(stream, allocator, u8, fnt_size);
         defer allocator.free(fnt);
 
-        const fnt_mains = generic.bytesToSliceTrim(FntMainEntry, fnt);
-        const first_fnt = generic.at(fnt_mains, 0) catch return error.InvalidChunkSize;
+        const fnt_mains = slice.bytesToSliceTrim(FntMainEntry, fnt);
+        const first_fnt = slice.at(fnt_mains, 0) catch return error.InvalidChunkSize;
 
         const file_data_header = try utils.stream.read(stream, formats.Chunk);
         if (!mem.eql(u8, file_data_header.name, names.file_data))

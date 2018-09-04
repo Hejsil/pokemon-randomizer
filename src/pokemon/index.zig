@@ -13,7 +13,7 @@ const int = @import("../int.zig");
 const bits = @import("../bits.zig");
 
 const generic = fun.generic;
-
+const slice = generic.slice;
 const math = std.math;
 const debug = std.debug;
 const os = std.os;
@@ -564,7 +564,7 @@ pub const Pokemons = extern struct {
             // gen3,4,5 all have 0xFF ** @sizeOf(gen.LevelUpMove) terminated level up moves,
             // even though gen4,5 stores level up moves in files with a length.
             const terminator = []u8{0xFF} ** @sizeOf(gen.LevelUpMove);
-            const res = generic.bytesToSliceTrim(gen.LevelUpMove, data[start..]);
+            const res = slice.bytesToSliceTrim(gen.LevelUpMove, data[start..]);
             for (res) |level_up_move, i| {
                 const bytes = utils.toBytes(@typeOf(level_up_move), level_up_move);
                 if (std.mem.eql(u8, bytes, terminator))
@@ -1744,6 +1744,6 @@ fn getFile(narc: *const nds.fs.Narc, index: usize) !*nds.fs.Narc.File {
 
 fn getFileAsType(comptime T: type, narc: *const nds.fs.Narc, index: usize) !*T {
     const file = try getFile(narc, index);
-    const data = generic.bytesToSliceTrim(T, file.data);
-    return generic.at(data, 0) catch error.FileToSmall;
+    const data = slice.bytesToSliceTrim(T, file.data);
+    return slice.at(data, 0) catch error.FileToSmall;
 }
