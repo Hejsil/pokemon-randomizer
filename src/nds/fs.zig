@@ -361,7 +361,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
         const file_id = state.file_id;
         const fnt_sub_table = state.fnt_sub_table;
 
-        var mem_stream = utils.stream.MemInStream.init(fnt_sub_table);
+        var mem_stream = io.SliceInStream.init(fnt_sub_table);
         const stream = &mem_stream.stream;
 
         const Kind = enum(u8) {
@@ -393,7 +393,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
                 stack.append(State{
                     .folder = folder,
                     .file_id = file_id + 1,
-                    .fnt_sub_table = mem_stream.memory,
+                    .fnt_sub_table = mem_stream.slice[mem_stream.pos..],
                 }) catch unreachable;
             },
             Kind.Folder => {
@@ -407,7 +407,7 @@ fn readHelper(comptime F: type, file: os.File, allocator: *mem.Allocator, fnt: [
                 stack.append(State{
                     .folder = folder,
                     .file_id = file_id,
-                    .fnt_sub_table = mem_stream.memory,
+                    .fnt_sub_table = mem_stream.slice[mem_stream.pos..],
                 }) catch unreachable;
                 try stack.append(State{
                     .folder = sub_folder,
