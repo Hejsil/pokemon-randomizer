@@ -2,13 +2,15 @@ const libpoke = @import("../src/pokemon/index.zig");
 const utils = @import("../src/utils/index.zig");
 const fakes = @import("fake_roms.zig");
 const std = @import("std");
+const fun = @import("../lib/fun-with-zig/src/index.zig"); // TODO: Package stuff
+
 const heap = std.heap;
 const os = std.os;
 const debug = std.debug;
 const rand = std.rand;
 const math = std.math;
 const time = os.time;
-const loop = utils.loop;
+const loop = fun.loop;
 
 const max_alloc = 100 * 1024 * 1024;
 

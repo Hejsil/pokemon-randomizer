@@ -5,6 +5,8 @@ const gba = @import("../src/gba.zig");
 const utils = @import("../src/utils/index.zig");
 const int = @import("../src/int.zig");
 const std = @import("std");
+const fun = @import("../lib/fun-with-zig/src/index.zig"); // TODO: Package stuff
+
 const mem = std.mem;
 const fmt = std.fmt;
 const os = std.os;
@@ -13,7 +15,7 @@ const heap = std.heap;
 const debug = std.debug;
 const io = std.io;
 const path = os.path;
-const loop = utils.loop;
+const loop = fun.loop;
 
 const lu16 = int.lu16;
 const lu32 = int.lu32;
