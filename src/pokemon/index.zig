@@ -306,7 +306,7 @@ pub const HmLearnset = Learnset(MachineKind.Hidden);
 
 pub fn Learnset(comptime kind: MachineKind) type {
     return extern struct {
-        const Self = this;
+        const Self = @This();
         game: *const BaseGame,
         data: *u8,
 
@@ -962,7 +962,7 @@ pub const Hms = Machines(MachineKind.Hidden);
 
 pub fn Machines(comptime kind: MachineKind) type {
     return extern struct {
-        const Self = this;
+        const Self = @This();
 
         game: *const BaseGame,
 
@@ -1666,7 +1666,7 @@ pub const Game = extern struct {
 
 fn Iterator(comptime Items: type, comptime Result: type) type {
     return struct {
-        const Self = this;
+        const Self = @This();
 
         items: Items,
         curr: usize,
@@ -1698,7 +1698,7 @@ fn Iterator(comptime Items: type, comptime Result: type) type {
 
 fn ErrIterator(comptime Items: type, comptime Result: type) type {
     return struct {
-        const Self = this;
+        const Self = @This();
 
         items: Items,
         curr: usize,

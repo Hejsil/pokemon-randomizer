@@ -22,7 +22,7 @@ pub const constants = @import("gen3-constants.zig");
 
 pub fn Ptr(comptime T: type) type {
     return packed struct {
-        const Self = this;
+        const Self = @This();
 
         v: lu32,
 
@@ -39,11 +39,11 @@ pub fn Ptr(comptime T: type) type {
             };
         }
 
-        pub fn toMany(ptr: this, data: []u8) ![*]T {
+        pub fn toMany(ptr: Self, data: []u8) ![*]T {
             return (try ptr.toSlice(data, 0)).ptr;
         }
 
-        pub fn toSlice(ptr: this, data: []u8, len: u32) ![]T {
+        pub fn toSlice(ptr: Self, data: []u8, len: u32) ![]T {
             if (ptr.isNull()) {
                 if (len == 0)
                     return @bytesToSlice(T, data[0..0]);
@@ -59,11 +59,11 @@ pub fn Ptr(comptime T: type) type {
             return @bytesToSlice(T, data[start..end]);
         }
 
-        pub fn isNull(ptr: this) bool {
+        pub fn isNull(ptr: Self) bool {
             return ptr.v.value() == 0;
         }
 
-        pub fn toInt(ptr: this) !u32 {
+        pub fn toInt(ptr: Self) !u32 {
             return math.sub(u32, ptr.v.value(), 0x8000000) catch return error.InvalidPointer;
         }
     };
@@ -71,7 +71,7 @@ pub fn Ptr(comptime T: type) type {
 
 pub fn Ref(comptime T: type) type {
     return packed struct {
-        const Self = this;
+        const Self = @This();
 
         ptr: Ptr(T),
 
@@ -91,7 +91,7 @@ pub fn Ref(comptime T: type) type {
             return &(try ref.ptr.toSlice(data, 1))[0];
         }
 
-        pub fn isNull(ref: this) bool {
+        pub fn isNull(ref: Self) bool {
             return ref.ptr.isNull();
         }
 
@@ -103,7 +103,7 @@ pub fn Ref(comptime T: type) type {
 
 pub fn Slice(comptime T: type) type {
     return packed struct {
-        const Self = this;
+        const Self = @This();
 
         l: lu32,
         ptr: Ptr(T),
