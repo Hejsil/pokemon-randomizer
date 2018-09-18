@@ -29,7 +29,7 @@ pub fn Int(comptime Inner: type, comptime endian: builtin.Endian) type {
     comptime debug.assert(@typeId(Inner) == builtin.TypeId.Int);
 
     return packed struct {
-        const Self = this;
+        const Self = @This();
 
         bytes: [@sizeOf(Inner)]u8,
 

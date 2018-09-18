@@ -35,7 +35,7 @@ const lu32 = int.lu32;
 ///   * TODO: We can't delete files or folders yet
 pub fn Folder(comptime TFile: type) type {
     return struct {
-        const Self = this;
+        const Self = @This();
         const IndexMap = std.HashMap([]const u8, usize, mem.hash_slice_u8, mem.eql_slice_u8);
         const Nodes = std.ArrayList(Node);
 
@@ -261,7 +261,7 @@ pub fn Folder(comptime TFile: type) type {
 }
 
 pub const Narc = Folder(struct {
-    const Self = this;
+    const Self = @This();
 
     allocator: *mem.Allocator,
     data: []u8,
@@ -273,7 +273,7 @@ pub const Narc = Folder(struct {
 });
 
 pub const Nitro = Folder(union(enum) {
-    const Self = this;
+    const Self = @This();
 
     Binary: Binary,
     Narc: *Narc,

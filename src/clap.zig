@@ -15,7 +15,7 @@ const assert = debug.assert;
 
 pub fn Arg(comptime T: type) type {
     return struct {
-        const Self = this;
+        const Self = @This();
 
         pub const Kind = enum {
             Optional,
@@ -238,7 +238,7 @@ pub fn help(comptime T: type, options: []const Arg(T), out_stream: var) !void {
 
 test "clap.parse.Example" {
     const Color = struct {
-        const Self = this;
+        const Self = @This();
 
         r: u8,
         g: u8,

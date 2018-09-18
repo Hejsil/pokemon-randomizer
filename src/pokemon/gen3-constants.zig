@@ -12,7 +12,7 @@ const lu64 = int.lu64;
 
 pub fn Section(comptime Item: type) type {
     return struct {
-        const Self = this;
+        const Self = @This();
 
         start: usize,
         len: usize,
