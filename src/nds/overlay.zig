@@ -1,14 +1,14 @@
 const std = @import("std");
 const fs = @import("fs.zig");
 const common = @import("common.zig");
-const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 
 const io = std.io;
 const mem = std.mem;
 const os = std.os;
 
-const lu32 = int.lu32;
+const lu32 = fun.platform.lu32;
 
 pub const Overlay = packed struct {
     overlay_id: lu32,

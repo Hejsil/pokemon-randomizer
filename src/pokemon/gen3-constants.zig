@@ -1,14 +1,13 @@
 const libpoke = @import("index.zig");
-const int = @import("../int.zig");
 const std = @import("std");
-const fun = @import("fun");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const mem = std.mem;
 const debug = std.debug;
 const generic = fun.generic;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
-const lu64 = int.lu64;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
+const lu64 = fun.platform.lu64;
 
 pub fn Section(comptime Item: type) type {
     return struct {

@@ -4,7 +4,6 @@ const blz = @import("../../lib/blz/blz.zig");
 const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const common = @import("common.zig");
 const overlay = @import("overlay.zig");
-const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const generic = fun.generic;
@@ -15,8 +14,8 @@ const os = std.os;
 
 const assert = debug.assert;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
 
 pub const fs = @import("fs.zig");
 

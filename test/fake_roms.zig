@@ -3,7 +3,6 @@ const libpoke = @import("../src/pokemon/index.zig");
 const nds = @import("../src/nds/index.zig");
 const gba = @import("../src/gba.zig");
 const utils = @import("../src/utils/index.zig");
-const int = @import("../src/int.zig");
 const std = @import("std");
 const fun = @import("../lib/fun-with-zig/src/index.zig"); // TODO: Package stuff
 
@@ -18,10 +17,10 @@ const path = os.path;
 const loop = fun.loop;
 const generic = fun.generic;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
-const lu64 = int.lu64;
-const lu128 = int.lu128;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
+const lu64 = fun.platform.lu64;
+const lu128 = fun.platform.lu128;
 
 const tmp_folder = "zig-cache" ++ []u8{path.sep} ++ "__fake_roms__" ++ []u8{path.sep};
 

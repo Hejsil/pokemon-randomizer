@@ -9,7 +9,6 @@ const std = @import("std");
 const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
-const int = @import("../int.zig");
 const bits = @import("../bits.zig");
 
 const generic = fun.generic;
@@ -22,9 +21,9 @@ const mem = std.mem;
 
 const Namespace = @typeOf(std);
 
-const lu16 = int.lu16;
-const lu64 = int.lu64;
-const lu128 = int.lu128;
+const lu16 = fun.platform.lu16;
+const lu64 = fun.platform.lu64;
+const lu128 = fun.platform.lu128;
 
 test "pokemon" {
     _ = @import("common.zig");

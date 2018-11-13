@@ -1,7 +1,7 @@
 const common = @import("common.zig");
-const int = @import("../int.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 
-const lu64 = int.lu64;
+const lu64 = fun.platform.lu64;
 
 pub const BasePokemon = packed struct {
     pokedex_number: u8,

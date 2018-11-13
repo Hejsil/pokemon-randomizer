@@ -4,7 +4,6 @@ const std = @import("std");
 const fun = @import("../../lib/fun-with-zig/src/index.zig");
 const common = @import("common.zig");
 const formats = @import("formats.zig");
-const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const generic = fun.generic;
@@ -19,8 +18,8 @@ const fmt = std.fmt;
 
 const assert = debug.assert;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
 
 /// An in memory filesystem used as an abstraction over the filesystems found in the nintendo ds.
 /// The filesystem have the following properties:

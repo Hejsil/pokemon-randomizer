@@ -7,6 +7,7 @@ const gen2 = @import("gen2.zig");
 
 const io = std.io;
 const os = std.os;
+const math = std.math;
 const mem = std.mem;
 const debug = std.debug;
 
@@ -37,9 +38,9 @@ pub fn main() !void {
         };
         defer file.close();
 
-        var file_stream = io.FileInStream.init(file);
+        var file_stream = file.inStream();
         var stream = &file_stream.stream;
-        const data = try stream.readAllAlloc(allocator, @maxValue(usize));
+        const data = try stream.readAllAlloc(allocator, math.maxInt(usize));
         defer allocator.free(data);
 
         var gamecode: []const u8 = undefined;

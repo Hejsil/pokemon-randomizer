@@ -1,18 +1,18 @@
 const std = @import("std");
 const pokemon = @import("index.zig");
-const int = @import("../int.zig");
 const nds = @import("../nds/index.zig");
 const utils = @import("../utils/index.zig");
 const common = @import("common.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 
 const mem = std.mem;
 
 const Narc = nds.fs.Narc;
 const Nitro = nds.fs.Nitro;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
-const lu128 = int.lu128;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
+const lu128 = fun.platform.lu128;
 
 pub const constants = @import("gen5-constants.zig");
 

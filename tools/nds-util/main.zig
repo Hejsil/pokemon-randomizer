@@ -24,7 +24,7 @@ pub fn main() !void {
     const allocator = &arena.allocator;
 
     var stdout_handle = try io.getStdOut();
-    var stdout_file_stream = io.FileOutStream.init(stdout_handle);
+    var stdout_file_stream = stdout_handle.outStream();
     var stdout = &stdout_file_stream.stream;
 
     // NOTE: Do we want to use another allocator for arguments? Does it matter? Idk.

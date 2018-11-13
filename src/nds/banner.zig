@@ -1,12 +1,11 @@
 const fun = @import("../../lib/fun-with-zig/src/index.zig"); // TODO: package stuff
-const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const ascii = fun.ascii;
 const generic = fun.generic;
 const slice = generic.slice;
 
-const lu16 = int.lu16;
+const lu16 = fun.platform.lu16;
 
 pub const Banner = packed struct {
     pub const Version = enum(u2) {

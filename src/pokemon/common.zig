@@ -1,7 +1,7 @@
-const int = @import("../int.zig");
 const nds = @import("../nds/index.zig");
+const fun = @import("../../lib/fun-with-zig/src/index.zig");
 
-const lu16 = int.lu16;
+const lu16 = fun.platform.lu16;
 
 pub const Stats = packed struct {
     hp: u8,

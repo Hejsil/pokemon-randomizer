@@ -3,14 +3,15 @@ const pokemon = @import("pokemon");
 const utils = @import("utils");
 const constants = @import("gen2-constants.zig");
 const search = @import("search.zig");
-const int = @import("int");
+const fun = @import("../../lib/fun-with-zig/index.zig");
 
 const debug = std.debug;
 const mem = std.mem;
+const math = std.math;
 const common = pokemon.common;
 const gen2 = pokemon.gen2;
 
-const lu16 = int.lu16;
+const lu16 = fun.platform.lu16;
 
 const Offset = struct {
     start: usize,
@@ -69,7 +70,7 @@ pub fn findInfoInFile(data: []const u8, version: pokemon.Version, allocator: *me
             for (trainer_group_pointers) |_, i| {
                 const is_last = i + 1 == trainer_group_pointers.len;
                 var curr = trainer_group_pointers[i].value();
-                const next = if (!is_last) trainer_group_pointers[i + 1].value() else @maxValue(u16);
+                const next = if (!is_last) trainer_group_pointers[i + 1].value() else math.maxInt(u16);
 
                 group_loop: while (curr < next) : (trainer_group_lenghts[i] += 1) {
                     // Skip, until we find the string terminator for the trainer name

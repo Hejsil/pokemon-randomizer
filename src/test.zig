@@ -6,6 +6,5 @@ test "" {
     _ = @import("clap.zig");
     _ = @import("gb.zig");
     _ = @import("gba.zig");
-    _ = @import("int.zig");
     _ = @import("randomizer.zig");
 }

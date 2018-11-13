@@ -1,5 +1,5 @@
 const pokemon = @import("pokemon");
-const int = @import("int");
+const fun = @import("../../lib/fun-with-zig/index.zig");
 const std = @import("std");
 
 const math = std.math;
@@ -7,9 +7,9 @@ const math = std.math;
 const gen3 = pokemon.gen3;
 const common = pokemon.common;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
-const lu64 = int.lu64;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
+const lu64 = fun.platform.lu64;
 
 pub const em_first_trainers = []gen3.Trainer{
     gen3.Trainer{

@@ -2,7 +2,6 @@ const std = @import("std");
 // TODO: We can't have packages in tests
 const crc = @import("../../lib/zig-crc/crc.zig");
 const fun = @import("../../lib/fun-with-zig/src/index.zig");
-const int = @import("../int.zig");
 const utils = @import("../utils/index.zig");
 
 const ascii = fun.ascii;
@@ -14,9 +13,9 @@ const slice = generic.slice;
 
 const assert = debug.assert;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
-const lu64 = int.lu64;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
+const lu64 = fun.platform.lu64;
 
 pub const crc_modbus = comptime blk: {
     @setEvalBranchQuota(crc.crcspec_init_backward_cycles);

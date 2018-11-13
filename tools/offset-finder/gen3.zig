@@ -2,8 +2,8 @@ const pokemon = @import("pokemon");
 const search = @import("search.zig");
 const std = @import("std");
 const utils = @import("utils");
-const int = @import("int");
 const constants = @import("gen3-constants.zig");
+const fun = @import("../../lib/fun-with-zig/index.zig");
 
 const os = std.os;
 const debug = std.debug;
@@ -14,9 +14,9 @@ const io = std.io;
 const gen3 = pokemon.gen3;
 const common = pokemon.common;
 
-const lu16 = int.lu16;
-const lu32 = int.lu32;
-const lu64 = int.lu64;
+const lu16 = fun.platform.lu16;
+const lu32 = fun.platform.lu32;
+const lu64 = fun.platform.lu64;
 
 const Info = gen3.constants.Info;
 const TrainerSection = gen3.constants.TrainerSection;
