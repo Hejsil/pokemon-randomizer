@@ -268,7 +268,8 @@ test "clap.parse.Example" {
     const Case = struct {
         args: []const []const u8,
         res: Color,
-        err: ?anyerror    };
+        err: ?anyerror,
+    };
     const cases = []Case{
         Case{
             .args = [][]const u8{

@@ -550,8 +550,8 @@ pub fn getFntAndFiles(comptime F: type, root: *F, allocator: *mem.Allocator) !Fn
         const state = states.toSliceConst()[current_state];
 
         try main_fnt.append(FntMainEntry{
-            // We don't know the exect offset yet, but we can save the offset from the sub tables
-            // base, and then calculate the real offset later.
+        // We don't know the exect offset yet, but we can save the offset from the sub tables
+        // base, and then calculate the real offset later.
             .offset_to_subtable = lu32.init(@intCast(u32, sub_fnt.len())),
             .first_file_id_in_subtable = lu16.init(@intCast(u16, files.len)),
             .parent_id = lu16.init(state.parent_id),

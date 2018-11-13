@@ -1274,7 +1274,7 @@ pub const WildPokemons = extern struct {
                                     if (i < arr.len) {
                                         const replacement = &data.grass[field.replace_with[i]];
                                         return WildPokemon{
-                                            //.vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &replacement.level,
                                             .max_level = &replacement.level,
@@ -1293,7 +1293,7 @@ pub const WildPokemons = extern struct {
                                     const arr = &@field(data, field);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            //.vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &arr[i].level_min,
                                             .max_level = &arr[i].level_max,
@@ -1314,7 +1314,7 @@ pub const WildPokemons = extern struct {
                                     const arr = &@field(data, field);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            //.vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i],
                                             .min_level = &data.grass_levels[i],
                                             .max_level = &data.grass_levels[i],
@@ -1333,7 +1333,7 @@ pub const WildPokemons = extern struct {
                                     const arr = &@field(data, field);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            //.vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &arr[i].level_min,
                                             .max_level = &arr[i].level_max,
@@ -1361,7 +1361,7 @@ pub const WildPokemons = extern struct {
                                 const arr = &@field(data, field);
                                 if (i < arr.len) {
                                     return WildPokemon{
-                                        //.vtable = WildPokemon.VTable.init(gen),
+                                    //.vtable = WildPokemon.VTable.init(gen),
                                         .species = &arr[i].species,
                                         .min_level = &arr[i].level_min,
                                         .max_level = &arr[i].level_max,
@@ -1406,13 +1406,13 @@ pub const WildPokemons = extern struct {
                                 return data.grass_morning.len +
                                     data.grass_day.len +
                                     data.grass_night.len +
-                                    //data.radio.len +
+                                //data.radio.len +
                                     data.surf.len +
                                     data.sea_unknown.len +
                                     data.old_rod.len +
                                     data.good_rod.len +
                                     data.super_rod.len; // +
-                                    //data.swarm.len;
+                                //data.swarm.len;
                             },
                             else => unreachable,
                         },

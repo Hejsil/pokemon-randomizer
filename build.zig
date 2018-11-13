@@ -39,7 +39,7 @@ pub fn build(b: *Builder) void {
     tools_step.dependOn(&nds_util.step);
 
     const test_all_step = b.step("test", "Run all tests in all modes.");
-    inline for ([]Mode{Mode.Debug, Mode.ReleaseFast, Mode.ReleaseSafe, Mode.ReleaseSmall}) |test_mode| {
+    inline for ([]Mode{ Mode.Debug, Mode.ReleaseFast, Mode.ReleaseSafe, Mode.ReleaseSmall }) |test_mode| {
         const mode_str = comptime modeToString(test_mode);
 
         const src_tests = b.addTest("src/test.zig");
@@ -55,7 +55,6 @@ pub fn build(b: *Builder) void {
 
         test_all_step.dependOn(test_step);
     }
-
 
     const all_step = b.step("all", "Build everything and runs all tests");
     all_step.dependOn(test_all_step);
