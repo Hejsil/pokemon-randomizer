@@ -1189,13 +1189,11 @@ pub const WildPokemons = extern struct {
     const Iter = ErrIterator(WildPokemons, WildPokemon);
 
     const VTable = struct {
-        const AtErr = error{
-            InvalidPointer,
-        };
+        const AtErr = error{InvalidPointer};
 
         // TODO: convert to pass by value
-        at: fn(wild_mons: *const WildPokemons, index: usize) AtErr!WildPokemon,
-        len: fn(wild_mons: *const WildPokemons) usize,
+        at: fn (wild_mons: *const WildPokemons, index: usize) AtErr!WildPokemon,
+        len: fn (wild_mons: *const WildPokemons) usize,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
@@ -1218,7 +1216,7 @@ pub const WildPokemons = extern struct {
                                     const arr = try info.wild_pokemons.toSingle(game.data);
                                     if (i < arr.len) {
                                         return WildPokemon{
-                                            //.vtable = WildPokemon.VTable.init(gen),
+                                        //.vtable = WildPokemon.VTable.init(gen),
                                             .species = &arr[i].species,
                                             .min_level = &arr[i].min_level,
                                             .max_level = &arr[i].max_level,
@@ -1235,7 +1233,7 @@ pub const WildPokemons = extern struct {
                                 const data = @ptrCast(*gen.DpptWildPokemons, wild_mons.data);
                                 if (i < data.grass.len) {
                                     return WildPokemon{
-                                        //.vtable = WildPokemon.VTable.init(gen),
+                                    //.vtable = WildPokemon.VTable.init(gen),
                                         .species = &data.grass[i].species,
                                         .min_level = &data.grass[i].level,
                                         .max_level = &data.grass[i].level,
@@ -1250,27 +1248,27 @@ pub const WildPokemons = extern struct {
                                 inline for ([]ReplacementField{
                                     ReplacementField{
                                         .name = "swarm_replacements",
-                                        .replace_with = []const usize { 0, 1 },
+                                        .replace_with = []const usize{ 0, 1 },
                                     },
                                     ReplacementField{
                                         .name = "day_replacements",
-                                        .replace_with = []const usize { 2, 3 },
+                                        .replace_with = []const usize{ 2, 3 },
                                     },
                                     ReplacementField{
                                         .name = "night_replacements",
-                                        .replace_with = []const usize { 2, 3 },
+                                        .replace_with = []const usize{ 2, 3 },
                                     },
                                     ReplacementField{
                                         .name = "radar_replacements",
-                                        .replace_with = []const usize { 4, 5, 10, 11 },
+                                        .replace_with = []const usize{ 4, 5, 10, 11 },
                                     },
                                     ReplacementField{
                                         .name = "unknown_replacements",
-                                        .replace_with = []const usize { 0 } ** 6,
+                                        .replace_with = []const usize{0} ** 6,
                                     },
                                     ReplacementField{
                                         .name = "gba_replacements",
-                                        .replace_with = []const usize { 8, 9 } ** 5,
+                                        .replace_with = []const usize{ 8, 9 } ** 5,
                                     },
                                 }) |field| {
                                     const arr = &@field(data, field.name);
@@ -1286,7 +1284,7 @@ pub const WildPokemons = extern struct {
                                     i -= arr.len;
                                 }
 
-                                inline for ([][]const u8 {
+                                inline for ([][]const u8{
                                     "surf",
                                     "sea_unknown",
                                     "old_rod",
@@ -1309,7 +1307,7 @@ pub const WildPokemons = extern struct {
                             },
                             Version.HeartGold, Version.SoulSilver => {
                                 const data = @ptrCast(*gen.HgssWildPokemons, wild_mons.data);
-                                inline for ([][]const u8 {
+                                inline for ([][]const u8{
                                     "grass_morning",
                                     "grass_day",
                                     "grass_night",
@@ -1326,7 +1324,7 @@ pub const WildPokemons = extern struct {
                                     i -= arr.len;
                                 }
 
-                                inline for ([][]const u8 {
+                                inline for ([][]const u8{
                                     "surf",
                                     "sea_unknown",
                                     "old_rod",
@@ -1352,7 +1350,7 @@ pub const WildPokemons = extern struct {
                         },
                         gen5 => {
                             const data = @ptrCast(*gen.WildPokemons, wild_mons.data);
-                            inline for ([][]const u8 {
+                            inline for ([][]const u8{
                                 "grass",
                                 "dark_grass",
                                 "rustling_grass",
@@ -1414,7 +1412,7 @@ pub const WildPokemons = extern struct {
                                     data.sea_unknown.len +
                                     data.old_rod.len +
                                     data.good_rod.len +
-                                    data.super_rod.len;// +
+                                    data.super_rod.len; // +
                                     //data.swarm.len;
                             },
                             else => unreachable,
@@ -1453,7 +1451,7 @@ pub const Zone = extern struct {
 
     const VTable = struct {
         // TODO: convert to pass by value
-        getWildPokemons: fn(zone: *const Zone) WildPokemons,
+        getWildPokemons: fn (zone: *const Zone) WildPokemons,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
@@ -1466,9 +1464,7 @@ pub const Zone = extern struct {
                 }
             };
 
-            return VTable{
-                .getWildPokemons = Funcs.getWildPokemons,
-            };
+            return VTable{ .getWildPokemons = Funcs.getWildPokemons };
         }
     };
 };
@@ -1497,8 +1493,8 @@ pub const Zones = extern struct {
             NotFile,
         };
         // TODO: pass by value
-        at: fn(zones: *const Zones, index: usize) AtErr!Zone,
-        len: fn(zones: *const Zones) usize,
+        at: fn (zones: *const Zones, index: usize) AtErr!Zone,
+        len: fn (zones: *const Zones) usize,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
@@ -1510,14 +1506,14 @@ pub const Zones = extern struct {
                         .wild_pokemons = switch (gen) {
                             gen3 => @ptrCast(*u8, &game.wild_pokemon_headers[index]),
                             gen4 => switch (zones.game.version) {
-                            Version.Diamond, Version.Pearl, Version.Platinum => blk: {
-                                break :blk @ptrCast(*u8, try getFileAsType(gen.DpptWildPokemons, game.wild_pokemons, index));
+                                Version.Diamond, Version.Pearl, Version.Platinum => blk: {
+                                    break :blk @ptrCast(*u8, try getFileAsType(gen.DpptWildPokemons, game.wild_pokemons, index));
+                                },
+                                Version.HeartGold, Version.SoulSilver => blk: {
+                                    break :blk @ptrCast(*u8, try getFileAsType(gen.HgssWildPokemons, game.wild_pokemons, index));
+                                },
+                                else => unreachable,
                             },
-                            Version.HeartGold, Version.SoulSilver => blk: {
-                                break :blk @ptrCast(*u8, try getFileAsType(gen.HgssWildPokemons, game.wild_pokemons, index));
-                            },
-                            else => unreachable,
-                        },
                             gen5 => @ptrCast(*u8, try getFileAsType(gen.WildPokemon, game.wild_pokemons, index)),
                             else => comptime unreachable,
                         },

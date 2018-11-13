@@ -25,13 +25,13 @@ var help = false;
 var input_file: []const u8 = "input";
 var output_file: []const u8 = "randomized";
 
-fn setHelp(op: *randomizer.Options, str: []const u8) error!void {
+fn setHelp(op: *randomizer.Options, str: []const u8) anyerror!void {
     help = true;
 }
-fn setInFile(op: *randomizer.Options, str: []const u8) error!void {
+fn setInFile(op: *randomizer.Options, str: []const u8) anyerror!void {
     input_file = str;
 }
-fn setOutFile(op: *randomizer.Options, str: []const u8) error!void {
+fn setOutFile(op: *randomizer.Options, str: []const u8) anyerror!void {
     output_file = str;
 }
 fn setTrainerPokemon(op: *randomizer.Options, str: []const u8) !void {
@@ -50,7 +50,7 @@ fn setTrainerPokemon(op: *randomizer.Options, str: []const u8) !void {
     }
 }
 
-fn setTrainerSameStrength(op: *randomizer.Options, str: []const u8) error!void {
+fn setTrainerSameStrength(op: *randomizer.Options, str: []const u8) anyerror!void {
     op.trainer.same_total_stats = true;
 }
 fn setTrainerHeldItems(op: *randomizer.Options, str: []const u8) !void {

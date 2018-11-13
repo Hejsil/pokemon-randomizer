@@ -45,9 +45,7 @@ fn randomFs(allocator: *mem.Allocator, random: *rand.Random, comptime Folder: ty
                         const is_narc = random.scalar(bool);
 
                         if (is_narc) {
-                            break :blk fs.Nitro.File{
-                                .Narc = try randomFs(allocator, random, fs.Narc),
-                            };
+                            break :blk fs.Nitro.File{ .Narc = try randomFs(allocator, random, fs.Narc) };
                         }
 
                         const data = try allocator.alloc(u8, random.range(usize, 10, 100));
@@ -137,14 +135,14 @@ fn fsEqual(allocator: *mem.Allocator, comptime Folder: type, fs1: *Folder, fs2: 
     return true;
 }
 
-const TestFolder = fs.Folder(struct{
+const TestFolder = fs.Folder(struct {
     // TODO: We cannot compare pointers to zero sized types, so this field have to exist.
     a: u8,
 
-    fn deinit(file: *this) void { }
+    fn deinit(file: *this) void {}
 });
 
-fn assertError(res: var, expected: error) void {
+fn assertError(res: var, expected: anyerror) void {
     if (res) |_| {
         unreachable;
     } else |actual| {

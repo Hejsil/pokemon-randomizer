@@ -24,13 +24,13 @@ pub fn Arg(comptime T: type) type {
         };
 
         help_message: []const u8,
-        handler: fn (*T, []const u8) error!void,
+        handler: fn (*T, []const u8) anyerror!void,
         arg_kind: Kind,
         takes_value: bool,
         short_arg: ?u8,
         long_arg: ?[]const u8,
 
-        pub fn init(handler: fn (*T, []const u8) error!void) Self {
+        pub fn init(handler: fn (*T, []const u8) anyerror!void) Self {
             return Self{
                 .help_message = "",
                 .handler = handler,
@@ -268,8 +268,7 @@ test "clap.parse.Example" {
     const Case = struct {
         args: []const []const u8,
         res: Color,
-        err: ?error,
-    };
+        err: ?anyerror    };
     const cases = []Case{
         Case{
             .args = [][]const u8{

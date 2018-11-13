@@ -27,16 +27,12 @@ pub fn Ptr(comptime T: type) type {
         v: lu32,
 
         pub fn initNull() Self {
-            return Self{
-                .v = lu32.init(0),
-            };
+            return Self{ .v = lu32.init(0) };
         }
 
         pub fn init(i: u32) !Self {
             const v = math.add(u32, i, 0x8000000) catch return error.InvalidPointer;
-            return Self{
-                .v = lu32.init(v),
-            };
+            return Self{ .v = lu32.init(v) };
         }
 
         pub fn toMany(ptr: Self, data: []u8) ![*]T {
@@ -76,15 +72,11 @@ pub fn Ref(comptime T: type) type {
         ptr: Ptr(T),
 
         pub fn initNull() Self {
-            return Self{
-                .ptr = Ptr(T).initNull(),
-            };
+            return Self{ .ptr = Ptr(T).initNull() };
         }
 
         pub fn init(i: u32) !Self {
-            return Self{
-                .ptr = try Ptr(T).init(i),
-            };
+            return Self{ .ptr = try Ptr(T).init(i) };
         }
 
         pub fn toSingle(ref: Self, data: []u8) !*T {
@@ -243,7 +235,6 @@ pub const LevelUpMove = packed struct {
     move_id: u9,
     level: u7,
 };
-
 
 // TODO: Confirm layout
 pub const WildPokemon = packed struct {

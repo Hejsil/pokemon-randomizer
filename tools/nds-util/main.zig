@@ -102,7 +102,7 @@ fn writeFs(comptime Fs: type, p: []const u8, folder: *Fs, allocator: *mem.Alloca
                             Tag.Narc => |narc| {
                                 try os.makePath(allocator, node_path);
                                 try writeFs(nds.fs.Narc, node_path, narc, allocator);
-                            }
+                            },
                         },
                         nds.fs.Narc => {
                             var file = try os.File.openWrite(node_path);

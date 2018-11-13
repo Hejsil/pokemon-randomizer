@@ -75,7 +75,6 @@ pub const infos = []Info{
     leaf_us_info,
 };
 
-
 const emerald_us_info = Info{
     .game_title = "POKEMON EMER",
     .gamecode = "BPEE",

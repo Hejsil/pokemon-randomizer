@@ -23,7 +23,7 @@ const lu32 = int.lu32;
 const lu64 = int.lu64;
 const lu128 = int.lu128;
 
-const tmp_folder = "zig-cache" ++ []u8{path.sep} ++  "__fake_roms__" ++ []u8{path.sep};
+const tmp_folder = "zig-cache" ++ []u8{path.sep} ++ "__fake_roms__" ++ []u8{path.sep};
 
 pub const level = 1;
 pub const party_size = 2;
@@ -244,7 +244,7 @@ fn genGen3FakeRom(allocator: *mem.Allocator, info: libpoke.gen3.constants.Info) 
 
     for (loop.to(info.wild_pokemon_headers.len)) |_, i| {
         try file.seekTo(free_space_offset);
-        const lens = []usize{12,5,5,10};
+        const lens = []usize{ 12, 5, 5, 10 };
         var offsets: [lens.len]u32 = undefined;
         inline for (lens) |len, j| {
             const offset = try file.getPos();
@@ -495,12 +495,8 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         const party_narc = try nds.fs.Narc.create(allocator);
         try trainer_narc.ensureCapacity(trainer_count);
         try party_narc.ensureCapacity(trainer_count);
-        _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{
-            .Narc = trainer_narc,
-        });
-        _ = try root.createPathAndFile(info.parties, nds.fs.Nitro.File{
-            .Narc = party_narc,
-        });
+        _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{ .Narc = trainer_narc });
+        _ = try root.createPathAndFile(info.parties, nds.fs.Nitro.File{ .Narc = party_narc });
 
         for (loop.to(trainer_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -550,8 +546,8 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                 tmp_buf[0..],
                 "{}{}{}{}",
                 generic.toBytes(party_member)[0..],
-                held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
-                moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
+                held_item_bytes[0 .. held_item_bytes.len * @boolToInt(i & has_item != 0)],
+                moves_bytes[0 .. moves_bytes.len * @boolToInt(i & has_moves != 0)],
                 ([]u8{0x00} ** 2)[0..padding],
             );
             errdefer allocator.free(full_party_member_bytes);
@@ -567,9 +563,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(move_count);
-        _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -605,9 +599,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(pokemon_count);
-        _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(pokemon_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -656,9 +648,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(level_up_move_count);
-        _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(level_up_move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -685,9 +675,7 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(zone_count);
-        _ = try root.createPathAndFile(info.wild_pokemons, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.wild_pokemons, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(zone_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -710,50 +698,36 @@ fn genGen4FakeRom(allocator: *mem.Allocator, info: libpoke.gen4.constants.Info) 
                     // TODO: This can leak on err
                     const wild_pokemon = try allocator.create(WildPokemons{
                         .grass_rate = lu32.init(rate),
-                        .grass = []Grass{
-                            comptime Grass{
-                                .level = level,
-                                .pad1 = undefined,
-                                .species = lu16.init(species),
-                                .pad2 = undefined,
-                            },
-                        } ** 12,
-                        .swarm_replacements = []Replacement{
-                            Replacement{
-                                .species = comptime lu16.init(species),
-                                .pad = undefined,
-                            },
-                        } ** 2,
-                        .day_replacements = []Replacement{
-                            Replacement{
-                                .species = comptime lu16.init(species),
-                                .pad = undefined,
-                            },
-                        } ** 2,
-                        .night_replacements = []Replacement{
-                            Replacement{
-                                .species = comptime lu16.init(species),
-                                .pad = undefined,
-                            },
-                        } ** 2,
-                        .radar_replacements = []Replacement{
-                            Replacement{
-                                .species = comptime lu16.init(species),
-                                .pad = undefined,
-                            },
-                        } ** 4,
-                        .unknown_replacements = []Replacement{
-                            Replacement{
-                                .species = comptime lu16.init(species),
-                                .pad = undefined,
-                            },
-                        } ** 6,
-                        .gba_replacements = []Replacement{
-                            Replacement{
-                                .species = comptime lu16.init(species),
-                                .pad = undefined,
-                            },
-                        } ** 10,
+                        .grass = []Grass{comptime Grass{
+                            .level = level,
+                            .pad1 = undefined,
+                            .species = lu16.init(species),
+                            .pad2 = undefined,
+                        }} ** 12,
+                        .swarm_replacements = []Replacement{Replacement{
+                            .species = comptime lu16.init(species),
+                            .pad = undefined,
+                        }} ** 2,
+                        .day_replacements = []Replacement{Replacement{
+                            .species = comptime lu16.init(species),
+                            .pad = undefined,
+                        }} ** 2,
+                        .night_replacements = []Replacement{Replacement{
+                            .species = comptime lu16.init(species),
+                            .pad = undefined,
+                        }} ** 2,
+                        .radar_replacements = []Replacement{Replacement{
+                            .species = comptime lu16.init(species),
+                            .pad = undefined,
+                        }} ** 4,
+                        .unknown_replacements = []Replacement{Replacement{
+                            .species = comptime lu16.init(species),
+                            .pad = undefined,
+                        }} ** 6,
+                        .gba_replacements = []Replacement{Replacement{
+                            .species = comptime lu16.init(species),
+                            .pad = undefined,
+                        }} ** 10,
                         .surf = []Sea{sea} ** 5,
                         .sea_unknown = []Sea{sea} ** 5,
                         .old_rod = []Sea{sea} ** 5,
@@ -842,12 +816,8 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         const party_narc = try nds.fs.Narc.create(allocator);
         try trainer_narc.ensureCapacity(trainer_count);
         try party_narc.ensureCapacity(trainer_count);
-        _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{
-            .Narc = trainer_narc,
-        });
-        _ = try root.createPathAndFile(info.parties, nds.fs.Nitro.File{
-            .Narc = party_narc,
-        });
+        _ = try root.createPathAndFile(info.trainers, nds.fs.Nitro.File{ .Narc = trainer_narc });
+        _ = try root.createPathAndFile(info.parties, nds.fs.Nitro.File{ .Narc = party_narc });
 
         for (loop.to(trainer_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -895,8 +865,8 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
                 tmp_buf[0..],
                 "{}{}{}",
                 generic.toBytes(party_member)[0..],
-                held_item_bytes[0..held_item_bytes.len * @boolToInt(i & has_item != 0)],
-                moves_bytes[0..moves_bytes.len * @boolToInt(i & has_moves != 0)],
+                held_item_bytes[0 .. held_item_bytes.len * @boolToInt(i & has_item != 0)],
+                moves_bytes[0 .. moves_bytes.len * @boolToInt(i & has_moves != 0)],
             );
 
             _ = try party_narc.createFile(name, nds.fs.Narc.File{
@@ -910,9 +880,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(move_count);
-        _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.moves, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -953,9 +921,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(pokemon_count);
-        _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.base_stats, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(pokemon_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -1009,9 +975,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(level_up_move_count);
-        _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.level_up_moves, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(level_up_move_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
@@ -1038,9 +1002,7 @@ fn genGen5FakeRom(allocator: *mem.Allocator, info: libpoke.gen5.constants.Info) 
         // TODO: This can leak on err
         const narc = try nds.fs.Narc.create(allocator);
         try narc.ensureCapacity(level_up_move_count);
-        _ = try root.createPathAndFile(info.wild_pokemons, nds.fs.Nitro.File{
-            .Narc = narc,
-        });
+        _ = try root.createPathAndFile(info.wild_pokemons, nds.fs.Nitro.File{ .Narc = narc });
 
         for (loop.to(zone_count)) |_, i| {
             var name_buf: [10]u8 = undefined;
