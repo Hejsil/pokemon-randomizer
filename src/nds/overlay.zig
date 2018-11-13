@@ -29,7 +29,7 @@ pub fn readFiles(file: os.File, allocator: *mem.Allocator, overlay_table: []Over
         results.deinit();
     }
 
-    var file_stream = io.FileInStream.init(file);
+    var file_stream = file.inStream();
     var stream = &file_stream.stream;
 
     for (overlay_table) |overlay, i| {

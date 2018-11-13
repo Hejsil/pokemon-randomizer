@@ -123,7 +123,7 @@ pub fn main() !void {
     const allocator = &arena.allocator;
 
     var stdout_handle = try io.getStdOut();
-    var stdout_file_stream = io.FileOutStream.init(stdout_handle);
+    var stdout_file_stream = stdout_handle.outStream();
     var stdout = &stdout_file_stream.stream;
 
     const args = try os.argsAlloc(allocator);
@@ -157,7 +157,7 @@ pub fn main() !void {
         break :blk mem.readInt(buf[0..8], u64, builtin.Endian.Little);
     });
 
-    var r = Randomizer.init(&game, &random.random, allocator);
+    var r = Randomizer.init(game, &random.random, allocator);
     r.randomize(options) catch |err| {
         debug.warn("Randomizing error occured {}.\n", @errorName(err));
         return err;

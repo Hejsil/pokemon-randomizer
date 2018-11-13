@@ -211,7 +211,7 @@ test "Fake rom: Randomizer" {
             };
 
             var rand_alloc = heap.FixedBufferAllocator.init(game_buf[game_alloc.end_index..]);
-            var r = Randomizer.init(&game, random, &rand_alloc.allocator);
+            var r = Randomizer.init(game, random, &rand_alloc.allocator);
 
             timer.reset();
             try r.randomize(options);

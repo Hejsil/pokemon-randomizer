@@ -211,7 +211,7 @@ pub const Header = packed struct {
     }
 
     pub fn calcChecksum(header: Header) u16 {
-        return crc_modbus.checksum(generic.toBytes(header)[0..0x15E]);
+        return crc_modbus.checksum(mem.toBytes(header)[0..0x15E]);
     }
 
     pub fn validate(header: Header) !void {

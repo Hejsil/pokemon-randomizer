@@ -65,7 +65,7 @@ pub const Rom = struct {
     root: *fs.Nitro,
 
     pub fn fromFile(file: os.File, allocator: *mem.Allocator) !Rom {
-        var file_stream = io.FileInStream.init(file);
+        var file_stream = file.inStream();
         var stream = &file_stream.stream;
 
         const header = try utils.stream.read(stream, Header);
@@ -171,7 +171,7 @@ pub const Rom = struct {
         header.arm7_size = lu32.init(@intCast(u32, rom.arm7.len));
 
         const banner_pos = try file.getPos();
-        try file.write(generic.toBytes(rom.banner));
+        try file.write(mem.toBytes(rom.banner));
 
         header.banner_offset = lu32.init(@intCast(u32, banner_pos));
         header.banner_size = lu32.init(@sizeOf(Banner));
@@ -253,7 +253,7 @@ pub const Rom = struct {
 
         try header.validate();
         try file.seekTo(0x00);
-        try file.write(generic.toBytes(header));
+        try file.write(mem.toBytes(header));
     }
 
     pub fn hasNitroFooter(rom: Rom) bool {

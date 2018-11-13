@@ -116,12 +116,12 @@ pub const Randomizer = struct {
     }
     const SpeciesByType = std.HashMap(u8, std.ArrayList(u16), hash_type, type_eql);
 
-    game: *const libpoke.Game,
+    game: libpoke.Game,
     random: *rand.Random,
     allocator: *mem.Allocator,
     species_by_type: ?SpeciesByType,
 
-    pub fn init(game: *const libpoke.Game, random: *rand.Random, allocator: *mem.Allocator) Randomizer {
+    pub fn init(game: libpoke.Game, random: *rand.Random, allocator: *mem.Allocator) Randomizer {
         return Randomizer{
             .game = game,
             .allocator = allocator,
@@ -136,11 +136,11 @@ pub const Randomizer = struct {
         }
     }
 
-    pub fn randomize(randomizer: *Randomizer, options: *const Options) !void {
+    pub fn randomize(randomizer: *Randomizer, options: Options) !void {
         try randomizer.randomizeTrainers(options.trainer);
     }
 
-    pub fn randomizeTrainers(randomizer: *Randomizer, options: *const Options.Trainer) !void {
+    pub fn randomizeTrainers(randomizer: *Randomizer, options: Options.Trainer) !void {
         const game = randomizer.game;
         var by_type = try randomizer.speciesByType();
 
@@ -206,7 +206,7 @@ pub const Randomizer = struct {
         }
     }
 
-    fn randomTrainerPokemon(randomizer: *Randomizer, curr_pokemom: *const libpoke.Pokemon, same_total_stats: bool, pick_from: []const u16) !u16 {
+    fn randomTrainerPokemon(randomizer: *Randomizer, curr_pokemom: libpoke.Pokemon, same_total_stats: bool, pick_from: []const u16) !u16 {
         const game = randomizer.game;
         const pokemons = game.pokemons();
 
@@ -237,7 +237,7 @@ pub const Randomizer = struct {
         }
     }
 
-    fn randomizeTrainerPokemonHeldItem(randomizer: *const Randomizer, member: *const libpoke.PartyMember, option: Options.Trainer.HeldItems) void {
+    fn randomizeTrainerPokemonHeldItem(randomizer: Randomizer, member: libpoke.PartyMember, option: Options.Trainer.HeldItems) void {
         const game = randomizer.game;
         switch (option) {
             Options.Trainer.HeldItems.None => {
@@ -256,7 +256,7 @@ pub const Randomizer = struct {
         }
     }
 
-    fn randomizeTrainerPokemonMoves(randomizer: *Randomizer, member: *const libpoke.PartyMember, option: *const Options.Trainer) !void {
+    fn randomizeTrainerPokemonMoves(randomizer: *Randomizer, member: libpoke.PartyMember, option: Options.Trainer) !void {
         const pokemons = randomizer.game.pokemons();
         const member_moves = member.moves() orelse return;
 
@@ -391,7 +391,7 @@ pub const Randomizer = struct {
     }
 
     /// Caller owns memory returned
-    fn movesLearned(randomizer: *const Randomizer, species: u16) ![]u16 {
+    fn movesLearned(randomizer: Randomizer, species: u16) ![]u16 {
         const game = randomizer.game;
         const pokemons = game.pokemons();
         const pokemon = try pokemons.at(species);

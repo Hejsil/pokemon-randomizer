@@ -283,7 +283,7 @@ pub const Game = struct {
     wild_pokemon_headers: []WildPokemonHeader,
 
     pub fn fromFile(file: os.File, allocator: *mem.Allocator) !Game {
-        var file_in_stream = io.FileInStream.init(file);
+        var file_in_stream = file.inStream();
         var in_stream = &file_in_stream.stream;
 
         const header = try utils.stream.read(in_stream, gba.Header);

@@ -211,7 +211,7 @@ pub const LevelUpMove = extern struct {
         return move.version.dispatch(u8, move, levelHelper);
     }
 
-    fn levelHelper(comptime gen: Namespace, lvl_up_move: *const LevelUpMove) u8 {
+    fn levelHelper(comptime gen: Namespace, lvl_up_move: LevelUpMove) u8 {
         const lvl = @ptrCast(*gen.LevelUpMove, lvl_up_move.data).level;
         return if (gen == gen5) @intCast(u8, lvl.value()) else lvl;
     }
@@ -566,7 +566,7 @@ pub const Pokemons = extern struct {
             const terminator = []u8{0xFF} ** @sizeOf(gen.LevelUpMove);
             const res = slice.bytesToSliceTrim(gen.LevelUpMove, data[start..]);
             for (res) |level_up_move, i| {
-                const bytes = generic.toBytes(level_up_move);
+                const bytes = mem.toBytes(level_up_move);
                 if (std.mem.eql(u8, bytes, terminator))
                     break :blk res[0..i];
             }
@@ -648,7 +648,7 @@ const PartyMemberMoves = extern struct {
 
     fn atSetHelper(comptime gen: Namespace, c: AtSetC) void {
         const moves = @ptrCast(*[4]lu16, c.moves.data);
-        return moves[c.index] = lu16.init(c.value);
+        moves[c.index] = lu16.init(c.value);
     }
 
     pub fn len(moves: PartyMemberMoves) usize {
@@ -756,7 +756,7 @@ pub const PartyMember = extern struct {
 };
 
 pub const Party = extern struct {
-    trainer: *const Trainer,
+    trainer: Trainer,
 
     pub fn at(party: Party, index: usize) PartyMember {
         return party.trainer.game.version.dispatch(PartyMember, AtC{
@@ -1192,12 +1192,12 @@ pub const WildPokemons = extern struct {
         const AtErr = error{InvalidPointer};
 
         // TODO: convert to pass by value
-        at: fn (wild_mons: *const WildPokemons, index: usize) AtErr!WildPokemon,
-        len: fn (wild_mons: *const WildPokemons) usize,
+        at: fn (wild_mons: WildPokemons, index: usize) AtErr!WildPokemon,
+        len: fn (wild_mons: WildPokemons) usize,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
-                fn at(wild_mons: *const WildPokemons, index: usize) AtErr!WildPokemon {
+                fn at(wild_mons: WildPokemons, index: usize) AtErr!WildPokemon {
                     var i = index;
                     switch (gen) {
                         gen3 => {
@@ -1377,7 +1377,7 @@ pub const WildPokemons = extern struct {
                     }
                 }
 
-                fn len(wild_mons: *const WildPokemons) usize {
+                fn len(wild_mons: WildPokemons) usize {
                     switch (gen) {
                         gen3 => {
                             const data = @ptrCast(*gen.WildPokemonHeader, wild_mons.data);
@@ -1451,11 +1451,11 @@ pub const Zone = extern struct {
 
     const VTable = struct {
         // TODO: convert to pass by value
-        getWildPokemons: fn (zone: *const Zone) WildPokemons,
+        getWildPokemons: fn (zone: Zone) WildPokemons,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
-                fn getWildPokemons(zone: *const Zone) WildPokemons {
+                fn getWildPokemons(zone: Zone) WildPokemons {
                     return WildPokemons{
                         .vtable = &comptime WildPokemons.VTable.init(gen),
                         .game = zone.game,
@@ -1493,12 +1493,12 @@ pub const Zones = extern struct {
             NotFile,
         };
         // TODO: pass by value
-        at: fn (zones: *const Zones, index: usize) AtErr!Zone,
-        len: fn (zones: *const Zones) usize,
+        at: fn (zones: Zones, index: usize) AtErr!Zone,
+        len: fn (zones: Zones) usize,
 
         fn init(comptime gen: Namespace) VTable {
             const Funcs = struct {
-                fn at(zones: *const Zones, index: usize) AtErr!Zone {
+                fn at(zones: Zones, index: usize) AtErr!Zone {
                     const game = @fieldParentPtr(gen.Game, "base", zones.game);
                     return Zone{
                         .vtable = &comptime Zone.VTable.init(gen),
@@ -1520,7 +1520,7 @@ pub const Zones = extern struct {
                     };
                 }
 
-                fn len(zones: *const Zones) usize {
+                fn len(zones: Zones) usize {
                     const game = @fieldParentPtr(gen.Game, "base", zones.game);
                     return switch (gen) {
                         gen3 => game.wild_pokemon_headers.len,
@@ -1600,7 +1600,7 @@ pub const Game = extern struct {
         const gen = game.base.version.gen();
         if (gen == 3) {
             const g = @fieldParentPtr(gen3.Game, "base", game.base);
-            var file_stream = io.FileOutStream.init(file);
+            var file_stream = file.outStream();
             try g.writeToStream(&file_stream.stream);
         }
 
