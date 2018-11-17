@@ -1,5 +1,7 @@
 # pokemon-randomizer
 
+This project is no longer maintained and most of the code has been migrated to the [TM35-Metronome](https://github.com/TM35-Metronome) project, which aims to be a set of simple tools for hacking Pokémon roms.
+
 A Pokémon Rom randomizer tool written in Zig
 
 For now, this project exists for me to test out the [Zig](http://ziglang.org/)
